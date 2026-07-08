@@ -1930,14 +1930,10 @@
       const avatarInput = document.getElementById(`avatar-input-${m.id}`);
       if (avatarInput) avatarInput.onchange = (e) => {
         const f = e.target.files[0]; if (!f) return;
-        if (f.size > 1500000) { alert('Ảnh quá lớn, chọn ảnh dưới ~1.5MB.'); return; }
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const url = reader.result;
+        compressImage(f, 120, 0.7, async (url) => {
           await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { avatarUrl: url }) : x));
           render();
-        };
-        reader.readAsDataURL(f);
+        });
       };
       const pwBtn = document.getElementById(`pw-change-${m.id}`);
       if (pwBtn) pwBtn.onclick = async () => {
@@ -4315,7 +4311,7 @@
       refreshAll();
     };
     
-    autoRefreshTimer = setInterval(refreshIfActive, 120000); // 2 phút kiểm tra 1 lần để giảm tải kết nối và băng thông
+    autoRefreshTimer = setInterval(refreshIfActive, 300000); // 5 phút kiểm tra 1 lần để giảm tải kết nối và băng thông
     
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
@@ -4325,13 +4321,15 @@
         }
       } else {
         recordActivity();
+        refreshAll(); // Tải lại ngay khi quay lại tab để xem dữ liệu mới nhất
         if (!autoRefreshTimer) {
-          autoRefreshTimer = setInterval(refreshIfActive, 120000);
+          autoRefreshTimer = setInterval(refreshIfActive, 300000);
         }
       }
     });
     window.addEventListener('focus', () => {
       recordActivity();
+      refreshAll(); // Tải lại ngay khi focus tab
     });
   }
 
