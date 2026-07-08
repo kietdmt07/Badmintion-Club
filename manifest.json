@@ -1,8 +1,8 @@
 {
   "name": "Badmintion Club",
   "short_name": "Badmintion Club",
-  "start_url": "/ARON-Badmintion-Club/",
-  "scope": "/ARON-Badmintion-Club/",
+  "start_url": "/Badmintion-Club/",
+  "scope": "/Badmintion-Club/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0A192F",
