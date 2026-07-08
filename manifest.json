@@ -1,0 +1,25 @@
+{
+  "name": "Badmintion Club",
+  "short_name": "Badmintion Club",
+  "start_url": "/ARON-Badmintion-Club/",
+  "scope": "/ARON-Badmintion-Club/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0A192F",
+  "theme_color": "#0A2540",
+  "description": "Ứng dụng quản lý Hội cầu lông - Lịch đánh, giải đấu, quỹ và chi phí thành viên.",
+  "icons": [
+    {
+      "src": "icon-192.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
