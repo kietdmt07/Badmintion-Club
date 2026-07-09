@@ -894,6 +894,7 @@
     if (state.tab === 'fund') root.appendChild(renderFund());
     if (state.tab === 'payments_mgr') root.appendChild(renderPaymentsMgr());
     if (state.tab === 'tournament') root.appendChild(renderTournament());
+    if (state.tab === 'report') root.appendChild(renderReport());
   }
 
   function showForgotPasswordDialog() {
@@ -1496,7 +1497,7 @@
 
   function renderTabs(){
     const wrap = el(`<div style="display:flex; gap:6px; margin-bottom:1rem; border-bottom:1px solid #E3E0D6; padding-bottom:0.75rem;"></div>`);
-    let tabs = [['sessions','Lịch đánh'],['tournament','Giải đấu'],['members','Thành viên'],['courts','Sân cầu'],['fund','Quỹ & chi phí']];
+    let tabs = [['sessions','Lịch đánh'],['tournament','Giải đấu'],['members','Thành viên'],['courts','Sân cầu'],['fund','Quỹ & chi phí'],['report','Báo cáo']];
     if (role() === 'r2') {
       tabs = tabs.filter(t => t[0] !== 'courts');
     }
@@ -2591,13 +2592,359 @@
       </div>`));
     }
 
-
-
     setTimeout(() => {
       document.getElementById('fund-month').onchange = (e) => { state.viewMonth = e.target.value || monthKey(); render(); };
     }, 0);
     return wrap;
   }
+
+  // ---------- BÁO CÁO THÁNG ----------
+  function exportReportToExcel(month, reportData, totalLocked, totalOwed, totalPaid, totalPrepaid, totalRemaining) {
+    let csvContent = "\uFEFF"; // UTF-8 BOM để Excel hiển thị đúng tiếng Việt có dấu
+    
+    csvContent += `BÁO CÁO CHI TIẾT CHUYÊN CẦN & CÔNG NỢ - THÁNG ${month}\n`;
+    csvContent += `Số buổi đã chốt,${totalLocked} buổi\n`;
+    csvContent += `Phải thu tháng,${totalOwed}\n`;
+    csvContent += `Đã thu (gồm nộp trước),${totalPaid + totalPrepaid}\n`;
+    csvContent += `Công nợ còn lại,${totalRemaining}\n\n`;
+    
+    csvContent += "Thành viên,Loại,Tham gia (buổi),Vắng (buổi),Cảnh báo chuyên cần,Phải trả (đ),Đã nộp (đ),Điều chỉnh (đ),Còn lại (đ)\n";
+    
+    reportData.forEach(row => {
+      const name = `"${row.member.name.replace(/"/g, '""')}"`;
+      const type = row.type === 'fixed' ? "Cố định" : "Vãng lai";
+      const played = row.playedCount;
+      const absent = row.type === 'fixed' ? row.absentCount : "-";
+      const warning = row.showWarning ? "Vắng >= 75%" : "";
+      
+      csvContent += `${name},${type},${played},${absent},${warning},${row.owed},${row.paid},${row.prepaid},${row.remaining}\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Bao_cao_hoi_cau_long_${month}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function renderReport(){
+    const wrap = el(`<div></div>`);
+    const month = state.viewMonth;
+
+    state.reportSearch = state.reportSearch || '';
+    state.reportTypeFilter = state.reportTypeFilter || 'all';
+
+    // 1. Bộ chọn tháng báo cáo & Nút xuất file Excel
+    const headerRow = el(`<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:0.75rem; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:13px; color:#8a877d;">Tháng báo cáo:</span>
+        <input class="bc-input" type="month" id="report-month" value="${month}" style="width:140px; padding:5px 8px;" />
+      </div>
+      <button class="bc-btn" id="export-excel-btn" style="background:#2D6A4F; color:#FFF; font-weight:600; font-size:13px; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; border:none; box-shadow:0 2px 4px rgba(45,106,79,0.2);">
+        📥 Xuất Excel
+      </button>
+    </div>`);
+    wrap.appendChild(headerRow);
+
+    // 2. Hàng bộ lọc: Tìm kiếm theo tên & Lọc theo loại thành viên
+    const filterRow = el(`<div style="display:flex; gap:12px; margin-bottom:1rem; flex-wrap:wrap; background:#F4F1EA; padding:8px 12px; border-radius:8px; align-items:center;">
+      <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:180px;">
+        <span style="font-size:13px; color:#6b7a73; white-space:nowrap; font-weight:500;">Tìm kiếm:</span>
+        <input class="bc-input" id="report-search" placeholder="Nhập tên thành viên..." value="${escapeHtml(state.reportSearch)}" style="padding:4px 8px; font-size:13px; width:100%;" />
+      </div>
+      <div style="display:flex; align-items:center; gap:6px; min-width:160px;">
+        <span style="font-size:13px; color:#6b7a73; white-space:nowrap; font-weight:500;">Phân loại:</span>
+        <select class="bc-select" id="report-type-filter" style="padding:4px 8px; font-size:13px; width:110px;">
+          <option value="all" ${state.reportTypeFilter === 'all' ? 'selected' : ''}>Tất cả</option>
+          <option value="fixed" ${state.reportTypeFilter === 'fixed' ? 'selected' : ''}>Cố định</option>
+          <option value="casual" ${state.reportTypeFilter === 'casual' ? 'selected' : ''}>Vãng lai</option>
+        </select>
+      </div>
+    </div>`);
+    wrap.appendChild(filterRow);
+
+    // Lọc các buổi tập đã chốt của tháng
+    const lockedSessions = state.sessions.filter(s => sessionMonthKey(s) === month && s.locked);
+    const totalLocked = lockedSessions.length;
+
+    // Thành viên hoạt động trong tháng này
+    const activeMembers = state.members.filter(m => {
+      const t = (m.monthlyType || {})[month];
+      return t === 'fixed' || t === 'casual';
+    });
+
+    const summary = computeMemberMonthSummary(month);
+
+    // Chuẩn bị dữ liệu tổng hợp ban đầu
+    const allReportData = activeMembers.map(m => {
+      const type = (m.monthlyType || {})[month] || '';
+      const s = summary[m.id] || { count: 0, owed: 0 };
+      const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
+
+      // Tính số buổi tham gia thực tế từ các buổi đã chốt
+      let playedCount = 0;
+      lockedSessions.forEach(session => {
+        const passes = session.passes || {};
+        const v = session.votes[m.name];
+        const hasPassed = type === 'fixed' && passes[m.id];
+        const isReceiver = Object.values(passes).includes(m.id);
+
+        if (type === 'fixed') {
+          if (v === 'yes' && !hasPassed) {
+            playedCount++;
+          }
+        } else if (type === 'casual') {
+          if (v === 'yes' || isReceiver) {
+            playedCount++;
+          }
+        }
+      });
+
+      // Tính số buổi vắng (chỉ áp dụng với cố định)
+      let absentCount = 0;
+      let absentRate = 0;
+      let showWarning = false;
+      if (type === 'fixed') {
+        absentCount = totalLocked - playedCount;
+        if (totalLocked > 0) {
+          absentRate = absentCount / totalLocked;
+          if (absentRate >= 0.75) {
+            showWarning = true;
+          }
+        }
+      }
+
+      const owed = s.owed;
+      const paid = p.paid || 0;
+      const prepaid = p.prepaid || 0;
+      const remaining = owed - paid - prepaid;
+
+      return {
+        member: m,
+        type,
+        playedCount,
+        absentCount,
+        absentRate,
+        showWarning,
+        owed,
+        paid,
+        prepaid,
+        remaining
+      };
+    });
+
+    // Tính toán tổng số lượng tài chính dựa trên dữ liệu lọc hiện tại để hiển thị ban đầu
+    let totalOwed = 0;
+    let totalPaid = 0;
+    let totalPrepaid = 0;
+    let totalRemaining = 0;
+    let initialVisibleCount = 0;
+    allReportData.forEach(row => {
+      const matchSearch = row.member.name.toLowerCase().includes(state.reportSearch.toLowerCase());
+      const matchType = state.reportTypeFilter === 'all' || row.type === state.reportTypeFilter;
+      if (matchSearch && matchType) {
+        totalOwed += row.owed;
+        totalPaid += row.paid;
+        totalPrepaid += row.prepaid;
+        totalRemaining += row.remaining;
+        initialVisibleCount++;
+      }
+    });
+
+    // Thẻ tổng hợp nhanh (chỉ số động theo kết quả lọc)
+    const summaryCards = el(`<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:1.25rem;">
+      <div class="bc-card" style="padding:12px 16px; display:flex; flex-direction:column; gap:4px; margin:0;">
+        <span style="font-size:11px; color:#6b7a73; font-weight:600; text-transform:uppercase;">📅 Số buổi đã chốt</span>
+        <strong style="font-size:18px; color:#1B4332; font-family:'Outfit', sans-serif;">${totalLocked} buổi</strong>
+      </div>
+      <div class="bc-card" style="padding:12px 16px; display:flex; flex-direction:column; gap:4px; margin:0;">
+        <span style="font-size:11px; color:#6b7a73; font-weight:600; text-transform:uppercase;">💰 Phải thu lọc</span>
+        <strong id="report-owed-sum" style="font-size:18px; color:#1B4332; font-family:'Outfit', sans-serif;">${formatVND(totalOwed)}</strong>
+      </div>
+      <div class="bc-card" style="padding:12px 16px; display:flex; flex-direction:column; gap:4px; margin:0;">
+        <span style="font-size:11px; color:#6b7a73; font-weight:600; text-transform:uppercase;">💵 Đã thu lọc</span>
+        <strong id="report-paid-sum" style="font-size:18px; color:#27500A; font-family:'Outfit', sans-serif;">${formatVND(totalPaid + totalPrepaid)}</strong>
+      </div>
+      <div class="bc-card" style="padding:12px 16px; display:flex; flex-direction:column; gap:4px; margin:0;">
+        <span style="font-size:11px; color:#6b7a73; font-weight:600; text-transform:uppercase;">⚠️ Công nợ lọc</span>
+        <strong id="report-remaining-sum" style="font-size:18px; color:${totalRemaining > 0 ? '#993C1D' : '#1B4332'}; font-family:'Outfit', sans-serif;">${formatVND(totalRemaining)}</strong>
+      </div>
+    </div>`);
+    wrap.appendChild(summaryCards);
+
+    // Bảng chi tiết kết quả lọc
+    wrap.appendChild(el(`<h3 style="font-size:15px; color:#1B4332; margin-bottom:8px;">Bảng tổng hợp chi tiết chuyên cần & công nợ · ${monthLabel(month)}</h3>`));
+    
+    let tblDiv;
+    if (allReportData.length === 0) {
+      tblDiv = el(`<div class="bc-empty">Không có dữ liệu thành viên hoạt động trong tháng này.</div>`);
+      wrap.appendChild(tblDiv);
+    } else {
+      tblDiv = el(`<div class="bc-card" style="overflow-x:auto; margin:0; padding:10px;"><table id="report-table-el" style="width:100%; font-size:13px; border-collapse:collapse; min-width:750px;">
+        <tr style="color:#8a877d; text-align:left; border-bottom:1px solid #E3E0D6;">
+          <th style="padding:8px 6px;">Thành viên</th>
+          <th style="padding:8px 6px;">Loại</th>
+          <th style="padding:8px 6px; text-align:center;">Tham gia</th>
+          <th style="padding:8px 6px; text-align:center;">Vắng (cố định)</th>
+          <th style="padding:8px 6px; text-align:right;">Phải trả</th>
+          <th style="padding:8px 6px; text-align:right;">Đã nộp</th>
+          <th style="padding:8px 6px; text-align:right;">Điều chỉnh</th>
+          <th style="padding:8px 6px; text-align:right;">Còn lại</th>
+        </tr>
+      </table></div>`);
+      const table = tblDiv.querySelector('table');
+
+      allReportData.forEach(row => {
+        const matchSearch = row.member.name.toLowerCase().includes(state.reportSearch.toLowerCase());
+        const matchType = state.reportTypeFilter === 'all' || row.type === state.reportTypeFilter;
+        const displayStyle = (matchSearch && matchType) ? '' : 'display: none;';
+
+        let warningHtml = '';
+        let rowStyle = '';
+        if (row.showWarning) {
+          warningHtml = `<span class="bc-badge" style="background:#FAECE7; color:#993C1D; font-size:10px; margin-left:4px; border:1px solid rgba(153,60,29,0.3); font-weight:600;">⚠️ Vắng ≥75%</span>`;
+          rowStyle = 'background: rgba(242,100,25,0.03);'; 
+        }
+
+        const tr = el(`<tr class="report-row" style="border-top:1px solid #F1EFE8; ${rowStyle} ${displayStyle}"
+          data-name="${escapeHtml(row.member.name.toLowerCase())}"
+          data-type="${row.type}"
+          data-owed="${row.owed}"
+          data-paid="${row.paid}"
+          data-prepaid="${row.prepaid}"
+          data-remaining="${row.remaining}">
+          <td style="padding:8px 6px; font-weight:500;">
+            ${escapeHtml(row.member.name)}
+          </td>
+          <td style="padding:8px 6px;">
+            <span class="bc-badge" style="background:${row.type==='fixed'?'#E6F1FB':'#FFF2E6'}; color:${row.type==='fixed'?'#0C447C':'#B25E00'}; font-size:11px; font-weight:600;">
+              ${row.type==='fixed'?'Cố định':'Vãng lai'}
+            </span>
+          </td>
+          <td style="padding:8px 6px; text-align:center; font-weight:500;">${row.playedCount} buổi</td>
+          <td style="padding:8px 6px; text-align:center;">
+            ${row.type==='fixed' ? `<span style="font-weight:500;">${row.absentCount} buổi${warningHtml}</span>` : '<span style="color:#8a877d; font-style:italic;">-</span>'}
+          </td>
+          <td style="padding:8px 6px; text-align:right;">${formatVND(row.owed)}</td>
+          <td style="padding:8px 6px; text-align:right; color:#27500A; font-weight:500;">${formatVND(row.paid)}</td>
+          <td style="padding:8px 6px; text-align:right; color:#8a877d;">${row.prepaid ? formatVND(row.prepaid, true) : '0đ'}</td>
+          <td style="padding:8px 6px; text-align:right; font-weight:600; color:${row.remaining>0?'#993C1D':'#27500A'};">${formatVND(row.remaining)}</td>
+        </tr>`);
+        table.appendChild(tr);
+      });
+      wrap.appendChild(tblDiv);
+    }
+
+    // Phần tử thông báo trống
+    const emptyEl = el(`<div id="report-empty-msg" class="bc-empty" style="display: ${initialVisibleCount === 0 ? '' : 'none'};">Không tìm thấy thành viên phù hợp với bộ lọc hiện tại.</div>`);
+    wrap.appendChild(emptyEl);
+
+    setTimeout(() => {
+      // 1. Đổi tháng
+      const mInput = document.getElementById('report-month');
+      if (mInput) mInput.onchange = (e) => {
+        state.viewMonth = e.target.value || monthKey();
+        render();
+      };
+
+      // 2. Hàm lọc động trực tiếp trong DOM (Không re-render, bảo toàn gõ tiếng Việt)
+      const applyFiltersDOM = () => {
+        const searchInput = document.getElementById('report-search');
+        const typeFilter = document.getElementById('report-type-filter');
+        if (!searchInput || !typeFilter) return;
+
+        const query = searchInput.value.trim().toLowerCase();
+        const typeSel = typeFilter.value;
+
+        // Lưu vào state
+        state.reportSearch = searchInput.value;
+        state.reportTypeFilter = typeSel;
+
+        let filteredOwed = 0;
+        let filteredPaid = 0;
+        let filteredPrepaid = 0;
+        let filteredRemaining = 0;
+        let visibleCount = 0;
+
+        const rows = wrap.querySelectorAll('.report-row');
+        rows.forEach(tr => {
+          const name = tr.getAttribute('data-name');
+          const type = tr.getAttribute('data-type');
+          const owed = parseFloat(tr.getAttribute('data-owed')) || 0;
+          const paid = parseFloat(tr.getAttribute('data-paid')) || 0;
+          const prepaid = parseFloat(tr.getAttribute('data-prepaid')) || 0;
+          const remaining = parseFloat(tr.getAttribute('data-remaining')) || 0;
+
+          const matchSearch = name.includes(query);
+          const matchType = typeSel === 'all' || type === typeSel;
+
+          if (matchSearch && matchType) {
+            tr.style.display = '';
+            filteredOwed += owed;
+            filteredPaid += paid;
+            filteredPrepaid += prepaid;
+            filteredRemaining += remaining;
+            visibleCount++;
+          } else {
+            tr.style.display = 'none';
+          }
+        });
+
+        // Cập nhật thẻ chỉ số nhanh
+        const owedSumEl = document.getElementById('report-owed-sum');
+        const paidSumEl = document.getElementById('report-paid-sum');
+        const remainingSumEl = document.getElementById('report-remaining-sum');
+        
+        if (owedSumEl) owedSumEl.textContent = formatVND(filteredOwed);
+        if (paidSumEl) paidSumEl.textContent = formatVND(filteredPaid + filteredPrepaid);
+        if (remainingSumEl) {
+          remainingSumEl.textContent = formatVND(filteredRemaining);
+          remainingSumEl.style.color = filteredRemaining > 0 ? '#993C1D' : '#1B4332';
+        }
+
+        // Hiện/Ẩn thông báo rỗng
+        const emptyMsg = document.getElementById('report-empty-msg');
+        if (emptyMsg) emptyMsg.style.display = visibleCount === 0 ? '' : 'none';
+      };
+
+      // Gắn sự kiện lắng nghe bộ lọc
+      const searchInput = document.getElementById('report-search');
+      if (searchInput) searchInput.oninput = applyFiltersDOM;
+
+      const typeFilter = document.getElementById('report-type-filter');
+      if (typeFilter) typeFilter.onchange = applyFiltersDOM;
+
+      // 4. Nút xuất Excel (re-calculate danh sách thực tế theo DOM khi click)
+      const exportBtn = document.getElementById('export-excel-btn');
+      if (exportBtn) exportBtn.onclick = () => {
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const typeSel = typeFilter ? typeFilter.value : 'all';
+
+        const currentFilteredData = allReportData.filter(row => {
+          const matchSearch = row.member.name.toLowerCase().includes(query);
+          const matchType = typeSel === 'all' || row.type === typeSel;
+          return matchSearch && matchType;
+        });
+
+        let csvOwed = 0, csvPaid = 0, csvPrepaid = 0, csvRemaining = 0;
+        currentFilteredData.forEach(r => {
+          csvOwed += r.owed;
+          csvPaid += r.paid;
+          csvPrepaid += r.prepaid;
+          csvRemaining += r.remaining;
+        });
+
+        exportReportToExcel(month, currentFilteredData, totalLocked, csvOwed, csvPaid + csvPrepaid, 0, csvRemaining);
+      };
+    }, 0);
+
+    return wrap;
+  }
+
 
   // ---------- PAYMENTS MANAGER (ADMIN/R1 ONLY) ----------
   function renderPaymentsMgr(){
