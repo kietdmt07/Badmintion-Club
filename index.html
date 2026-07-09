@@ -3608,9 +3608,10 @@
           <select class="bc-select" id="ss-court" style="flex:1.4; min-width:160px;">${courtOptions}</select>
         </div>
         <div id="ss-date-preview" style="font-size:12px; color:#8a877d; margin-top:4px;"></div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <input class="bc-input" id="ss-max" type="number" min="2" value="24" placeholder="Số người tối đa" style="flex:1;" />
-          <input class="bc-input" id="ss-note" placeholder="Ghi chú (tuỳ chọn)" style="flex:2;" />
+        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <input class="bc-input" id="ss-max" type="number" min="2" value="24" placeholder="Số người tối đa" style="flex:1; min-width:110px;" />
+          <input class="bc-input" id="ss-max-casual" type="number" min="0" placeholder="Số vãng lai tối đa" style="flex:1.2; min-width:140px;" />
+          <input class="bc-input" id="ss-note" placeholder="Ghi chú (tuỳ chọn)" style="flex:2; min-width:180px;" />
         </div>
         <button class="bc-btn" id="ss-add" style="margin-top:10px;">Tạo buổi</button>
       </div>`);
@@ -3637,8 +3638,14 @@
           if (timeEnd && timeEnd <= time) { alert('Giờ kết thúc phải sau giờ bắt đầu.'); return; }
           const courtId = document.getElementById('ss-court').value;
           const max = parseInt(document.getElementById('ss-max').value, 10) || null;
+          const maxCasualVal = document.getElementById('ss-max-casual').value;
+          const maxCasual = maxCasualVal ? parseInt(maxCasualVal, 10) : null;
           const note = document.getElementById('ss-note').value.trim();
-          state.sessions.push({ id: uid(), date, time, timeEnd, courtId, max, note, votes: {}, costs: { court: 0, water: 0, shuttle: 0, other: 0 }, flatRate: { enabled: false, fixed: 30000, casual: 45000 } });
+          state.sessions.push({
+            id: uid(), date, time, timeEnd, courtId, max, maxCasual, note,
+            votes: {}, costs: { court: 0, water: 0, shuttle: 0, other: 0 },
+            flatRate: { enabled: false, fixed: 30000, casual: 45000 }
+          });
           saveSessions(); render();
         };
       }, 0);
@@ -3739,6 +3746,33 @@
     const yes = Object.entries(s.votes).filter(([,v]) => v === 'yes').map(([name]) => name);
     const no = Object.entries(s.votes).filter(([,v]) => v === 'no').map(([name]) => name);
     const full = s.max && yes.length >= s.max;
+
+    // Tính số lượng cố định và vãng lai tham gia thực tế
+    const passes = s.passes || {};
+    let fixedPlaying = 0;
+    let casualPlaying = 0;
+    let totalFixed = 0;
+    let totalCasual = 0;
+    state.members.forEach(m => {
+      const t = (m.monthlyType || {})[mKey] || '';
+      const v = s.votes[m.name];
+      const hasPassed = t === 'fixed' && passes[m.id];
+      const isReceiver = Object.values(passes).includes(m.id);
+      
+      if (m.status === 'active') {
+        if (t === 'fixed') {
+          totalFixed++;
+          if (v === 'yes' && !hasPassed) {
+            fixedPlaying++;
+          }
+        } else if (t === 'casual') {
+          totalCasual++;
+          if (v === 'yes' && !isReceiver) {
+            casualPlaying++;
+          }
+        }
+      }
+    });
     s.costs = s.costs || { court: 0, water: 0, shuttle: 0, other: 0 };
     const shares = computeShares(s);
 
@@ -3808,8 +3842,11 @@
       </div>
       <div style="display:flex; gap:14px; margin-top:10px; font-size:13px; color:#6b7a73; flex-wrap:wrap;">
         <span><span class="bc-badge" style="background:#EAF3DE; color:#27500A;">${yes.length}${s.max ? '/'+s.max : ''} tham gia</span></span>
+        <span><span class="bc-badge" style="background:#E6F1FB; color:#0C447C;">${s.locked ? 'Cố định thực tế: ' + fixedPlaying : 'Cố định hiện có: ' + totalFixed}</span></span>
+        <span><span class="bc-badge" style="background:#FFF2E6; color:#B25E00;">${s.locked ? 'Vãng lai thực tế: ' + casualPlaying : 'Vãng lai hiện có: ' + totalCasual}${!s.locked && s.maxCasual ? ' (Nhận tối đa ' + s.maxCasual + ')' : ''}</span></span>
         <span><span class="bc-badge" style="background:#FAECE7; color:#993C1D;">${no.length} vắng</span></span>
         ${full ? `<span class="bc-badge" style="background:#FAEEDA; color:#854F0B;">Đủ người</span>` : ''}
+        ${!s.locked && s.maxCasual && casualPlaying >= s.maxCasual ? `<span class="bc-badge" style="background:#FAECE7; color:#993C1D;">Hết chỗ vãng lai</span>` : ''}
         ${s.locked ? `<span class="bc-badge" style="background:#FAEEDA; color:#854F0B;">🔒 Đã chốt</span>` : ''}
       </div>
       <div style="margin-top:10px; display:flex; gap:8px;" id="vote-${s.id}"></div>
@@ -3842,7 +3879,15 @@
         const myVote = s.votes[state.me.name];
         const yesBtn = el(`<button class="bc-btn small ${myVote==='yes'?'':'outline'}">Tham gia</button>`);
         const noBtn = el(`<button class="bc-btn small ${myVote==='no'?'':'outline'}">Không tham gia</button>`);
-        yesBtn.onclick = () => { s.votes[state.me.name] = 'yes'; saveSessions(); render(); };
+        
+        if (myType === 'casual' && myVote !== 'yes' && s.maxCasual && casualPlaying >= s.maxCasual) {
+          yesBtn.disabled = true;
+          yesBtn.style.opacity = '0.5';
+          yesBtn.style.cursor = 'not-allowed';
+          yesBtn.textContent = 'Tham gia (Hết chỗ)';
+        } else {
+          yesBtn.onclick = () => { s.votes[state.me.name] = 'yes'; saveSessions(); render(); };
+        }
         noBtn.onclick = () => { s.votes[state.me.name] = 'no'; saveSessions(); render(); };
         voteRow.appendChild(yesBtn); voteRow.appendChild(noBtn);
       }
@@ -3906,9 +3951,10 @@
         let statusBadge = '';
         const canVoteOnBehalf = canManage() && m.role === 'r2' && !hasPassed && !isReceiver && !m.isDeleted;
         if (canVoteOnBehalf) {
+          const isCasualFull = t === 'casual' && v !== 'yes' && s.maxCasual && casualPlaying >= s.maxCasual;
           statusBadge = `<select class="bc-select" id="vote-select-${s.id}-${m.id}" style="width:110px; padding:4px 6px; font-size:12px; text-align-last:right;">
             <option value="" ${!v ? 'selected' : ''}>Chưa vote</option>
-            <option value="yes" ${v === 'yes' ? 'selected' : ''}>Tham gia</option>
+            <option value="yes" ${v === 'yes' ? 'selected' : ''} ${isCasualFull ? 'disabled style="color:#999;"' : ''}>Tham gia${isCasualFull ? ' (Hết chỗ)' : ''}</option>
             <option value="no" ${v === 'no' ? 'selected' : ''}>Vắng</option>
           </select>`;
         } else {
