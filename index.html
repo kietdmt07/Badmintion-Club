@@ -56,6 +56,12 @@
     --card-hover-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.6), 0 5px 12px -2px rgba(0, 0, 0, 0.4);
   }
 
+  @keyframes pulse {
+    0% { opacity: 0.9; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.04); }
+    100% { opacity: 0.9; transform: scale(1); }
+  }
+
   #app * { box-sizing: border-box; }
   #app { font-family: 'Outfit', system-ui, sans-serif !important; color: var(--text-primary); }
   #app h1, #app h2, #app h3 { font-family: 'Oswald', sans-serif; letter-spacing: 0.01em; margin: 0; color: var(--text-primary); }
@@ -446,6 +452,7 @@
   const savePayments = () => save('bc_payments', state.payments);
   const saveFund = () => save('bc_fund', state.fund);
   const saveDonations = () => save('bc_donations', state.donations);
+  const saveAnnouncements = () => save('bc_announcements', state.announcements);
 
   function isMonthLocked(month) {
     return (state.settings.lockedMonths || []).includes(month);
@@ -720,6 +727,7 @@
       state.members = dbMap['bc_members'] || [];
       state.courts = dbMap['bc_courts'] || [];
       state.sessions = dbMap['bc_sessions'] || [];
+      state.announcements = dbMap['bc_announcements'] || [];
       const settingsRaw = dbMap['bc_settings'] || {};
       state.settings = Object.assign({ casualMultiplier: 1.5, logoUrl: '', bannerUrl: '', lockedMonths: [] }, settingsRaw);
       state.settings.payment = Object.assign({
@@ -738,6 +746,7 @@
       state.members = await loadKey('bc_members', []);
       state.courts = await loadKey('bc_courts', []);
       state.sessions = await loadKey('bc_sessions', []);
+      state.announcements = await loadKey('bc_announcements', []);
       const settingsRaw = await loadKey('bc_settings', {});
       state.settings = Object.assign({ casualMultiplier: 1.5, logoUrl: '', bannerUrl: '', lockedMonths: [] }, settingsRaw);
       state.settings.payment = Object.assign({
@@ -884,13 +893,9 @@
       root.appendChild(errBanner);
       setTimeout(() => { const b = document.getElementById('bc-dismiss-err'); if (b) b.onclick = () => { state.saveError = null; render(); }; }, 0);
     }
-    if (state.tab === 'courts' && role() === 'r2') {
-      state.tab = 'sessions';
-    }
     root.appendChild(renderTabs());
     if (state.tab === 'sessions') root.appendChild(renderSessions());
     if (state.tab === 'members') root.appendChild(renderMembers());
-    if (state.tab === 'courts') root.appendChild(renderCourts());
     if (state.tab === 'fund') root.appendChild(renderFund());
     if (state.tab === 'payments_mgr') root.appendChild(renderPaymentsMgr());
     if (state.tab === 'tournament') root.appendChild(renderTournament());
@@ -1497,12 +1502,9 @@
 
   function renderTabs(){
     const wrap = el(`<div style="display:flex; gap:6px; margin-bottom:1rem; border-bottom:1px solid #E3E0D6; padding-bottom:0.75rem;"></div>`);
-    let tabs = [['sessions','Lịch đánh'],['tournament','Giải đấu'],['members','Thành viên'],['courts','Sân cầu'],['fund','Quỹ & chi phí'],['report','Báo cáo']];
-    if (role() === 'r2') {
-      tabs = tabs.filter(t => t[0] !== 'courts');
-    }
+    let tabs = [['sessions','Lịch đánh'],['tournament','Giải đấu'],['members','Thành viên'],['fund','Quỹ & chi phí'],['report','Báo cáo']];
     if (canManage()) {
-      tabs.push(['payments_mgr', 'Duyệt & Cấu hình QR']);
+      tabs.push(['payments_mgr', 'Duyệt & Cấu hình']);
     }
     tabs.forEach(([key,label]) => {
       const t = el(`<div class="bc-tab ${state.tab===key?'active':''}">${label}</div>`);
@@ -1966,65 +1968,7 @@
     return row;
   }
 
-  // ---------- COURTS ----------
-  function renderCourts(){
-    const wrap = el(`<div></div>`);
-    if (canManage()) {
-      const form = el(`<div class="bc-card">
-        <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332;">Thêm sân cầu</h3>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <input class="bc-input" id="ct-name" placeholder="Tên sân" />
-          <input class="bc-input" id="ct-address" placeholder="Địa chỉ" />
-          <input class="bc-input" id="ct-maplink" placeholder="Link Google Maps (dán link chia sẻ từ Google Maps)" />
-          <div style="display:flex; gap:8px;">
-            <input class="bc-input" id="ct-price" placeholder="Giá / giờ (vd: 120.000đ)" />
-            <input class="bc-input" id="ct-phone" placeholder="SĐT liên hệ" />
-          </div>
-          <button class="bc-btn" id="ct-add" style="align-self:flex-start;">Thêm sân</button>
-        </div>
-      </div>`);
-      wrap.appendChild(form);
-      setTimeout(() => {
-        document.getElementById('ct-add').onclick = () => {
-          const name = document.getElementById('ct-name').value.trim();
-          if (!name) return;
-          state.courts.push({
-            id: uid(), name,
-            address: document.getElementById('ct-address').value.trim(),
-            mapLink: document.getElementById('ct-maplink').value.trim(),
-            price: document.getElementById('ct-price').value.trim(),
-            phone: document.getElementById('ct-phone').value.trim()
-          });
-          saveCourts(); render();
-        };
-      }, 0);
-    }
 
-    if (state.courts.length === 0) {
-      wrap.appendChild(el(`<div class="bc-empty">Chưa có sân nào được lưu.</div>`));
-    } else {
-      state.courts.slice().reverse().forEach(c => {
-        const row = el(`<div class="bc-card">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div>
-              <div style="font-weight:500; font-size:14px;">${escapeHtml(c.name)}</div>
-              <div style="font-size:13px; color:#6b7a73; margin-top:2px;">${escapeHtml(c.address || '')}</div>
-              <div style="font-size:13px; color:#8a877d; margin-top:2px;">${c.price ? 'Giá: ' + escapeHtml(c.price) : ''} ${c.phone ? ' · ĐT: ' + escapeHtml(c.phone) : ''}</div>
-              ${c.mapLink ? `<a href="${escapeHtml(c.mapLink)}" target="_blank" style="font-size:13px; color:#0C447C; margin-top:4px; display:inline-block;">📍 Xem trên Google Maps</a>` : ''}
-            </div>
-            ${canDelete() ? `<button class="bc-btn danger small" data-id="${c.id}">Xoá</button>` : ''}
-          </div>
-        </div>`);
-        if (canDelete()) row.querySelector('button').onclick = () => {
-          if (!confirm(`Bạn có chắc chắn muốn xóa sân "${c.name}"?`)) return;
-          state.courts = state.courts.filter(x => x.id !== c.id);
-          saveCourts(); render();
-        };
-        wrap.appendChild(row);
-      });
-    }
-    return wrap;
-  }
 
   // ---------- QUỸ & CHI PHÍ ----------
   function computeMemberMonthSummary(month){
@@ -3101,6 +3045,70 @@
     </div>`);
     
     wrap.appendChild(configSection);
+
+    // 3. Cấu hình tỉ lệ vãng lai
+    const settingsCard = el(`<div class="bc-card" style="background:#F4F1EA; display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:1rem;">
+      <span style="font-size:13px; color:#6b7a73;">Thành viên vãng lai trả gấp</span>
+      <input class="bc-input" id="cfg-ss-multiplier" type="number" step="0.1" min="1" value="${state.settings.casualMultiplier}" style="width:70px; padding:5px 8px;" />
+      <span style="font-size:13px; color:#6b7a73;">lần so với cố định (áp dụng mọi buổi)</span>
+    </div>`);
+    wrap.appendChild(settingsCard);
+
+    // 4. Cấu hình Logo & Banner
+    const brandCard = el(`<div class="bc-card" style="margin-top:1rem;">
+      <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332;">Logo &amp; banner màn hình đăng nhập</h3>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+        <div>
+          <div style="font-size:12px; color:#8a877d; margin-bottom:4px;">Logo (ảnh vuông nhỏ)</div>
+          <img src="${state.settings.logoUrl || 'icon-192.jpg'}" style="width:56px; height:56px; object-fit:cover; border-radius:50%; margin-bottom:6px; display:block;" />
+          <input type="file" accept="image/*" id="brand-logo-input" style="font-size:12px;" />
+        </div>
+        <div>
+          <div style="font-size:12px; color:#8a877d; margin-bottom:4px;">Banner (ảnh ngang)</div>
+          ${state.settings.bannerUrl ? `<img src="${state.settings.bannerUrl}" style="width:160px; height:50px; object-fit:cover; border-radius:8px; margin-bottom:6px; display:block;" />` : ''}
+          <input type="file" accept="image/*" id="brand-banner-input" style="font-size:12px;" />
+        </div>
+      </div>
+      <div style="font-size:12px; color:#8a877d; margin-top:8px;">Chọn ảnh nhẹ (dưới ~1MB) để tránh lưu trữ quá nặng.</div>
+    </div>`);
+    wrap.appendChild(brandCard);
+
+    // 5. Cấu hình Sân cầu lông
+    const courtsSection = el(`<div class="bc-card" style="margin-top:1rem;">
+      <h3 style="font-size:15px; color:#1B4332; margin-bottom:10px;">Quản lý Sân cầu lông</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <input class="bc-input" id="ct-name" placeholder="Tên sân" />
+        <input class="bc-input" id="ct-address" placeholder="Địa chỉ" />
+        <input class="bc-input" id="ct-maplink" placeholder="Link Google Maps" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input class="bc-input" id="ct-price" placeholder="Giá / giờ (vd: 120.000đ)" style="flex:1;" />
+          <input class="bc-input" id="ct-phone" placeholder="SĐT liên hệ" style="flex:1;" />
+        </div>
+        <button class="bc-btn small" id="ct-add" style="align-self:flex-start;">Thêm sân</button>
+      </div>
+      
+      <div id="cfg-courts-list" style="margin-top:12px; display:flex; flex-direction:column; gap:8px;"></div>
+    </div>`);
+    wrap.appendChild(courtsSection);
+
+    // Render danh sách sân cầu
+    const courtsListContainer = courtsSection.querySelector('#cfg-courts-list');
+    if (state.courts.length === 0) {
+      courtsListContainer.appendChild(el(`<div style="font-size:12px; color:#8a877d; font-style:italic;">Chưa có sân nào được tạo.</div>`));
+    } else {
+      state.courts.slice().reverse().forEach(c => {
+        const item = el(`<div style="border-top:1px dashed #E3E0D6; padding-top:8px; display:flex; justify-content:space-between; align-items:flex-start; font-size:13px;">
+          <div>
+            <strong>${escapeHtml(c.name)}</strong>
+            <div style="font-size:12px; color:#6b7a73; margin-top:2px;">${escapeHtml(c.address || '')}</div>
+            <div style="font-size:12px; color:#8a877d; margin-top:1px;">${c.price ? 'Giá: ' + escapeHtml(c.price) : ''}${c.phone ? ' · ĐT: ' + escapeHtml(c.phone) : ''}</div>
+            ${c.mapLink ? `<a href="${escapeHtml(c.mapLink)}" target="_blank" style="font-size:12px; color:#0C447C; margin-top:3px; display:inline-block;">📍 Xem Bản đồ</a>` : ''}
+          </div>
+          <button class="bc-btn danger small" id="ct-del-${c.id}" style="padding:2px 6px; font-size:11px;">Xoá</button>
+        </div>`);
+        courtsListContainer.appendChild(item);
+      });
+    }
     
     setTimeout(() => {
       const typeSelect = document.getElementById('cfg-receive-type');
@@ -3156,6 +3164,68 @@
           render();
         });
       };
+
+      const ssMultiplier = document.getElementById('cfg-ss-multiplier');
+      if (ssMultiplier) {
+        ssMultiplier.onchange = (e) => {
+          const v = parseFloat(e.target.value);
+          state.settings.casualMultiplier = isNaN(v) || v < 1 ? 1 : v;
+          saveSettings();
+          render();
+        };
+      }
+
+      const brandLogoInput = document.getElementById('brand-logo-input');
+      if (brandLogoInput) {
+        brandLogoInput.onchange = (e) => {
+          const f = e.target.files[0]; if (!f) return;
+          compressImage(f, 150, 0.7, (url) => {
+            state.settings.logoUrl = url;
+            saveSettings();
+            render();
+          });
+        };
+      }
+
+      const brandBannerInput = document.getElementById('brand-banner-input');
+      if (brandBannerInput) {
+        brandBannerInput.onchange = (e) => {
+          const f = e.target.files[0]; if (!f) return;
+          compressImage(f, 800, 0.7, (url) => {
+            state.settings.bannerUrl = url;
+            saveSettings();
+            render();
+          });
+        };
+      }
+
+      // 7. Cấu hình quản lý sân
+      const ctAddBtn = document.getElementById('ct-add');
+      if (ctAddBtn) {
+        ctAddBtn.onclick = () => {
+          const name = document.getElementById('ct-name').value.trim();
+          if (!name) return;
+          state.courts.push({
+            id: uid(), name,
+            address: document.getElementById('ct-address').value.trim(),
+            mapLink: document.getElementById('ct-maplink').value.trim(),
+            price: document.getElementById('ct-price').value.trim(),
+            phone: document.getElementById('ct-phone').value.trim()
+          });
+          saveCourts(); render();
+        };
+      }
+
+      state.courts.forEach(c => {
+        const delBtn = document.getElementById(`ct-del-${c.id}`);
+        if (delBtn) {
+          delBtn.onclick = () => {
+            if (!confirm(`Bạn có chắc chắn muốn xóa sân "${c.name}"?`)) return;
+            state.courts = state.courts.filter(x => x.id !== c.id);
+            saveCourts(); render();
+          };
+        }
+      });
     }, 0);
 
     return wrap;
@@ -3905,46 +3975,215 @@
   function renderSessions(){
     const wrap = el(`<div></div>`);
 
-    if (canManage()) {
-      const settingsCard = el(`<div class="bc-card" style="background:#F4F1EA; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span style="font-size:13px; color:#6b7a73;">Thành viên vãng lai trả gấp</span>
-        <input class="bc-input" id="ss-multiplier" type="number" step="0.1" min="1" value="${state.settings.casualMultiplier}" style="width:70px; padding:5px 8px;" />
-        <span style="font-size:13px; color:#6b7a73;">lần so với cố định (áp dụng mọi buổi)</span>
-      </div>`);
-      wrap.appendChild(settingsCard);
+    // 1. Tự động xóa thông báo hết hạn
+    const todayStr = (new Date()).toISOString().slice(0, 10);
+    state.announcements = state.announcements || [];
+    const validAnnouncements = state.announcements.filter(a => !a.expireDate || a.expireDate >= todayStr);
+    if (validAnnouncements.length !== state.announcements.length) {
+      state.announcements = validAnnouncements;
+      saveAnnouncements();
+    }
 
-      const brandCard = el(`<div class="bc-card">
-        <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332;">Logo &amp; banner màn hình đăng nhập</h3>
-        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+    // --- RENDER BẢNG TIN THÔNG BÁO ---
+    const showAnnounceFormKey = 'show_announce_form';
+    const announceFormVisible = !!state[showAnnounceFormKey];
+    
+    const bulletinCard = el(`<div class="bc-card" style="border: 2px solid rgba(242, 100, 25, 0.4); background: linear-gradient(135deg, rgba(255, 253, 245, 0.95) 0%, rgba(255, 255, 255, 0.95) 100%);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h2 style="font-size:16px; color:#1B4332; font-weight:600; display:flex; align-items:center; gap:6px; font-family:'Oswald', sans-serif;">
+          📢 BẢNG TIN CÂU LẠC BỘ
+        </h2>
+        ${canManage() ? `<button class="bc-btn small" id="ann-toggle-btn" style="padding:3px 8px; font-size:11px; font-weight:600;">
+          ${announceFormVisible ? 'Đóng form' : '➕ Đăng tin'}
+        </button>` : ''}
+      </div>
+      <div id="ann-form-container"></div>
+      <div id="ann-list-container" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;"></div>
+    </div>`);
+
+    // Form đăng thông báo dành cho Admin/R1
+    if (canManage() && announceFormVisible) {
+      const annForm = el(`<div style="background:var(--input-bg); border:1px solid var(--card-border); padding:12px; border-radius:10px; display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+        <div style="font-weight:600; font-size:13px; color:#1B4332;">✍️ ĐĂNG THÔNG BÁO MỚI</div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; flex-wrap:wrap;">
           <div>
-            <div style="font-size:12px; color:#8a877d; margin-bottom:4px;">Logo (ảnh vuông nhỏ)</div>
-            <img src="${state.settings.logoUrl || 'icon-192.jpg'}" style="width:56px; height:56px; object-fit:cover; border-radius:50%; margin-bottom:6px; display:block;" />
-            <input type="file" accept="image/*" id="brand-logo-input" style="font-size:12px;" />
+            <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Phân loại tin:</label>
+            <select class="bc-select" id="ann-category" style="width:100%; padding:5px 8px; font-size:12px;">
+              <option value="general">📢 Thông báo chung</option>
+              <option value="alert">🚨 Cảnh báo quan trọng</option>
+              <option value="match">🔥 Kèo giao lưu</option>
+              <option value="party">🎉 Tin vui / Ăn chơi</option>
+              <option value="tournament">🏆 Giải đấu / Sự kiện</option>
+            </select>
           </div>
           <div>
-            <div style="font-size:12px; color:#8a877d; margin-bottom:4px;">Banner (ảnh ngang)</div>
-            ${state.settings.bannerUrl ? `<img src="${state.settings.bannerUrl}" style="width:160px; height:50px; object-fit:cover; border-radius:8px; margin-bottom:6px; display:block;" />` : ''}
-            <input type="file" accept="image/*" id="brand-banner-input" style="font-size:12px;" />
+            <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Ngày hết hạn (tự xóa):</label>
+            <input class="bc-input" type="date" id="ann-expire" style="width:100%; padding:4px 6px; font-size:12px;" />
           </div>
         </div>
-        <div style="font-size:12px; color:#8a877d; margin-top:8px;">Chọn ảnh nhẹ (dưới ~1MB) để tránh lưu trữ quá nặng.</div>
+
+        <div>
+          <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Tiêu đề:</label>
+          <input class="bc-input" id="ann-title" placeholder="Ví dụ: Lịch đóng tiền quỹ tháng này" style="width:100%; padding:6px 8px; font-size:13px;" />
+        </div>
+
+        <div>
+          <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Nội dung chi tiết:</label>
+          <textarea class="bc-input" id="ann-content" placeholder="Nội dung thông báo chi tiết..." rows="3" style="width:100%; padding:6px 8px; font-family:inherit; font-size:13px; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:4px;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; cursor:pointer; color:#B25E00;">
+            <input type="checkbox" id="ann-pin" style="transform: scale(1.1);" />
+            📌 Ghim tin lên đầu bảng
+          </label>
+          <button class="bc-btn small" id="ann-submit" style="padding:6px 16px; font-weight:600;">⚡ Đăng tin!</button>
+        </div>
       </div>`);
-      wrap.appendChild(brandCard);
+      bulletinCard.querySelector('#ann-form-container').appendChild(annForm);
+    }
 
-      setTimeout(() => {
-        document.getElementById('brand-logo-input').onchange = (e) => {
-          const f = e.target.files[0]; if (!f) return;
-          compressImage(f, 150, 0.7, (url) => { state.settings.logoUrl = url; saveSettings(); render(); });
-        };
-        document.getElementById('brand-banner-input').onchange = (e) => {
-          const f = e.target.files[0]; if (!f) return;
-          compressImage(f, 800, 0.7, (url) => { state.settings.bannerUrl = url; saveSettings(); render(); });
-        };
-      }, 0);
+    const CATEGORIES = {
+      general: { label: 'Thông báo chung', icon: '📢', color: '#134074', bg: '#E6F1FB' },
+      alert: { label: 'Cảnh báo quan trọng', icon: '🚨', color: '#993C1D', bg: '#FAECE7' },
+      match: { label: 'Kèo giao lưu', icon: '🔥', color: '#B25E00', bg: '#FFF2E6' },
+      party: { label: 'Tin vui / Ăn chơi', icon: '🎉', color: '#6A2A80', bg: '#F8EEFC' },
+      tournament: { label: 'Giải đấu / Sự kiện', icon: '🏆', color: '#27500A', bg: '#EAF3DE' }
+    };
 
+    const formatDateTime = (ts) => {
+      if (!ts) return 'N/A';
+      const d = new Date(ts);
+      const hrs = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const mon = String(d.getMonth() + 1).padStart(2, '0');
+      const yr = d.getFullYear();
+      return `${hrs}:${mins} ngày ${day}/${mon}/${yr}`;
+    };
+
+    // Danh sách thông báo
+    const annListContainer = bulletinCard.querySelector('#ann-list-container');
+    if (state.announcements.length === 0) {
+      annListContainer.appendChild(el(`<div style="font-size:12px; color:#8a877d; text-align:center; padding:12px; font-style:italic;">Hôm nay chưa có thông báo mới nào từ Ban chủ nhiệm. 🌸</div>`));
+    } else {
+      const sortedAnnouncements = state.announcements.slice().sort((a, b) => {
+        if (!!a.pinned !== !!b.pinned) {
+          return a.pinned ? -1 : 1;
+        }
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+
+      sortedAnnouncements.forEach(a => {
+        const cat = CATEGORIES[a.category || 'general'] || CATEGORIES.general;
+        
+        let borderStyle = '1px solid #E3E0D6';
+        let cardBg = '#FAF8F5';
+        let pinBadge = '';
+        
+        if (a.pinned) {
+          borderStyle = '2px solid #D8973C';
+          cardBg = 'linear-gradient(135deg, #FFFDF5 0%, #FFF9E6 100%)';
+          pinBadge = `<span style="background:#FFF3D6; color:#B25E00; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; border:1px solid #F3D29B; display:inline-flex; align-items:center; gap:2px;">📌 GHIM</span>`;
+        }
+
+        const heartList = (a.reactions && a.reactions.heart) || [];
+        const thumbsList = (a.reactions && a.reactions.thumbs) || [];
+        const fireList = (a.reactions && a.reactions.fire) || [];
+        
+        const myName = state.me ? state.me.name : 'Khách';
+        const myReactedHeart = heartList.includes(myName);
+        const myReactedThumbs = thumbsList.includes(myName);
+        const myReactedFire = fireList.includes(myName);
+
+        const item = el(`<div style="background:${cardBg}; border:${borderStyle}; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; position:relative; box-shadow: ${a.pinned ? '0 4px 10px rgba(216,151,60,0.1)' : 'none'};">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="bc-badge" style="background:${cat.bg}; color:${cat.color}; font-weight:700; font-size:10px; padding:2px 8px; border:1px solid rgba(0,0,0,0.05);">
+                ${cat.icon} ${cat.label}
+              </span>
+              ${pinBadge}
+            </div>
+            <span style="font-size:11px; color:#8a877d; font-style:italic;">📅 Đăng: ${formatDateTime(a.createdAt)}</span>
+          </div>
+
+          <div style="font-weight:700; font-size:14px; color:#1B4332; margin-top:2px;">
+            ${escapeHtml(a.title)}
+          </div>
+          
+          <div style="font-size:13px; color:#4A5568; line-height:1.45; white-space:pre-line;">
+            ${escapeHtml(a.content)}
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E3E0D6; padding-top:8px; margin-top:4px; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="bc-btn outline small" id="react-thumbs-${a.id}" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; background:${myReactedThumbs ? 'rgba(19,64,116,0.1)' : 'transparent'}; border-color:${myReactedThumbs ? '#134074' : '#C4C2B7'}; color:${myReactedThumbs ? '#134074' : '#6b7a73'}; font-weight:${myReactedThumbs ? 'bold' : 'normal'};">
+                👍 <span>${thumbsList.length}</span>
+              </button>
+              <button class="bc-btn outline small" id="react-heart-${a.id}" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; background:${myReactedHeart ? 'rgba(230,10,10,0.08)' : 'transparent'}; border-color:${myReactedHeart ? '#E60A0A' : '#C4C2B7'}; color:${myReactedHeart ? '#E60A0A' : '#6b7a73'}; font-weight:${myReactedHeart ? 'bold' : 'normal'};">
+                ❤️ <span>${heartList.length}</span>
+              </button>
+              <button class="bc-btn outline small" id="react-fire-${a.id}" style="padding:2px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; background:${myReactedFire ? 'rgba(242,100,25,0.08)' : 'transparent'}; border-color:${myReactedFire ? '#F26419' : '#C4C2B7'}; color:${myReactedFire ? '#F26419' : '#6b7a73'}; font-weight:${myReactedFire ? 'bold' : 'normal'};">
+                🔥 <span>${fireList.length}</span>
+              </button>
+            </div>
+            
+            <div style="font-size:11px; color:#8a877d; text-align:right;">
+              ✍️ Bởi: <strong>${escapeHtml(a.author)}</strong> · 📞 <a href="tel:${escapeHtml(a.phone)}" style="color:#0C447C; font-weight:500;">${escapeHtml(a.phone)}</a>
+              ${a.expireDate ? ` · ⏳ Hạn: ${formatDate(a.expireDate)}` : ''}
+            </div>
+          </div>
+          
+          ${canManage() ? `<button class="bc-btn danger small" id="ann-del-${a.id}" style="position:absolute; top:8px; right:8px; padding:2px 6px; font-size:10px;">Xóa</button>` : ''}
+        </div>`);
+        annListContainer.appendChild(item);
+      });
+    }
+    wrap.appendChild(bulletinCard);
+
+    // --- RENDER LỊCH HOẠT ĐỘNG SẮP TỚI (TÓM TẮT ĐẸP NHƯ HÌNH MẪU) ---
+    const nowStamp = (new Date()).toISOString().slice(0,16).replace('T','');
+    const upcomingSessions = state.sessions
+      .filter(s => (s.date + (s.time||'00:00')) >= nowStamp)
+      .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+
+    if (upcomingSessions.length > 0) {
+      const nearest = upcomingSessions[0];
+      const yesVoters = Object.entries(nearest.votes).filter(([,v]) => v === 'yes').map(([name]) => name);
+      const nearestCourt = state.courts.find(c => c.id === nearest.courtId);
+      
+      const summaryCard = el(`<div class="bc-card" style="background:#1E1E24; border:none; border-left:6px solid #F26419; border-radius:12px; padding:16px; color:#FAF8F5; margin-bottom:1rem; box-shadow:0 4px 15px rgba(0,0,0,0.15);">
+        <div style="font-size:13px; font-weight:600; color:#F26419; margin-bottom:8px; display:flex; align-items:center; gap:6px; font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">
+          📢 Lịch hoạt động sắp tới
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:17px; font-weight:700; color:#FFF; font-family:'Outfit', sans-serif;">
+              ${escapeHtml(nearest.note || 'Buổi sinh hoạt thường kỳ')}
+            </div>
+            <div style="font-size:13px; color:#CCD2E3; display:flex; align-items:center; gap:6px;">
+              <span>📅</span> <strong>${weekdayLabel(nearest.date)}, ${formatDate(nearest.date)}</strong>
+            </div>
+            <div style="font-size:13px; color:#CCD2E3; display:flex; align-items:center; gap:6px;">
+              <span>⏰</span> <strong>Giờ: ${formatTimeRange(nearest.time, nearest.timeEnd)}</strong>
+            </div>
+            <div style="font-size:13px; color:#CCD2E3; display:flex; align-items:center; gap:6px;">
+              <span>📍</span> <strong>Sân: ${nearestCourt ? escapeHtml(nearestCourt.name) : 'Chưa chọn sân'}</strong>
+            </div>
+          </div>
+          <div style="background:rgba(242,100,25,0.15); color:#F26419; border:1px solid rgba(242,100,25,0.3); border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:4px; align-self:center;">
+            🔥 ${yesVoters.length} tham gia
+          </div>
+        </div>
+      </div>`);
+      wrap.appendChild(summaryCard);
+    }
+
+    if (canManage()) {
       const courtOptions = state.courts.length
         ? state.courts.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')
-        : `<option value="">(chưa có sân, thêm ở tab Sân cầu)</option>`;
+        : `<option value="">(chưa có sân, thêm ở tab cấu hình)</option>`;
       const form = el(`<div class="bc-card">
         <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332;">Tạo buổi đánh mới</h3>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -3972,11 +4211,6 @@
         };
         document.getElementById('ss-date').oninput = updatePreview;
         updatePreview();
-        document.getElementById('ss-multiplier').onchange = (e) => {
-          const v = parseFloat(e.target.value);
-          state.settings.casualMultiplier = isNaN(v) || v < 1 ? 1 : v;
-          saveSettings(); render();
-        };
         document.getElementById('ss-add').onclick = () => {
           const date = document.getElementById('ss-date').value;
           const time = document.getElementById('ss-time').value;
@@ -3998,7 +4232,6 @@
       }, 0);
     }
 
-    const nowStamp = (new Date()).toISOString().slice(0,16).replace('T','');
     let all = state.sessions.slice();
 
     // --- Thanh lọc ---
@@ -4025,6 +4258,84 @@
       document.getElementById('search-month').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('search-btn').click(); };
       const clearBtn = document.getElementById('search-clear');
       if (clearBtn) clearBtn.onclick = () => { state.sessionSearchDate = ''; state.sessionSearchCourt = ''; state.upcomingPage = 0; render(); };
+
+      // --- Sự kiện bảng tin ---
+      const annToggleBtn = document.getElementById('ann-toggle-btn');
+      if (annToggleBtn) {
+        annToggleBtn.onclick = () => {
+          state['show_announce_form'] = !state['show_announce_form'];
+          render();
+        };
+      }
+
+      const annSubmitBtn = document.getElementById('ann-submit');
+      if (annSubmitBtn) {
+        annSubmitBtn.onclick = () => {
+          const category = document.getElementById('ann-category').value;
+          const title = document.getElementById('ann-title').value.trim();
+          const content = document.getElementById('ann-content').value.trim();
+          const expireDate = document.getElementById('ann-expire').value;
+          const pinned = document.getElementById('ann-pin').checked;
+          
+          if (!title || !content) {
+            alert('Vui lòng nhập đầy đủ tiêu đề và nội dung thông báo.');
+            return;
+          }
+          
+          state.announcements = state.announcements || [];
+          state.announcements.push({
+            id: uid(),
+            category,
+            title,
+            content,
+            expireDate: expireDate || null,
+            pinned: !!pinned,
+            author: state.me ? state.me.name : 'Khách',
+            phone: state.me ? state.me.phone || 'N/A' : 'N/A',
+            createdAt: Date.now(),
+            reactions: { thumbs: [], heart: [], fire: [] }
+          });
+          
+          state['show_announce_form'] = false;
+          saveAnnouncements();
+          render();
+        };
+      }
+
+      (state.announcements || []).forEach(a => {
+        const delBtn = document.getElementById(`ann-del-${a.id}`);
+        if (delBtn) {
+          delBtn.onclick = () => {
+            if (!confirm('Bạn có chắc chắn muốn xóa thông báo này?')) return;
+            state.announcements = state.announcements.filter(x => x.id !== a.id);
+            saveAnnouncements();
+            render();
+          };
+        }
+
+        const toggleReact = (type) => {
+          const myName = state.me ? state.me.name : 'Khách';
+          a.reactions = a.reactions || { thumbs: [], heart: [], fire: [] };
+          const list = a.reactions[type] || [];
+          if (list.includes(myName)) {
+            a.reactions[type] = list.filter(n => n !== myName);
+          } else {
+            list.push(myName);
+            a.reactions[type] = list;
+          }
+          saveAnnouncements();
+          render();
+        };
+
+        const thumbsBtn = document.getElementById(`react-thumbs-${a.id}`);
+        if (thumbsBtn) thumbsBtn.onclick = () => toggleReact('thumbs');
+
+        const heartBtn = document.getElementById(`react-heart-${a.id}`);
+        if (heartBtn) heartBtn.onclick = () => toggleReact('heart');
+
+        const fireBtn = document.getElementById(`react-fire-${a.id}`);
+        if (fireBtn) fireBtn.onclick = () => toggleReact('fire');
+      });
     }, 0);
 
     if (state.sessionSearchDate) all = all.filter(s => s.date && s.date.slice(0,7) === state.sessionSearchDate);
@@ -4128,52 +4439,187 @@
       .map(([name]) => state.members.find(m => m.name === name))
       .filter(Boolean);
 
-    let courtMapHtml = '';
-    if (court) {
-      const onCourt = yesVoters.slice(0, 4);
-      const onBench = yesVoters.slice(4);
-      
-      const onCourtAvatars = onCourt.map((p, idx) => {
-        const positions = [
-          'top: 25%; left: 25%;',
-          'top: 25%; right: 25%;',
-          'bottom: 25%; left: 25%;',
-          'bottom: 25%; right: 25%;'
-        ];
-        return `<div style="position: absolute; ${positions[idx]} transform: translate(-50%, -50%); text-align: center; z-index: 10;">
-          ${avatarHtml(p, 28)}
-          <div style="font-size: 9px; color: #FFF; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 4px; margin-top: 2px; white-space: nowrap; max-width: 65px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.name)}</div>
-        </div>`;
-      }).join('');
-      
-      const benchAvatars = onBench.map(p => `
-        <div style="display: inline-block; text-align: center; width: 32px; margin: 2px;" title="${escapeHtml(p.name)}">
-          ${avatarHtml(p, 24)}
-        </div>
-      `).join('');
+    // Xây dựng danh sách hiển thị gồm thành viên hiện tại đã đăng ký + thành viên đã xoá có lịch sử vote
+    const currentNames = state.members.map(m => m.name);
+    const displayMembers = state.members.filter(m => {
+      const curType = (m.monthlyType || {})[mKey] || '';
+      return curType === 'fixed' || curType === 'casual';
+    });
+    Object.keys(s.votes).forEach(name => {
+      if (!currentNames.includes(name)) {
+        displayMembers.push({
+          id: 'deleted-' + name,
+          name: name,
+          isDeleted: true,
+          status: 'deleted',
+          level: 'Mới chơi',
+          role: 'r2'
+        });
+      }
+    });
 
-      courtMapHtml = `<div style="margin-top:12px; border-top:1px dashed #E3E0D6; padding-top:12px;">
-        <div style="font-size:13px; font-weight:600; color:#1B4332; margin-bottom:8px; display:flex; align-items:center; gap:4px; font-family:'Oswald', sans-serif;">🏸 SƠ ĐỒ SÂN ĐẤU</div>
-        <div style="display: flex; gap:16px; flex-wrap: wrap; align-items: flex-start;">
-          <div style="position: relative; width: 100%; max-width: 260px; height: 130px; background: linear-gradient(180deg, #2D6A4F 0%, #1B4332 100%); border: 2px solid #FFF; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(27,67,50,0.15);">
-            <div style="position: absolute; top: 50%; left: 0; right: 0; height: 0; border-top: 2px dashed rgba(255,255,255,0.7); transform: translateY(-50%);"></div>
-            <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 0; border-left: 1px solid rgba(255,255,255,0.4); transform: translateX(-50%);"></div>
-            <div style="position: absolute; top: 25%; left: 0; right: 0; height: 0; border-top: 1px solid rgba(255,255,255,0.25);"></div>
-            <div style="position: absolute; bottom: 25%; left: 0; right: 0; height: 0; border-top: 1px solid rgba(255,255,255,0.25);"></div>
-            
-            ${onCourtAvatars}
-            ${onCourt.length === 0 ? `<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.6); font-size: 11px; font-style: italic; white-space: nowrap;">Chưa có người vào sân</div>` : ''}
+    s.challenges = s.challenges || [];
+    
+    // Tạo danh sách người chọn tham gia thách đấu (những người vote yes hoặc nhận pass)
+    const activePlayers = displayMembers.filter(m => {
+      const v = s.votes[m.name];
+      const isReceiver = Object.values(passes).includes(m.id);
+      return v === 'yes' || isReceiver;
+    });
+
+    const playerOptions = activePlayers.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
+
+    let challengesListHtml = '';
+    if (s.challenges.length === 0) {
+      challengesListHtml = `<div style="font-size:12px; color:#8a877d; text-align:center; padding:16px; font-style:italic; grid-column: 1 / -1; width: 100%;">Chưa có kèo thách đấu nào được tạo. Hãy là người đầu tiên tạo chiến thư! 🏸</div>`;
+    } else {
+      challengesListHtml = s.challenges.map(c => {
+        const team1Names = c.team1.filter(Boolean);
+        const team2Names = c.team2.filter(Boolean);
+        
+        let statusBadge = '';
+        let cardBg = 'var(--card-bg)';
+        let cardBorder = '1px solid var(--card-border)';
+        
+        if (c.status === 'pending') {
+          statusBadge = `<span class="bc-badge" style="background:#E6F1FB; color:#0C447C; font-weight:600;">🔵 Đang thách đấu</span>`;
+        } else if (c.status === 'accepted') {
+          statusBadge = `<span class="bc-badge" style="background:#FFF2E6; color:#B25E00; font-weight:600; animation: pulse 2s infinite;">🔥 Đã nhận kèo</span>`;
+          cardBg = 'rgba(242, 100, 25, 0.05)';
+          cardBorder = '1px solid #F26419';
+        } else if (c.status === 'done') {
+          statusBadge = `<span class="bc-badge" style="background:#EAF3DE; color:#27500A; font-weight:600;">✅ Hoàn thành</span>`;
+          cardBg = 'rgba(45, 106, 79, 0.03)';
+        }
+
+        const team1Html = team1Names.map(name => {
+          const m = state.members.find(x => x.name === name);
+          return `<div style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px;">
+            ${avatarHtml(m || { name }, 22)}
+            <span style="max-width:85px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
+          </div>`;
+        }).join('');
+
+        const team2Html = team2Names.map(name => {
+          const m = state.members.find(x => x.name === name);
+          return `<div style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px; justify-content:flex-end;">
+            <span style="max-width:85px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
+            ${avatarHtml(m || { name }, 22)}
+          </div>`;
+        }).join('');
+
+        let actionsHtml = '';
+        if (c.status === 'pending') {
+          actionsHtml = `
+            <button class="bc-btn small" id="accept-c-${s.id}-${c.id}" style="padding:2px 8px; font-size:11px;">Nhận kèo 🤝</button>
+            <button class="bc-btn danger small" id="del-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Xóa</button>
+          `;
+        } else if (c.status === 'accepted') {
+          actionsHtml = `
+            <button class="bc-btn small" id="score-c-${s.id}-${c.id}" style="background:#D8973C; border-color:#D8973C; padding:2px 8px; font-size:11px; color:#FFF;">Ghi tỉ số 🏆</button>
+            <button class="bc-btn outline small" id="revert-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Huỷ nhận</button>
+          `;
+        } else if (c.status === 'done') {
+          actionsHtml = `
+            <span style="font-weight:700; font-size:14px; color:#1B4332; font-family:'Oswald',sans-serif; margin-right:8px;">${c.score1} - ${c.score2}</span>
+            <button class="bc-btn outline small" id="reopen-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px;">Mở lại 🔓</button>
+            <button class="bc-btn danger small" id="del-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Xóa</button>
+          `;
+        }
+
+        return `<div class="bc-card" style="margin:0; padding:10px; background:${cardBg}; border:${cardBorder}; display:flex; flex-direction:column; gap:8px; box-shadow:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--card-border); padding-bottom:6px;">
+            ${statusBadge}
+            <div style="font-size:11px; color:#8a877d;">Tạo bởi: ${escapeHtml(c.createdBy)}</div>
           </div>
-          
-          <div style="flex: 1; min-width: 140px;">
-            <div style="font-size: 11px; font-weight: 600; color: #8a877d; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Dự bị / Chờ sân (${onBench.length})</div>
-            <div style="display: flex; flex-wrap: wrap; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.02); border-radius: 8px; padding: 6px; border: 1px solid #E3E0D6;">
-              ${benchAvatars || `<div style="font-size: 11px; color: #8a877d; font-style: italic; padding: 4px;">Trống</div>`}
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0;">
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+              ${team1Html}
+            </div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; gap:2px; min-width:45px;">
+              <span style="font-family:'Oswald',sans-serif; font-size:13px; font-weight:900; color:#993C1D; background:#FAECE7; padding:2px 6px; border-radius:12px;">VS</span>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1; align-items:flex-end;">
+              ${team2Html}
             </div>
           </div>
-        </div>
-      </div>`;
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--card-border); padding-top:6px; flex-wrap:wrap; gap:6px;">
+            <div style="font-size:12px; color:#27500A; font-weight:500; font-style:italic;">
+              📌 Kèo: ${escapeHtml(c.handicap || 'Đánh đều (không chấp)')}
+            </div>
+            <div style="display:flex; align-items:center;">
+              ${actionsHtml}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
     }
+
+    // Form tạo kèo thách đấu mới
+    const showFormKey = `show_c_form_${s.id}`;
+    const formVisible = !!state[showFormKey];
+
+    const createFormHtml = formVisible ? `
+      <div class="bc-card" style="margin: 8px 0 0 0; background: var(--input-bg); border: 1px solid var(--card-border); padding: 12px; box-shadow:none;">
+        <h4 style="font-size: 13px; color: #1B4332; margin-bottom: 8px; font-weight: 600;">⚡ THIẾT LẬP KÈO THÁCH ĐẤU</h4>
+        <div style="display: flex; flex-direction: column; gap:8px;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 130px;">
+              <label style="font-size: 11px; color:#8a877d; display:block; margin-bottom:2px;">Cặp đấu 1 (Challenger):</label>
+              <select class="bc-select" id="c-t1-p1-${s.id}" style="width: 100%; padding: 4px; font-size: 12px;">
+                <option value="">-- Chọn người 1 --</option>
+                ${playerOptions}
+              </select>
+              <select class="bc-select" id="c-t1-p2-${s.id}" style="width: 100%; padding: 4px; font-size: 12px; margin-top: 4px;">
+                <option value="">-- Chọn người 2 (Đôi) --</option>
+                ${playerOptions}
+              </select>
+            </div>
+            
+            <div style="font-weight: 700; color: #993C1D; font-size: 14px; text-align:center;">VS</div>
+            
+            <div style="flex: 1; min-width: 130px;">
+              <label style="font-size: 11px; color:#8a877d; display:block; margin-bottom:2px;">Cặp đấu 2 (Challenged):</label>
+              <select class="bc-select" id="c-t2-p1-${s.id}" style="width: 100%; padding: 4px; font-size: 12px;">
+                <option value="">-- Chọn người 1 --</option>
+                ${playerOptions}
+              </select>
+              <select class="bc-select" id="c-t2-p2-${s.id}" style="width: 100%; padding: 4px; font-size: 12px; margin-top: 4px;">
+                <option value="">-- Chọn người 2 (Đôi) --</option>
+                ${playerOptions}
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label style="font-size: 11px; color:#8a877d; display:block; margin-bottom:2px;">Chấp kèo / Điều kiện (ví dụ: Chấp 3 trái, thua bao nước...):</label>
+            <input class="bc-input" id="c-handicap-${s.id}" placeholder="Ví dụ: Chấp 4 trái / Thua chung nước ngọt" style="width: 100%; padding: 5px 8px; font-size: 12px;" />
+          </div>
+          
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button class="bc-btn small" id="c-submit-${s.id}" style="padding:5px 12px; font-size:12px; font-weight:600;">⚡ Đăng Kèo!</button>
+            <button class="bc-btn outline small" id="c-cancel-${s.id}" style="padding:5px 12px; font-size:12px;">Đóng</button>
+          </div>
+        </div>
+      </div>
+    ` : '';
+
+    const challengesBoardHtml = `<div style="margin-top:12px; border-top:1px dashed var(--card-border); padding-top:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="font-size:13px; font-weight:600; color:#1B4332; display:flex; align-items:center; gap:4px; font-family:'Oswald', sans-serif;">
+          🔥 BẢNG THÁCH ĐẤU &amp; CHẤP KÈO
+        </div>
+        ${!formVisible ? `<button class="bc-btn small" id="c-toggle-btn-${s.id}" style="padding:3px 8px; font-size:11px; font-weight:600;">➕ Thách đấu</button>` : ''}
+      </div>
+      
+      ${createFormHtml}
+      
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px; margin-top:8px;">
+        ${challengesListHtml}
+      </div>
+    </div>`;
 
     const card = el(`<div class="bc-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -4197,14 +4643,14 @@
         ${s.locked ? `<span class="bc-badge" style="background:#FAEEDA; color:#854F0B;">🔒 Đã chốt</span>` : ''}
       </div>
       <div style="margin-top:10px; display:flex; gap:8px;" id="vote-${s.id}"></div>
-      <div id="court-map-${s.id}"></div>
+      <div id="challenges-board-${s.id}"></div>
       <div style="margin-top:12px; border-top:1px dashed #E3E0D6; padding-top:10px;" id="vote-table-${s.id}"></div>
       <div style="margin-top:12px; border-top:1px dashed #E3E0D6; padding-top:10px;" id="cost-${s.id}"></div>
     </div>`);
 
-    const courtMapContainer = card.querySelector(`#court-map-${s.id}`);
-    if (courtMapContainer && courtMapHtml) {
-      courtMapContainer.innerHTML = courtMapHtml;
+    const challengesBoardContainer = card.querySelector(`#challenges-board-${s.id}`);
+    if (challengesBoardContainer && challengesBoardHtml) {
+      challengesBoardContainer.innerHTML = challengesBoardHtml;
     }
 
     if (canManage()) {
@@ -4350,7 +4796,12 @@
           ? `${escapeHtml(m.name)} <span style="font-size:11px; color:#993C1D; font-style:italic;">(Đã xoá)</span>`
           : (isSelfRow ? `${escapeHtml(m.name)} <span style="font-size:11px; color:#D8973C; font-weight:700;">(Bạn)</span>` : escapeHtml(m.name));
 
-        const trStyle = `border-top:1px solid #F1EFE8; ${isSelfRow ? 'background-color: rgba(216, 151, 60, 0.08); font-weight: 600;' : ''}`;
+        let trStyle = `border-top:1px solid #F1EFE8;`;
+        if (isSelfRow) {
+          trStyle += ` background-color: rgba(216, 151, 60, 0.08); font-weight: 600;`;
+        } else if (v === 'yes' || isReceiver) {
+          trStyle += ` background-color: rgba(45, 106, 79, 0.04);`;
+        }
         tbl.appendChild(el(`<tr style="${trStyle}">
           <td style="padding:5px 4px; width:30px;">${avatarHtml(m, 26)}</td>
           <td style="padding:5px 4px;">${nameLabel}</td>
@@ -4404,6 +4855,122 @@
             }
             saveSessions(); render();
           };
+        });
+
+        // --- Sự kiện thách đấu ---
+        const cToggleBtn = document.getElementById(`c-toggle-btn-${s.id}`);
+        if (cToggleBtn) {
+          cToggleBtn.onclick = () => {
+            state[showFormKey] = true;
+            render();
+          };
+        }
+
+        const cCancelBtn = document.getElementById(`c-cancel-${s.id}`);
+        if (cCancelBtn) {
+          cCancelBtn.onclick = () => {
+            state[showFormKey] = false;
+            render();
+          };
+        }
+
+        const cSubmitBtn = document.getElementById(`c-submit-${s.id}`);
+        if (cSubmitBtn) {
+          cSubmitBtn.onclick = () => {
+            const p1 = document.getElementById(`c-t1-p1-${s.id}`).value;
+            const p2 = document.getElementById(`c-t1-p2-${s.id}`).value;
+            const p3 = document.getElementById(`c-t2-p1-${s.id}`).value;
+            const p4 = document.getElementById(`c-t2-p2-${s.id}`).value;
+            const handicap = document.getElementById(`c-handicap-${s.id}`).value.trim();
+            
+            if (!p1 || !p3) {
+              alert('Vui lòng chọn ít nhất 1 người chơi cho mỗi đội.');
+              return;
+            }
+            if (p1 === p3 || (p2 && p2 === p1) || (p4 && p4 === p3)) {
+              alert('Người chơi trong một cặp hoặc giữa hai cặp không được trùng nhau.');
+              return;
+            }
+            
+            s.challenges = s.challenges || [];
+            s.challenges.push({
+              id: uid(),
+              team1: [p1, p2].filter(Boolean),
+              team2: [p3, p4].filter(Boolean),
+              handicap: handicap || 'Đánh đều (không chấp)',
+              status: 'pending',
+              score1: null,
+              score2: null,
+              createdBy: state.me ? state.me.name : 'Khách',
+              createdAt: Date.now()
+            });
+            
+            state[showFormKey] = false;
+            saveSessions();
+            render();
+          };
+        }
+
+        (s.challenges || []).forEach(c => {
+          const acceptBtn = document.getElementById(`accept-c-${s.id}-${c.id}`);
+          if (acceptBtn) {
+            acceptBtn.onclick = () => {
+              if (!confirm('Bạn có đồng ý nhận kèo thách đấu này?')) return;
+              c.status = 'accepted';
+              saveSessions();
+              render();
+            };
+          }
+          
+          const delBtn = document.getElementById(`del-c-${s.id}-${c.id}`);
+          if (delBtn) {
+            delBtn.onclick = () => {
+              if (!confirm('Bạn có chắc chắn muốn xóa kèo thách đấu này?')) return;
+              s.challenges = s.challenges.filter(x => x.id !== c.id);
+              saveSessions();
+              render();
+            };
+          }
+          
+          const scoreBtn = document.getElementById(`score-c-${s.id}-${c.id}`);
+          if (scoreBtn) {
+            scoreBtn.onclick = () => {
+              const scoreStr = prompt('Nhập tỉ số trận đấu (ví dụ: 21-18 hoặc 21 18):');
+              if (!scoreStr) return;
+              const parts = scoreStr.split(/[- ]+/);
+              const s1 = parseInt(parts[0], 10);
+              const s2 = parseInt(parts[1], 10);
+              if (isNaN(s1) || isNaN(s2)) {
+                alert('Tỉ số không hợp lệ. Vui lòng nhập đúng định dạng, ví dụ: 21-18');
+                return;
+              }
+              c.score1 = s1;
+              c.score2 = s2;
+              c.status = 'done';
+              saveSessions();
+              render();
+            };
+          }
+          
+          const revertBtn = document.getElementById(`revert-c-${s.id}-${c.id}`);
+          if (revertBtn) {
+            revertBtn.onclick = () => {
+              c.status = 'pending';
+              saveSessions();
+              render();
+            };
+          }
+          
+          const reopenBtn = document.getElementById(`reopen-c-${s.id}-${c.id}`);
+          if (reopenBtn) {
+            reopenBtn.onclick = () => {
+              c.status = 'accepted';
+              c.score1 = null;
+              c.score2 = null;
+              saveSessions();
+              render();
+            };
+          }
         });
       }, 0);
     }
@@ -4656,6 +5223,7 @@
         }
         if (modifiedKeys.includes('bc_fund')) state.fund = dbMap['bc_fund'] || {};
         if (modifiedKeys.includes('bc_donations')) state.donations = dbMap['bc_donations'] || [];
+        if (modifiedKeys.includes('bc_announcements')) state.announcements = dbMap['bc_announcements'] || [];
         
         resolveMe();
         render();
