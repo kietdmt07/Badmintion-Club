@@ -4808,10 +4808,18 @@
         const canVoteOnBehalf = canManage() && m.role === 'r2' && !hasPassed && !isReceiver && !m.isDeleted;
         if (canVoteOnBehalf) {
           const isCasualFull = t === 'casual' && v !== 'yes' && s.maxCasual && casualPlaying >= s.maxCasual;
-          statusBadge = `<select class="bc-select" id="vote-select-${s.id}-${m.id}" style="width:110px; padding:4px 6px; font-size:12px; text-align-last:right;">
-            <option value="" ${!v ? 'selected' : ''}>Chưa vote</option>
-            <option value="yes" ${v === 'yes' ? 'selected' : ''} ${isCasualFull ? 'disabled style="color:#999;"' : ''}>Tham gia${isCasualFull ? ' (Hết chỗ)' : ''}</option>
-            <option value="no" ${v === 'no' ? 'selected' : ''}>Vắng</option>
+          let selectStyle = `width:110px; padding:4px 6px; font-size:12px; font-weight:600; text-align-last:right; border-radius:6px;`;
+          if (!v) {
+            selectStyle += ` background:#F1EFE8; color:#8a877d; border:1px solid #C4C2B7;`;
+          } else if (v === 'yes') {
+            selectStyle += ` background:#EAF3DE; color:#27500A; border:1px solid rgba(39,80,10,0.25);`;
+          } else if (v === 'no') {
+            selectStyle += ` background:#FAECE7; color:#993C1D; border:1px solid rgba(153,60,29,0.25);`;
+          }
+          statusBadge = `<select class="bc-select" id="vote-select-${s.id}-${m.id}" style="${selectStyle}">
+            <option value="" ${!v ? 'selected' : ''} style="background:#F1EFE8; color:#8a877d;">Chưa vote</option>
+            <option value="yes" ${v === 'yes' ? 'selected' : ''} style="background:#EAF3DE; color:#27500A;" ${isCasualFull ? 'disabled' : ''}>Tham gia${isCasualFull ? ' (Hết chỗ)' : ''}</option>
+            <option value="no" ${v === 'no' ? 'selected' : ''} style="background:#FAECE7; color:#993C1D;">Vắng</option>
           </select>`;
         } else {
           statusBadge = hasPassed
