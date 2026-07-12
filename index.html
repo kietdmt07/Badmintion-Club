@@ -3974,11 +3974,31 @@
   // ---------- SESSIONS ----------
   function renderSessions(){
     const wrap = el(`<div></div>`);
+    const nowStamp = (new Date()).toISOString().slice(0,16).replace('T','');
 
-    // 1. Tự động xóa thông báo hết hạn
+    // 1. Tự động xóa thông báo hết hạn và kết quả thách đấu cũ khi hoạt động tiếp theo bắt đầu
     const todayStr = (new Date()).toISOString().slice(0, 10);
     state.announcements = state.announcements || [];
-    const validAnnouncements = state.announcements.filter(a => !a.expireDate || a.expireDate >= todayStr);
+    const validAnnouncements = state.announcements.filter(a => {
+      // Kiểm tra hạn ngày của thông báo thường
+      if (a.expireDate && a.expireDate < todayStr) return false;
+      
+      // Kiểm tra kết quả thách đấu của buổi tập cũ
+      if (a.isChallengeResult) {
+        const sOfAnn = state.sessions.find(x => x.id === a.sessionId);
+        if (!sOfAnn) return false; // Buổi tập gốc đã xóa -> xóa tin
+        
+        const annSessionStart = sOfAnn.date + (sOfAnn.time || '00:00');
+        const hasNewerSessionStarted = state.sessions.some(otherS => {
+          const otherStart = otherS.date + (otherS.time || '00:00');
+          return otherStart > annSessionStart && otherStart <= nowStamp;
+        });
+        
+        if (hasNewerSessionStarted) return false;
+      }
+      return true;
+    });
+
     if (validAnnouncements.length !== state.announcements.length) {
       state.announcements = validAnnouncements;
       saveAnnouncements();
@@ -4143,7 +4163,6 @@
     wrap.appendChild(bulletinCard);
 
     // --- RENDER LỊCH HOẠT ĐỘNG SẮP TỚI (TÓM TẮT ĐẸP NHƯ HÌNH MẪU) ---
-    const nowStamp = (new Date()).toISOString().slice(0,16).replace('T','');
     const upcomingSessions = state.sessions
       .filter(s => (s.date + (s.time||'00:00')) >= nowStamp)
       .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
@@ -4492,18 +4511,30 @@
           cardBg = 'rgba(45, 106, 79, 0.03)';
         }
 
+        const isDone = c.status === 'done';
+        const team1Won = isDone && (c.score1 > c.score2);
+        const team2Won = isDone && (c.score2 > c.score1);
+
         const team1Html = team1Names.map(name => {
           const m = state.members.find(x => x.name === name);
-          return `<div style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px;">
+          let textStyle = `font-weight:600; font-size:12px;`;
+          if (isDone) {
+            textStyle += team1Won ? ' color:#27500A; font-weight:bold;' : ' color:#8a877d; font-weight:normal;';
+          }
+          return `<div style="display:flex; align-items:center; gap:6px; ${textStyle}">
             ${avatarHtml(m || { name }, 22)}
-            <span style="max-width:85px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
+            <span style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
           </div>`;
         }).join('');
 
         const team2Html = team2Names.map(name => {
           const m = state.members.find(x => x.name === name);
-          return `<div style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:12px; justify-content:flex-end;">
-            <span style="max-width:85px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
+          let textStyle = `font-weight:600; font-size:12px; justify-content:flex-end;`;
+          if (isDone) {
+            textStyle += team2Won ? ' color:#27500A; font-weight:bold;' : ' color:#8a877d; font-weight:normal;';
+          }
+          return `<div style="display:flex; align-items:center; gap:6px; ${textStyle}">
+            <span style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
             ${avatarHtml(m || { name }, 22)}
           </div>`;
         }).join('');
@@ -4527,6 +4558,20 @@
           `;
         }
 
+        const team1WinnerLabel = team1Won 
+          ? `<span style="font-size:9px; background:#EAF3DE; color:#27500A; padding:1px 4px; border-radius:3px; font-weight:700; vertical-align:middle;">👑 Thắng</span>` 
+          : '';
+        const team2WinnerLabel = team2Won 
+          ? `<span style="font-size:9px; background:#EAF3DE; color:#27500A; padding:1px 4px; border-radius:3px; font-weight:700; vertical-align:middle;">👑 Thắng</span>` 
+          : '';
+
+        const team1HandicapBadge = c.handicapTeam === 'team1' 
+          ? `<span style="font-size:9px; background:#FFEBEB; color:#C53030; padding:1px 4px; border-radius:3px; font-weight:700; vertical-align:middle;">Chấp</span>` 
+          : '';
+        const team2HandicapBadge = c.handicapTeam === 'team2' 
+          ? `<span style="font-size:9px; background:#FFEBEB; color:#C53030; padding:1px 4px; border-radius:3px; font-weight:700; vertical-align:middle;">Chấp</span>` 
+          : '';
+
         return `<div class="bc-card" style="margin:0; padding:10px; background:${cardBg}; border:${cardBorder}; display:flex; flex-direction:column; gap:8px; box-shadow:none;">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--card-border); padding-bottom:6px;">
             ${statusBadge}
@@ -4535,6 +4580,10 @@
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0;">
             <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
               ${team1Html}
+              <div style="display:flex; gap:4px; margin-top:2px;">
+                ${team1HandicapBadge}
+                ${team1WinnerLabel}
+              </div>
             </div>
             
             <div style="display:flex; flex-direction:column; align-items:center; gap:2px; min-width:45px;">
@@ -4543,6 +4592,10 @@
             
             <div style="display:flex; flex-direction:column; gap:4px; flex:1; align-items:flex-end;">
               ${team2Html}
+              <div style="display:flex; gap:4px; margin-top:2px; justify-content:flex-end;">
+                ${team2WinnerLabel}
+                ${team2HandicapBadge}
+              </div>
             </div>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--card-border); padding-top:6px; flex-wrap:wrap; gap:6px;">
@@ -4593,9 +4646,19 @@
             </div>
           </div>
           
-          <div>
-            <label style="font-size: 11px; color:#8a877d; display:block; margin-bottom:2px;">Chấp kèo / Điều kiện (ví dụ: Chấp 3 trái, thua bao nước...):</label>
-            <input class="bc-input" id="c-handicap-${s.id}" placeholder="Ví dụ: Chấp 4 trái / Thua chung nước ngọt" style="width: 100%; padding: 5px 8px; font-size: 12px;" />
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <div>
+              <label style="font-size: 11px; color:#8a877d; display:block; margin-bottom:2px;">Chấp kèo / Điều kiện:</label>
+              <input class="bc-input" id="c-handicap-${s.id}" placeholder="Ví dụ: Chấp 4 trái / bao nước" style="width: 100%; padding: 5px 8px; font-size: 12px;" />
+            </div>
+            <div>
+              <label style="font-size: 11px; color:#8a877d; display:block; margin-bottom:2px;">Đội chấp kèo (nếu có):</label>
+              <select class="bc-select" id="c-handicap-team-${s.id}" style="width: 100%; padding: 4px; font-size: 12px;">
+                <option value="none">Không chấp (đánh đều)</option>
+                <option value="team1">Cặp đấu 1 (Challenger)</option>
+                <option value="team2">Cặp đấu 2 (Challenged)</option>
+              </select>
+            </div>
           </div>
           
           <div style="display: flex; gap: 8px; margin-top: 4px;">
@@ -4882,6 +4945,7 @@
             const p3 = document.getElementById(`c-t2-p1-${s.id}`).value;
             const p4 = document.getElementById(`c-t2-p2-${s.id}`).value;
             const handicap = document.getElementById(`c-handicap-${s.id}`).value.trim();
+            const handicapTeam = document.getElementById(`c-handicap-team-${s.id}`).value;
             
             if (!p1 || !p3) {
               alert('Vui lòng chọn ít nhất 1 người chơi cho mỗi đội.');
@@ -4898,6 +4962,7 @@
               team1: [p1, p2].filter(Boolean),
               team2: [p3, p4].filter(Boolean),
               handicap: handicap || 'Đánh đều (không chấp)',
+              handicapTeam: handicapTeam,
               status: 'pending',
               score1: null,
               score2: null,
@@ -4922,11 +4987,17 @@
             };
           }
           
+          const removeChallengeAnn = (cId) => {
+            state.announcements = (state.announcements || []).filter(a => !(a.isChallengeResult && a.challengeId === cId));
+            saveAnnouncements();
+          };
+
           const delBtn = document.getElementById(`del-c-${s.id}-${c.id}`);
           if (delBtn) {
             delBtn.onclick = () => {
               if (!confirm('Bạn có chắc chắn muốn xóa kèo thách đấu này?')) return;
               s.challenges = s.challenges.filter(x => x.id !== c.id);
+              removeChallengeAnn(c.id);
               saveSessions();
               render();
             };
@@ -4947,6 +5018,30 @@
               c.score1 = s1;
               c.score2 = s2;
               c.status = 'done';
+              
+              // Tự động đăng kết quả thách đấu lên bảng tin!
+              state.announcements = state.announcements || [];
+              const t1Players = c.team1.join(' & ');
+              const t2Players = c.team2.join(' & ');
+              const winnerText = s1 > s2 ? `${t1Players} thắng` : (s2 > s1 ? `${t2Players} thắng` : 'Hòa nhau');
+              
+              state.announcements.push({
+                id: uid(),
+                category: 'tournament',
+                title: `🏆 KẾT QUẢ THÁCH ĐẤU: ${t1Players} VS ${t2Players}`,
+                content: `🔥 Trận thách đấu kịch tính của buổi tập đã kết thúc!\n\n🏸 Cặp 1: ${t1Players} (${s1} điểm)\n🏸 Cặp 2: ${t2Players} (${s2} điểm)\n\n📌 Chấp kèo: ${c.handicap || 'Đánh đều'}\n🏆 Kết quả: **${winnerText}**! Xin chúc mừng! 🎉`,
+                expireDate: null,
+                pinned: false,
+                author: 'Trọng tài thách đấu',
+                phone: 'Hệ thống',
+                createdAt: Date.now(),
+                reactions: { thumbs: [], heart: [], fire: [] },
+                isChallengeResult: true,
+                sessionId: s.id,
+                challengeId: c.id
+              });
+              
+              saveAnnouncements();
               saveSessions();
               render();
             };
@@ -4956,6 +5051,7 @@
           if (revertBtn) {
             revertBtn.onclick = () => {
               c.status = 'pending';
+              removeChallengeAnn(c.id);
               saveSessions();
               render();
             };
@@ -4967,6 +5063,7 @@
               c.status = 'accepted';
               c.score1 = null;
               c.score2 = null;
+              removeChallengeAnn(c.id);
               saveSessions();
               render();
             };
