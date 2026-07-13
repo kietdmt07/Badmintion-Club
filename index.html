@@ -216,6 +216,7 @@
   body.dark-theme [style*="color: #1B4332"], body.dark-theme [style*="color:#1B4332"], body.dark-theme [style*="color: #27500A"], body.dark-theme [style*="color:#27500A"] { color: #A7F3D0 !important; }
   body.dark-theme [style*="color: #993C1D"], body.dark-theme [style*="color:#993C1D"] { color: #FCA5A5 !important; }
   body.dark-theme [style*="color: #854F0B"], body.dark-theme [style*="color:#854F0B"] { color: #FFB703 !important; }
+  body.dark-theme [style*="color: #0C447C"], body.dark-theme [style*="color:#0C447C"], body.dark-theme [style*="color: #134074"], body.dark-theme [style*="color:#134074"] { color: #60A5FA !important; }
   body.dark-theme [style*="background: #FFF"], body.dark-theme [style*="background:#FFF"], body.dark-theme [style*="background: white"], body.dark-theme [style*="background:white"] { background: var(--input-bg) !important; }
   body.dark-theme [style*="background: #fff"], body.dark-theme [style*="background:#fff"] { background: var(--input-bg) !important; }
   body.dark-theme [style*="background: rgba(0,0,0,0.02)"], body.dark-theme [style*="background:rgba(0,0,0,0.02)"] { background: rgba(255, 255, 255, 0.02) !important; }
@@ -232,6 +233,9 @@
   body.dark-theme [style*="background:#FAECE7"], body.dark-theme [style*="background: #FAECE7"] { background: rgba(242, 100, 25, 0.2) !important; color: #FFF !important; }
   body.dark-theme [style*="background:#FAEEDA"], body.dark-theme [style*="background: #FAEEDA"] { background: rgba(216, 151, 60, 0.2) !important; color: #FFF !important; }
   body.dark-theme [style*="background:#F1EFE8"], body.dark-theme [style*="background: #F1EFE8"] { background: rgba(255, 255, 255, 0.05) !important; color: #FFF !important; }
+  body.dark-theme [style*="background:#E6F1FB"], body.dark-theme [style*="background: #E6F1FB"] { background: rgba(96, 165, 250, 0.2) !important; color: #93C5FD !important; }
+  body.dark-theme [style*="background:#FFF2E6"], body.dark-theme [style*="background: #FFF2E6"] { background: rgba(216, 151, 60, 0.2) !important; color: #FCD34D !important; }
+  body.dark-theme [style*="background:#F8EEFC"], body.dark-theme [style*="background: #F8EEFC"] { background: rgba(167, 139, 250, 0.2) !important; color: #C084FC !important; }
 </style>
 
 <script>
@@ -4128,7 +4132,7 @@
         const myReactedThumbs = thumbsList.includes(myName);
         const myReactedFire = fireList.includes(myName);
 
-        const item = el(`<div style="background:${cardBg}; border:${borderStyle}; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; position:relative; box-shadow: ${a.pinned ? '0 4px 10px rgba(216,151,60,0.1)' : 'none'};">
+        const item = el(`<div class="bc-card" style="background:${cardBg}; border:${borderStyle}; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; position:relative; box-shadow: ${a.pinned ? '0 4px 10px rgba(216,151,60,0.1)' : 'none'};">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
             <div style="display:flex; align-items:center; gap:6px;">
               <span class="bc-badge" style="background:${cat.bg}; color:${cat.color}; font-weight:700; font-size:10px; padding:2px 8px; border:1px solid rgba(0,0,0,0.05);">
@@ -4143,7 +4147,7 @@
             ${escapeHtml(a.title)}
           </div>
           
-          <div style="font-size:13px; color:#4A5568; line-height:1.45; white-space:pre-line;">
+          <div style="font-size:13px; color:#2C2C2A; line-height:1.45; white-space:pre-line;">
             ${escapeHtml(a.content)}
           </div>
 
