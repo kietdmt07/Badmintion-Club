@@ -4708,7 +4708,17 @@
       <div style="margin-top:10px; display:flex; gap:8px;" id="vote-${s.id}"></div>
       <div id="challenges-board-${s.id}"></div>
       <div style="margin-top:12px; border-top:1px dashed #E3E0D6; padding-top:10px;" id="vote-table-${s.id}"></div>
-      <div style="margin-top:12px; border-top:1px dashed #E3E0D6; padding-top:10px;" id="cost-${s.id}"></div>
+      <div style="margin-top:12px; border-top:1px dashed #E3E0D6; padding-top:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:600; color:#1B4332; display:flex; align-items:center; gap:4px; font-family:'Oswald', sans-serif;">
+            💰 CHI PHÍ &amp; PHẠT TRỄ
+          </span>
+          <button class="bc-btn outline small" id="toggle-cost-${s.id}" style="padding:2px 8px; font-size:11px;">
+            ${(state.showCost && state.showCost[s.id]) ? 'Ẩn chi phí ✖' : 'Xem chi phí 👁'}
+          </button>
+        </div>
+        <div id="cost-${s.id}" style="display:${(state.showCost && state.showCost[s.id]) ? 'block' : 'none'}; margin-top:8px;"></div>
+      </div>
     </div>`);
 
     const challengesBoardContainer = card.querySelector(`#challenges-board-${s.id}`);
@@ -4751,6 +4761,7 @@
 
     const voteTable = card.querySelector(`#vote-table-${s.id}`);
     state.showAllVoters = state.showAllVoters || {};
+    state.showCost = state.showCost || {};
     const showAll = !!state.showAllVoters[s.id];
     let toggleBtnHtml = '';
     if (s.locked) {
@@ -4887,6 +4898,14 @@
       }
 
       setTimeout(() => {
+        const toggleCostBtn = document.getElementById(`toggle-cost-${s.id}`);
+        if (toggleCostBtn) {
+          toggleCostBtn.onclick = () => {
+            state.showCost[s.id] = !state.showCost[s.id];
+            render();
+          };
+        }
+
         const toggleBtn = document.getElementById(`toggle-voters-${s.id}`);
         if (toggleBtn) {
           toggleBtn.onclick = () => {
