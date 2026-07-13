@@ -578,8 +578,19 @@
       const currentUser = state.me;
       const currentRole = role();
 
-      // Nếu chưa đăng nhập, từ chối toàn bộ cập nhật
+      // Nếu chưa đăng nhập, chỉ cho phép khách tự đăng ký tài khoản mới (status: pending/active nếu trống, role: r2/admin nếu trống)
       if (!currentUser) {
+        if (next.length === prev.length + 1) {
+          const newMember = next.find(x => !prev.some(y => y.id === x.id));
+          if (newMember) {
+            const isFirst = prev.length === 0;
+            const expectedStatus = isFirst ? 'active' : 'pending';
+            const expectedRole = isFirst ? 'admin' : 'r2';
+            if (newMember.status === expectedStatus && newMember.role === expectedRole) {
+              return next;
+            }
+          }
+        }
         console.error('Security block: unauthorized write to bc_members (no session).');
         return null;
       }
