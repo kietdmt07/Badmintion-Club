@@ -4504,6 +4504,7 @@
       challengesListHtml = `<div style="font-size:12px; color:#8a877d; text-align:center; padding:16px; font-style:italic; grid-column: 1 / -1; width: 100%;">Chưa có kèo thách đấu nào được tạo. Hãy là người đầu tiên tạo chiến thư! 🏸</div>`;
     } else {
       challengesListHtml = s.challenges.map(c => {
+        const myName = state.me ? state.me.name : 'Khách';
         const team1Names = c.team1.filter(Boolean);
         const team2Names = c.team2.filter(Boolean);
         
@@ -4550,23 +4551,30 @@
           </div>`;
         }).join('');
 
+        const hasChallengePermission = c.team1.includes(myName) || c.team2.includes(myName) || canManage();
         let actionsHtml = '';
-        if (c.status === 'pending') {
-          actionsHtml = `
-            <button class="bc-btn small" id="accept-c-${s.id}-${c.id}" style="padding:2px 8px; font-size:11px;">Nhận kèo 🤝</button>
-            <button class="bc-btn danger small" id="del-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Xóa</button>
-          `;
-        } else if (c.status === 'accepted') {
-          actionsHtml = `
-            <button class="bc-btn small" id="score-c-${s.id}-${c.id}" style="background:#D8973C; border-color:#D8973C; padding:2px 8px; font-size:11px; color:#FFF;">Ghi tỉ số 🏆</button>
-            <button class="bc-btn outline small" id="revert-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Huỷ nhận</button>
-          `;
-        } else if (c.status === 'done') {
-          actionsHtml = `
-            <span style="font-weight:700; font-size:14px; color:#1B4332; font-family:'Oswald',sans-serif; margin-right:8px;">${c.score1} - ${c.score2}</span>
-            <button class="bc-btn outline small" id="reopen-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px;">Mở lại 🔓</button>
-            <button class="bc-btn danger small" id="del-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Xóa</button>
-          `;
+        if (hasChallengePermission) {
+          if (c.status === 'pending') {
+            actionsHtml = `
+              <button class="bc-btn small" id="accept-c-${s.id}-${c.id}" style="padding:2px 8px; font-size:11px;">Nhận kèo 🤝</button>
+              <button class="bc-btn danger small" id="del-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Xóa</button>
+            `;
+          } else if (c.status === 'accepted') {
+            actionsHtml = `
+              <button class="bc-btn small" id="score-c-${s.id}-${c.id}" style="background:#D8973C; border-color:#D8973C; padding:2px 8px; font-size:11px; color:#FFF;">Ghi tỉ số 🏆</button>
+              <button class="bc-btn outline small" id="revert-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Huỷ nhận</button>
+            `;
+          } else if (c.status === 'done') {
+            actionsHtml = `
+              <span style="font-weight:700; font-size:14px; color:#1B4332; font-family:'Oswald',sans-serif; margin-right:8px;">${c.score1} - ${c.score2}</span>
+              <button class="bc-btn outline small" id="reopen-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px;">Mở lại 🔓</button>
+              <button class="bc-btn danger small" id="del-c-${s.id}-${c.id}" style="padding:2px 6px; font-size:11px; margin-left:4px;">Xóa</button>
+            `;
+          }
+        } else {
+          if (c.status === 'done') {
+            actionsHtml = `<span style="font-weight:700; font-size:14px; color:#1B4332; font-family:'Oswald',sans-serif; margin-right:8px;">${c.score1} - ${c.score2}</span>`;
+          }
         }
 
         const team1WinnerLabel = team1Won 
@@ -4596,7 +4604,6 @@
           p2Percent = 100 - p1Percent;
         }
 
-        const myName = state.me ? state.me.name : 'Khách';
         const myBetT1 = b1.includes(myName);
         const myBetT2 = b2.includes(myName);
 
@@ -5061,6 +5068,17 @@
               return;
             }
             
+            const creatorName = state.me ? state.me.name : 'Khách';
+            if (creatorName === 'Khách') {
+              alert('Vui lòng đăng nhập để tạo kèo thách đấu.');
+              return;
+            }
+            const allPlayers = [p1, p2, p3, p4].filter(Boolean);
+            if (!allPlayers.includes(creatorName)) {
+              alert('Bạn bắt buộc phải là 1 trong các thành viên thi đấu để tạo kèo thách đấu này.');
+              return;
+            }
+            
             s.challenges = s.challenges || [];
             s.challenges.push({
               id: uid(),
@@ -5082,11 +5100,38 @@
         }
 
         (s.challenges || []).forEach(c => {
+          const currentName = state.me ? state.me.name : 'Khách';
+          const isAllowed = c.team1.includes(currentName) || c.team2.includes(currentName) || canManage();
+
           const acceptBtn = document.getElementById(`accept-c-${s.id}-${c.id}`);
           if (acceptBtn) {
             acceptBtn.onclick = () => {
+              if (!isAllowed) { alert('Bạn không có quyền thực hiện hành động này.'); return; }
               if (!confirm('Bạn có đồng ý nhận kèo thách đấu này?')) return;
               c.status = 'accepted';
+              
+              // Tự động đăng tin nhận kèo thách đấu lên bảng tin!
+              state.announcements = state.announcements || [];
+              const t1Players = c.team1.join(' & ');
+              const t2Players = c.team2.join(' & ');
+              
+              state.announcements.push({
+                id: uid(),
+                category: 'match',
+                title: `🏸 KÈO GIAO LƯU THÁCH ĐẤU: ${t1Players} VS ${t2Players}`,
+                content: `🔥 Trận thách đấu đã chính thức được nhận kèo!\n\n🏸 Cặp 1: ${t1Players}\n🏸 Cặp 2: ${t2Players}\n\n📌 Chấp kèo: ${c.handicap || 'Đánh đều (không chấp)'}\n\nTrận đấu sẽ sớm được diễn ra trong buổi tập. Hãy cùng dự đoán và cổ vũ cho hai đội nhé! 🏸⚡`,
+                expireDate: null,
+                pinned: false,
+                author: 'Trọng tài thách đấu',
+                phone: 'Hệ thống',
+                createdAt: Date.now(),
+                reactions: { thumbs: [], heart: [], fire: [] },
+                isChallengeResult: true,
+                sessionId: s.id,
+                challengeId: c.id
+              });
+
+              saveAnnouncements();
               saveSessions();
               render();
             };
@@ -5100,6 +5145,7 @@
           const delBtn = document.getElementById(`del-c-${s.id}-${c.id}`);
           if (delBtn) {
             delBtn.onclick = () => {
+              if (!isAllowed) { alert('Bạn không có quyền thực hiện hành động này.'); return; }
               if (!confirm('Bạn có chắc chắn muốn xóa kèo thách đấu này?')) return;
               s.challenges = s.challenges.filter(x => x.id !== c.id);
               removeChallengeAnn(c.id);
@@ -5111,6 +5157,7 @@
           const scoreBtn = document.getElementById(`score-c-${s.id}-${c.id}`);
           if (scoreBtn) {
             scoreBtn.onclick = () => {
+              if (!isAllowed) { alert('Bạn không có quyền thực hiện hành động này.'); return; }
               const scoreStr = prompt('Nhập tỉ số trận đấu (ví dụ: 21-18 hoặc 21 18):');
               if (!scoreStr) return;
               const parts = scoreStr.split(/[- ]+/);
@@ -5124,27 +5171,35 @@
               c.score2 = s2;
               c.status = 'done';
               
-              // Tự động đăng kết quả thách đấu lên bảng tin!
+              // Cập nhật thông báo đã có từ Nhận kèo thành Kết quả thách đấu!
               state.announcements = state.announcements || [];
               const t1Players = c.team1.join(' & ');
               const t2Players = c.team2.join(' & ');
               const winnerText = s1 > s2 ? `${t1Players} thắng` : (s2 > s1 ? `${t2Players} thắng` : 'Hòa nhau');
               
-              state.announcements.push({
-                id: uid(),
-                category: 'tournament',
-                title: `🏆 KẾT QUẢ THÁCH ĐẤU: ${t1Players} VS ${t2Players}`,
-                content: `🔥 Trận thách đấu kịch tính của buổi tập đã kết thúc!\n\n🏸 Cặp 1: ${t1Players} (${s1} điểm)\n🏸 Cặp 2: ${t2Players} (${s2} điểm)\n\n📌 Chấp kèo: ${c.handicap || 'Đánh đều'}\n🏆 Kết quả: **${winnerText}**! Xin chúc mừng! 🎉`,
-                expireDate: null,
-                pinned: false,
-                author: 'Trọng tài thách đấu',
-                phone: 'Hệ thống',
-                createdAt: Date.now(),
-                reactions: { thumbs: [], heart: [], fire: [] },
-                isChallengeResult: true,
-                sessionId: s.id,
-                challengeId: c.id
-              });
+              const existingAnn = state.announcements.find(a => a.isChallengeResult && a.challengeId === c.id);
+              if (existingAnn) {
+                existingAnn.category = 'tournament';
+                existingAnn.title = `🏆 KẾT QUẢ THÁCH ĐẤU: ${t1Players} VS ${t2Players}`;
+                existingAnn.content = `🔥 Trận thách đấu kịch tính của buổi tập đã kết thúc!\n\n🏸 Cặp 1: ${t1Players} (${s1} điểm)\n🏸 Cặp 2: ${t2Players} (${s2} điểm)\n\n📌 Chấp kèo: ${c.handicap || 'Đánh đều'}\n🏆 Kết quả: **${winnerText}**! Xin chúc mừng! 🎉`;
+                existingAnn.createdAt = Date.now(); // Đưa tin này lên đầu bảng tin
+              } else {
+                state.announcements.push({
+                  id: uid(),
+                  category: 'tournament',
+                  title: `🏆 KẾT QUẢ THÁCH ĐẤU: ${t1Players} VS ${t2Players}`,
+                  content: `🔥 Trận thách đấu kịch tính của buổi tập đã kết thúc!\n\n🏸 Cặp 1: ${t1Players} (${s1} điểm)\n🏸 Cặp 2: ${t2Players} (${s2} điểm)\n\n📌 Chấp kèo: ${c.handicap || 'Đánh đều'}\n🏆 Kết quả: **${winnerText}**! Xin chúc mừng! 🎉`,
+                  expireDate: null,
+                  pinned: false,
+                  author: 'Trọng tài thách đấu',
+                  phone: 'Hệ thống',
+                  createdAt: Date.now(),
+                  reactions: { thumbs: [], heart: [], fire: [] },
+                  isChallengeResult: true,
+                  sessionId: s.id,
+                  challengeId: c.id
+                });
+              }
               
               saveAnnouncements();
               saveSessions();
@@ -5155,6 +5210,7 @@
           const revertBtn = document.getElementById(`revert-c-${s.id}-${c.id}`);
           if (revertBtn) {
             revertBtn.onclick = () => {
+              if (!isAllowed) { alert('Bạn không có quyền thực hiện hành động này.'); return; }
               c.status = 'pending';
               removeChallengeAnn(c.id);
               saveSessions();
@@ -5165,10 +5221,23 @@
           const reopenBtn = document.getElementById(`reopen-c-${s.id}-${c.id}`);
           if (reopenBtn) {
             reopenBtn.onclick = () => {
+              if (!isAllowed) { alert('Bạn không có quyền thực hiện hành động này.'); return; }
               c.status = 'accepted';
               c.score1 = null;
               c.score2 = null;
-              removeChallengeAnn(c.id);
+              
+              // Cập nhật lại tin tức thành trạng thái chưa có kết quả (Nhận kèo)
+              state.announcements = state.announcements || [];
+              const t1Players = c.team1.join(' & ');
+              const t2Players = c.team2.join(' & ');
+              const existingAnn = state.announcements.find(a => a.isChallengeResult && a.challengeId === c.id);
+              if (existingAnn) {
+                existingAnn.category = 'match';
+                existingAnn.title = `🏸 KÈO GIAO LƯU THÁCH ĐẤU: ${t1Players} VS ${t2Players}`;
+                existingAnn.content = `🔥 Trận thách đấu đã chính thức được nhận kèo!\n\n🏸 Cặp 1: ${t1Players}\n🏸 Cặp 2: ${t2Players}\n\n📌 Chấp kèo: ${c.handicap || 'Đánh đều (không chấp)'}\n\nTrận đấu sẽ sớm được diễn ra trong buổi tập. Hãy cùng dự đoán và cổ vũ cho hai đội nhé! 🏸⚡`;
+              }
+              
+              saveAnnouncements();
               saveSessions();
               render();
             };
