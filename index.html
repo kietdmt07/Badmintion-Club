@@ -4435,16 +4435,18 @@
   function renderSessionCard(s){
     const mKey = sessionMonthKey(s);
     const court = state.courts.find(c => c.id === s.courtId);
-    const yes = Object.entries(s.votes).filter(([,v]) => v === 'yes').map(([name]) => name);
-    const no = Object.entries(s.votes).filter(([,v]) => v === 'no').map(([name]) => name);
-    const full = s.max && yes.length >= s.max;
+    const passes = s.passes || {};
 
     // Tính số lượng cố định và vãng lai tham gia thực tế
-    const passes = s.passes || {};
     let fixedPlaying = 0;
     let casualPlaying = 0;
     let totalFixed = 0;
     let totalCasual = 0;
+    
+    // Thống kê danh sách tham gia (yes) và vắng (no) thực tế
+    const yes = [];
+    const no = [];
+
     state.members.forEach(m => {
       const t = (m.monthlyType || {})[mKey] || '';
       const v = s.votes[m.name];
@@ -4456,15 +4458,35 @@
           totalFixed++;
           if (v === 'yes' && !hasPassed) {
             fixedPlaying++;
+            if (!yes.includes(m.name)) yes.push(m.name);
+          } else if (hasPassed || v === 'no') {
+            if (!no.includes(m.name)) no.push(m.name);
           }
         } else if (t === 'casual') {
           totalCasual++;
-          if (v === 'yes' && !isReceiver) {
+          if (v === 'yes' || isReceiver) {
             casualPlaying++;
+            if (!yes.includes(m.name)) yes.push(m.name);
+          } else if (v === 'no') {
+            if (!no.includes(m.name)) no.push(m.name);
           }
         }
       }
     });
+
+    // Bổ sung phiếu bầu của các tài khoản đã bị xóa hoặc thành viên cũ ngoài danh sách hiện tại
+    const currentNames = state.members.map(m => m.name);
+    Object.entries(s.votes).forEach(([name, v]) => {
+      if (!currentNames.includes(name)) {
+        if (v === 'yes') {
+          if (!yes.includes(name)) yes.push(name);
+        } else if (v === 'no') {
+          if (!no.includes(name)) no.push(name);
+        }
+      }
+    });
+
+    const full = s.max && yes.length >= s.max;
     s.costs = s.costs || { court: 0, water: 0, shuttle: 0, other: 0 };
     const shares = computeShares(s);
 
@@ -4474,7 +4496,6 @@
       .filter(Boolean);
 
     // Xây dựng danh sách hiển thị gồm thành viên hiện tại đã đăng ký + thành viên đã xoá có lịch sử vote
-    const currentNames = state.members.map(m => m.name);
     const displayMembers = state.members.filter(m => {
       const curType = (m.monthlyType || {})[mKey] || '';
       return curType === 'fixed' || curType === 'casual';
