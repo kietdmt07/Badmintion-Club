@@ -599,8 +599,70 @@
         return null;
       }
 
-      // Admin và Owner có toàn quyền thay đổi
-      if (currentRole === 'admin' || isOwner()) {
+      // Owner kietdmt có toàn quyền thay đổi
+      if (isOwner()) {
+        return next;
+      }
+
+      // Đối với Admin thường (không phải Owner kietdmt), áp dụng các giới hạn bảo mật nghiêm ngặt
+      if (currentRole === 'admin') {
+        // 1. Ngăn chặn thêm mới thành viên với quyền Admin/Owner
+        const newMembers = next.filter(m => !prev.some(o => o.id === m.id));
+        for (const nm of newMembers) {
+          if (nm.role === 'admin' || nm.role === 'owner') {
+            console.error('Security block: regular admin attempted to add Admin/Owner.');
+            return null;
+          }
+        }
+
+        for (let i = 0; i < prev.length; i++) {
+          const pM = prev[i];
+          const nM = next.find(x => x.id === pM.id);
+
+          // 2. Ngăn chặn xóa Admin/Owner hoặc chính mình
+          if (!nM) {
+            if (pM.role === 'admin' || isOwner(pM)) {
+              console.error('Security block: regular admin attempted to delete Admin/Owner.');
+              return null;
+            }
+            continue;
+          }
+
+          // So sánh thay đổi của từng người dùng
+          const diffs = [];
+          for (const k in pM) {
+            if (JSON.stringify(pM[k]) !== JSON.stringify(nM[k])) diffs.push(k);
+          }
+          for (const k in nM) {
+            if (!(k in pM)) diffs.push(k);
+          }
+
+          if (diffs.length > 0) {
+            // 3. Ngăn chặn thay đổi thông tin của Owner kietdmt
+            if (isOwner(pM)) {
+              console.error('Security block: regular admin attempted to modify Owner kietdmt.');
+              return null;
+            }
+
+            // 4. Ngăn tự ý thay đổi quyền hạn/trạng thái của chính mình
+            if (pM.id === currentUser.id) {
+              if (diffs.includes('role') || diffs.includes('status')) {
+                console.error('Security block: admin attempted self role/status modification.');
+                return null;
+              }
+            }
+
+            // 5. Ngăn chặn bổ nhiệm Admin/Owner mới
+            if (pM.role !== 'admin' && nM.role === 'admin') {
+              console.error('Security block: regular admin attempted to appoint a new Admin.');
+              return null;
+            }
+            if (nM.role === 'owner') {
+              console.error('Security block: regular admin attempted to appoint an Owner.');
+              return null;
+            }
+          }
+        }
         return next;
       }
 
