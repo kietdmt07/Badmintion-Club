@@ -389,9 +389,16 @@
       return false; 
     }
     try {
-      const nowStr = new Date().toISOString();
-      const { error } = await sb.from('bc_data').upsert({ key, value: val, updated_at: nowStr });
+      const authUser = state.me ? state.me.username : '';
+      const pwHash = state.myPasswordHash || (state.rememberData ? state.rememberData.password : '');
+      const { error } = await sb.rpc('bc_save_data', {
+        p_key: key,
+        p_value: val,
+        p_auth_username: authUser,
+        p_auth_password_hash: pwHash
+      });
       if (error) throw error;
+      const nowStr = new Date().toISOString();
       state.saveError = null;
       state.lastUpdated[key] = nowStr;
       hideLoading();
@@ -440,6 +447,11 @@
   }
   async function loadKey(key, fallback){
     try {
+      if (key === 'bc_members') {
+        const { data, error } = await sb.rpc('bc_get_members');
+        if (error) throw error;
+        return data || fallback;
+      }
       const { data, error } = await sb.from('bc_data').select('value, updated_at').eq('key', key).maybeSingle();
       if (error) throw error;
       if (data) {
@@ -504,43 +516,21 @@
           return null;
         }
         
+        const authUser = state.me ? state.me.username : '';
+        const pwHash = state.myPasswordHash || (state.rememberData ? state.rememberData.password : '');
+        const { error: saveError } = await sb.rpc('bc_save_data', {
+          p_key: key,
+          p_value: updatedVal,
+          p_auth_username: authUser,
+          p_auth_password_hash: pwHash,
+          p_last_known_updated: lastKnownUpdated
+        });
+        if (saveError) throw saveError;
+        
         const nowStr = new Date().toISOString();
-        let success = false;
-        
-        if (!data) {
-          const { data: insertData, error: insertError } = await sb.from('bc_data')
-            .insert({ key, value: updatedVal, updated_at: nowStr })
-            .select();
-          if (insertError) throw insertError;
-          if (insertData && insertData.length > 0) {
-            success = true;
-          }
-        } else {
-          let query = sb.from('bc_data')
-            .update({ value: updatedVal, updated_at: nowStr })
-            .eq('key', key);
-          
-          if (lastKnownUpdated) {
-            query = query.eq('updated_at', lastKnownUpdated);
-          } else {
-            query = query.is('updated_at', null);
-          }
-          
-          const { data: updateData, error: updateError } = await query.select();
-          if (updateError) throw updateError;
-          if (updateData && updateData.length > 0) {
-            success = true;
-          }
-        }
-        
-        if (success) {
-          state.lastUpdated[key] = nowStr;
-          hideLoading();
-          return updatedVal;
-        } else {
-          console.warn(`Xung đột đồng thời khi ghi key "${key}". Thử lại lần ${attempt}...`);
-          await new Promise(r => setTimeout(r, 100 + Math.random() * 150));
-        }
+        state.lastUpdated[key] = nowStr;
+        hideLoading();
+        return updatedVal;
       } catch (e) {
         console.error(`Lỗi mutate key "${key}" lần thử ${attempt}:`, e);
         if (attempt === maxRetries) {
@@ -864,12 +854,31 @@
 
     state.myUsername = lsGet('bc_my_username');
     state.rememberData = lsGet('bc_remember');
-    if (!state.myUsername && state.rememberData && state.rememberData.username) {
+    if (state.rememberData && state.rememberData.username) {
       const passwordHash = state.rememberData.password && state.rememberData.password.length < 64 
         ? await hashPassword(state.rememberData.password, state.rememberData.username)
         : state.rememberData.password;
-      const found = state.members.find(m => normUsername(m.username) === normUsername(state.rememberData.username) && m.password === passwordHash);
-      if (found) state.myUsername = found.username;
+      try {
+        const { data: found } = await sb.rpc('bc_verify_login', {
+          p_username: state.rememberData.username,
+          p_password_hash: passwordHash
+        });
+        if (found) {
+          state.myUsername = found.username;
+          state.myPasswordHash = passwordHash;
+        } else {
+          state.myUsername = null;
+          state.rememberData = null;
+          saveRemember(null);
+          saveMyUsername();
+        }
+      } catch (e) {
+        console.error('Lỗi kiểm tra tự động đăng nhập:', e);
+        state.myUsername = null;
+      }
+    } else {
+      state.myUsername = null;
+      saveMyUsername();
     }
     resolveMe();
   }
@@ -1435,30 +1444,32 @@
         
         showLoading('Đang đăng nhập...');
         try {
-          state.members = await loadKey('bc_members', state.members);
-          const found = state.members.find(m => normUsername(m.username) === username);
-          if (!found) { 
-            state.authError = 'Không tìm thấy tên đăng nhập này.'; 
-            hideLoading();
-            render(); 
-            return; 
-          }
           const passwordHash = await hashPassword(password, username);
-          if (found.password !== passwordHash) { 
-            state.authError = 'Sai mật khẩu.'; 
+          const { data: found, error: authError } = await sb.rpc('bc_verify_login', {
+            p_username: username,
+            p_password_hash: passwordHash
+          });
+          if (authError || !found) {
+            state.authError = 'Sai tên đăng nhập hoặc mật khẩu, hoặc tài khoản chưa được duyệt / bị khóa.';
             hideLoading();
-            render(); 
-            return; 
+            render();
+            return;
           }
-          state.myUsername = found.username; state.authError = ''; saveMyUsername();
+          state.myUsername = found.username;
+          state.myPasswordHash = passwordHash;
+          state.authError = '';
+          saveMyUsername();
           if (remember) { state.rememberData = { username: found.username, password: passwordHash }; saveRemember(state.rememberData); }
           else { state.rememberData = null; saveRemember(null); }
+          
+          // Sau khi đăng nhập thành công, tải lại toàn bộ danh sách thành viên mới nhất từ database
+          state.members = await loadKey('bc_members', state.members);
           resolveMe(); 
           hideLoading();
           render();
         } catch (err) {
           hideLoading();
-          state.authError = 'Lỗi kết nối mạng, vui lòng thử lại.';
+          state.authError = 'Lỗi kết nối mạng hoặc cơ sở dữ liệu, vui lòng thử lại.';
           render();
         }
       };
