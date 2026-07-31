@@ -1597,13 +1597,32 @@
   }
 
   function renderTabs(){
-    const wrap = el(`<div style="display:flex; gap:6px; margin-bottom:1rem; border-bottom:1px solid #E3E0D6; padding-bottom:0.75rem;"></div>`);
-    let tabs = [['sessions','Lịch đánh'],['tournament','Giải đấu'],['members','Thành viên'],['fund','Quỹ & chi phí'],['report','Báo cáo']];
+    const wrap = el(`<div style="display:flex; gap:6px; margin-bottom:1rem; border-bottom:1px solid #E3E0D6; padding-bottom:0.75rem; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;"></div>`);
+    
+    let tabs = [
+      ['sessions', 'Lịch đánh'],
+      ['tournament', 'Giải đấu'],
+      ['fund', 'Quỹ & chi phí'],
+      ['report', 'Báo cáo']
+    ];
     if (canManage()) {
       tabs.push(['payments_mgr', 'Duyệt & Cấu hình']);
     }
-    tabs.forEach(([key,label]) => {
-      const t = el(`<div class="bc-tab ${state.tab===key?'active':''}">${label}</div>`);
+    tabs.push(['members', 'Thành viên']);
+
+    const isManager = canManage();
+    const pendingMembersCount = isManager ? state.members.filter(m => m.status === 'pending').length : 0;
+    const pendingPaymentsCount = isManager ? (state.paymentRequests || []).filter(r => r.status === 'pending').length : 0;
+
+    tabs.forEach(([key, label]) => {
+      let badgeHtml = '';
+      if (key === 'members' && pendingMembersCount > 0) {
+        badgeHtml = ` <span style="display:inline-flex; align-items:center; justify-content:center; background:#EF4444; color:#FFF; font-size:10px; font-weight:700; width:16px; height:16px; border-radius:50%; margin-left:5px; line-height:1; flex-shrink:0;">${pendingMembersCount}</span>`;
+      } else if (key === 'payments_mgr' && pendingPaymentsCount > 0) {
+        badgeHtml = ` <span style="display:inline-flex; align-items:center; justify-content:center; background:#EF4444; color:#FFF; font-size:10px; font-weight:700; width:16px; height:16px; border-radius:50%; margin-left:5px; line-height:1; flex-shrink:0;">${pendingPaymentsCount}</span>`;
+      }
+
+      const t = el(`<div class="bc-tab ${state.tab===key?'active':''}" style="display:inline-flex; align-items:center; flex-shrink:0;">${label}${badgeHtml}</div>`);
       t.onclick = () => { state.tab = key; render(); refreshAll(); };
       wrap.appendChild(t);
     });
@@ -2216,67 +2235,77 @@
     wrap.appendChild(progressCard);
 
     const rowsMembers = canManage() ? state.members : state.members.filter(m => state.me && m.id === state.me.id);
-    wrap.appendChild(el(`<h3 style="font-size:15px; color:#1B4332; margin-bottom:8px;">Tổng hợp chi phí thành viên · ${monthLabel(month)}</h3>`));
-    if (rowsMembers.length === 0) {
-      wrap.appendChild(el(`<div class="bc-empty">Không có dữ liệu.</div>`));
-    } else {
-      const tbl = el(`<div class="bc-card" style="overflow-x:auto;"><table style="width:100%; font-size:13px; border-collapse:collapse; min-width:560px;">
-        <tr style="color:#8a877d; text-align:left;">
-          <th style="padding:6px 4px;">Thành viên</th><th style="padding:6px 4px;">Buổi</th>
-          <th style="padding:6px 4px; text-align:right;">Phải trả</th><th style="padding:6px 4px; text-align:right;">Đã nộp</th>
-          <th style="padding:6px 4px; text-align:right;">Điều chỉnh</th><th style="padding:6px 4px; text-align:right;">Còn lại</th>
-        </tr>
-      </table></div>`);
-      const table = tbl.querySelector('table');
-      rowsMembers.forEach(m => {
-        const s = summary[m.id] || { count: 0, owed: 0 };
-        const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
-        const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
-        const editable = canManage();
-        const canEditPaid = isOwner();
-        const tr = el(`<tr style="border-top:1px solid #F1EFE8;">
-          <td style="padding:6px 4px;">${escapeHtml(m.name)}</td>
-          <td style="padding:6px 4px;">${s.count}</td>
-          <td style="padding:6px 4px; text-align:right;">${formatVND(s.owed)}</td>
-          <td style="padding:6px 4px; text-align:right;">${canEditPaid ? `<input class="bc-input" type="number" min="0" id="paid-${m.id}" value="${p.paid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : formatVND(p.paid||0)}</td>
-          <td style="padding:6px 4px; text-align:right;">${isAdmin() ? `<input class="bc-input" type="number" id="prepaid-${m.id}" value="${p.prepaid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : (p.prepaid ? formatVND(p.prepaid, true) : '0đ')}</td>
-          <td style="padding:6px 4px; text-align:right; font-weight:500; color:${remaining>0?'#993C1D':'#27500A'};">${formatVND(remaining)}</td>
-        </tr>`);
-        table.appendChild(tr);
-      });
-      wrap.appendChild(tbl);
-      if (canManage()) {
-        const saveBtn = el(`<button class="bc-btn small" id="pay-save" style="margin-bottom:1rem;">Lưu số tiền đã nộp</button>`);
-        wrap.appendChild(saveBtn);
-        setTimeout(() => {
-          saveBtn.onclick = async () => {
-            const entries = {};
-            rowsMembers.forEach(m => {
-              const paidEl = document.getElementById(`paid-${m.id}`);
-              const prepaidEl = document.getElementById(`prepaid-${m.id}`);
-              if (paidEl || prepaidEl) {
-                const existingPayment = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
-                const paidVal = paidEl ? (parseFloat(paidEl.value) || 0) : (existingPayment.paid || 0);
-                const prepaidVal = prepaidEl ? (parseFloat(prepaidEl.value) || 0) : (existingPayment.prepaid || 0);
-                const today = new Date().toISOString().slice(0, 10);
-                let payDate = existingPayment.date || today;
-                if (paidVal !== (existingPayment.paid || 0) || prepaidVal !== (existingPayment.prepaid || 0)) {
-                  payDate = today;
+    const isCollapsed = !!state.memberFundCollapsed;
+    const headerEl = el(`<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+      <h3 style="font-size:15px; color:#1B4332; margin:0; font-family:'Oswald', sans-serif; letter-spacing:0.5px;">👥 TỔNG HỢP CHI PHÍ THÀNH VIÊN</h3>
+      <button class="bc-btn outline small" id="toggle-member-fund-btn" style="padding:2px 8px; font-size:11px; display:flex; align-items:center; gap:4px;">
+        ${isCollapsed ? '➕ Hiện bảng chi phí' : '➖ Ẩn bảng chi phí'}
+      </button>
+    </div>`);
+    wrap.appendChild(headerEl);
+
+    if (!isCollapsed) {
+      if (rowsMembers.length === 0) {
+        wrap.appendChild(el(`<div class="bc-empty">Không có dữ liệu.</div>`));
+      } else {
+        const tbl = el(`<div class="bc-card" style="overflow-x:auto;"><table style="width:100%; font-size:13px; border-collapse:collapse; min-width:560px;">
+          <tr style="color:#8a877d; text-align:left;">
+            <th style="padding:6px 4px;">Thành viên</th><th style="padding:6px 4px;">Buổi</th>
+            <th style="padding:6px 4px; text-align:right;">Phải trả</th><th style="padding:6px 4px; text-align:right;">Đã nộp</th>
+            <th style="padding:6px 4px; text-align:right;">Điều chỉnh</th><th style="padding:6px 4px; text-align:right;">Còn lại</th>
+          </tr>
+        </table></div>`);
+        const table = tbl.querySelector('table');
+        rowsMembers.forEach(m => {
+          const s = summary[m.id] || { count: 0, owed: 0 };
+          const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
+          const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
+          const editable = canManage();
+          const canEditPaid = isOwner();
+          const tr = el(`<tr style="border-top:1px solid #F1EFE8;">
+            <td style="padding:6px 4px;">${escapeHtml(m.name)}</td>
+            <td style="padding:6px 4px;">${s.count}</td>
+            <td style="padding:6px 4px; text-align:right;">${formatVND(s.owed)}</td>
+            <td style="padding:6px 4px; text-align:right;">${canEditPaid ? `<input class="bc-input" type="number" min="0" id="paid-${m.id}" value="${p.paid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : formatVND(p.paid||0)}</td>
+            <td style="padding:6px 4px; text-align:right;">${isAdmin() ? `<input class="bc-input" type="number" id="prepaid-${m.id}" value="${p.prepaid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : (p.prepaid ? formatVND(p.prepaid, true) : '0đ')}</td>
+            <td style="padding:6px 4px; text-align:right; font-weight:500; color:${remaining>0?'#993C1D':'#27500A'};">${formatVND(remaining)}</td>
+          </tr>`);
+          table.appendChild(tr);
+        });
+        wrap.appendChild(tbl);
+        if (canManage()) {
+          const saveBtn = el(`<button class="bc-btn small" id="pay-save" style="margin-bottom:1rem;">Lưu số tiền đã nộp</button>`);
+          wrap.appendChild(saveBtn);
+          setTimeout(() => {
+            saveBtn.onclick = async () => {
+              const entries = {};
+              rowsMembers.forEach(m => {
+                const paidEl = document.getElementById(`paid-${m.id}`);
+                const prepaidEl = document.getElementById(`prepaid-${m.id}`);
+                if (paidEl || prepaidEl) {
+                  const existingPayment = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
+                  const paidVal = paidEl ? (parseFloat(paidEl.value) || 0) : (existingPayment.paid || 0);
+                  const prepaidVal = prepaidEl ? (parseFloat(prepaidEl.value) || 0) : (existingPayment.prepaid || 0);
+                  const today = new Date().toISOString().slice(0, 10);
+                  let payDate = existingPayment.date || today;
+                  if (paidVal !== (existingPayment.paid || 0) || prepaidVal !== (existingPayment.prepaid || 0)) {
+                    payDate = today;
+                  }
+                  entries[m.id] = { paid: paidVal, prepaid: prepaidVal, date: payDate };
                 }
-                entries[m.id] = { paid: paidVal, prepaid: prepaidVal, date: payDate };
-              }
-            });
-            await mutatePayments(latest => {
-              const updated = Object.assign({}, latest);
-              Object.keys(entries).forEach(mid => {
-                updated[mid] = Object.assign({}, updated[mid] || {});
-                updated[mid][month] = entries[mid];
               });
-              return updated;
-            });
-            render();
-          };
-        }, 0);
+              await mutatePayments(latest => {
+                const updated = Object.assign({}, latest);
+                Object.keys(entries).forEach(mid => {
+                  updated[mid] = Object.assign({}, updated[mid] || {});
+                  updated[mid][month] = entries[mid];
+                });
+                return updated;
+              });
+              render();
+            };
+          }, 0);
+        }
       }
     }
 
@@ -2634,6 +2663,13 @@
 
     setTimeout(() => {
       document.getElementById('fund-month').onchange = (e) => { state.viewMonth = e.target.value || monthKey(); render(); };
+      const toggleBtn = document.getElementById('toggle-member-fund-btn');
+      if (toggleBtn) {
+        toggleBtn.onclick = () => {
+          state.memberFundCollapsed = !state.memberFundCollapsed;
+          render();
+        };
+      }
     }, 0);
     return wrap;
   }
