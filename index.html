@@ -964,6 +964,14 @@
 
   // ---------- RENDER ROOT ----------
   function render(){
+    const appEl = document.getElementById('app');
+    if (appEl) {
+      if (state.me && state.tab === 'report') {
+        appEl.style.maxWidth = '1000px';
+      } else {
+        appEl.style.maxWidth = '720px';
+      }
+    }
     const root = document.getElementById('root');
     root.innerHTML = '';
     if (!state.me) {
