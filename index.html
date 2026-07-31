@@ -2690,10 +2690,11 @@
       </div>
       <div style="display:flex; align-items:center; gap:6px; min-width:160px;">
         <span style="font-size:13px; color:#6b7a73; white-space:nowrap; font-weight:500;">Phân loại:</span>
-        <select class="bc-select" id="report-type-filter" style="padding:4px 8px; font-size:13px; width:110px;">
+        <select class="bc-select" id="report-type-filter" style="padding:4px 8px; font-size:13px; width:130px;">
           <option value="all" ${state.reportTypeFilter === 'all' ? 'selected' : ''}>Tất cả</option>
           <option value="fixed" ${state.reportTypeFilter === 'fixed' ? 'selected' : ''}>Cố định</option>
           <option value="casual" ${state.reportTypeFilter === 'casual' ? 'selected' : ''}>Vãng lai</option>
+          <option value="unpaid" ${state.reportTypeFilter === 'unpaid' ? 'selected' : ''}>Chưa nộp tiền</option>
         </select>
       </div>
     </div>`);
@@ -2777,7 +2778,8 @@
     let initialVisibleCount = 0;
     allReportData.forEach(row => {
       const matchSearch = row.member.name.toLowerCase().includes(state.reportSearch.toLowerCase());
-      const matchType = state.reportTypeFilter === 'all' || row.type === state.reportTypeFilter;
+      const matchType = state.reportTypeFilter === 'all' || 
+                        (state.reportTypeFilter === 'unpaid' ? row.remaining > 0 : row.type === state.reportTypeFilter);
       if (matchSearch && matchType) {
         totalOwed += row.owed;
         totalPaid += row.paid;
@@ -2832,7 +2834,8 @@
 
       allReportData.forEach(row => {
         const matchSearch = row.member.name.toLowerCase().includes(state.reportSearch.toLowerCase());
-        const matchType = state.reportTypeFilter === 'all' || row.type === state.reportTypeFilter;
+        const matchType = state.reportTypeFilter === 'all' || 
+                          (state.reportTypeFilter === 'unpaid' ? row.remaining > 0 : row.type === state.reportTypeFilter);
         const displayStyle = (matchSearch && matchType) ? '' : 'display: none;';
 
         let warningHtml = '';
@@ -2912,7 +2915,8 @@
           const remaining = parseFloat(tr.getAttribute('data-remaining')) || 0;
 
           const matchSearch = name.includes(query);
-          const matchType = typeSel === 'all' || type === typeSel;
+          const matchType = typeSel === 'all' || 
+                            (typeSel === 'unpaid' ? remaining > 0 : type === typeSel);
 
           if (matchSearch && matchType) {
             tr.style.display = '';
@@ -2958,7 +2962,8 @@
 
         const currentFilteredData = allReportData.filter(row => {
           const matchSearch = row.member.name.toLowerCase().includes(query);
-          const matchType = typeSel === 'all' || row.type === typeSel;
+          const matchType = typeSel === 'all' || 
+                            (typeSel === 'unpaid' ? row.remaining > 0 : row.type === typeSel);
           return matchSearch && matchType;
         });
 
