@@ -2805,7 +2805,7 @@
     const summaryCards = el(`<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:1.25rem;">
       <div class="bc-card" style="padding:12px 16px; display:flex; flex-direction:column; gap:4px; margin:0;">
         <span style="font-size:11px; color:#6b7a73; font-weight:600; text-transform:uppercase;">${role() === 'r2' ? '📅 Số buổi tham gia' : '📅 Số buổi đã chốt'}</span>
-        <strong id="report-sessions-sum" style="font-size:18px; color:#1B4332; font-family:'Outfit', sans-serif;">${role() === 'r2' && allReportData[0] ? allReportData[0].playedCount : totalLocked} buổi</strong>
+        <strong id="report-sessions-sum" style="font-size:18px; color:#1B4332; font-family:'Outfit', sans-serif;">${role() === 'r2' ? (allReportData[0] ? allReportData[0].playedCount : 0) : totalLocked} buổi</strong>
       </div>
       <div class="bc-card" style="padding:12px 16px; display:flex; flex-direction:column; gap:4px; margin:0;">
         <span style="font-size:11px; color:#6b7a73; font-weight:600; text-transform:uppercase;">${role() === 'r2' ? '💰 Tiền cần đóng' : '💰 Phải thu lọc'}</span>
