@@ -288,6 +288,51 @@
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
+  async function sendSystemEmail(to, subject, htmlBody) {
+    const config = (state.settings && state.settings.mailServer) || {};
+    if (!config.enabled) {
+      console.warn('Mail server is disabled. Email not sent.');
+      return false;
+    }
+    try {
+      const payload = {
+        Host: config.host || 'smtp.gmail.com',
+        Port: parseInt(config.port) || 465,
+        Username: config.username || '',
+        Password: config.password || '',
+        To: to,
+        From: `${config.senderName || 'CLB ARON Badminton'} <${config.senderEmail || config.username || ''}>`,
+        Subject: subject,
+        Body: htmlBody,
+        Action: "Send",
+        nocache: Math.floor(1e6 * Math.random() + 1)
+      };
+
+      const response = await fetch("https://smtpjs.com/v3/smtpjs.aspx?", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        console.error('SMTPJS network error:', response.statusText);
+        return false;
+      }
+
+      const res = await response.text();
+      if (res === 'OK') {
+        return true;
+      } else {
+        console.error('SmtpJS send error:', res);
+        return false;
+      }
+    } catch (e) {
+      console.error('Email sending exception:', e);
+      return false;
+    }
+  }
   function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
   function formatVND(n, signed){
     n = Math.round(n || 0);
@@ -803,6 +848,9 @@
         accountName: settingsRaw.accountName || (settingsRaw.payment && settingsRaw.payment.accountName) || '',
         qrUrl: settingsRaw.qrUrl || (settingsRaw.payment && settingsRaw.payment.qrUrl) || ''
       }, settingsRaw.payment || {});
+      state.settings.mailServer = Object.assign({
+        enabled: false, host: 'smtp.gmail.com', port: 465, username: '', password: '', senderEmail: '', senderName: ''
+      }, settingsRaw.mailServer || {});
       state.tournaments = state.settings.tournaments || [];
       state.payments = dbMap['bc_payments'] || {};
       state.fund = dbMap['bc_fund'] || {};
@@ -822,6 +870,9 @@
         accountName: settingsRaw.accountName || (settingsRaw.payment && settingsRaw.payment.accountName) || '',
         qrUrl: settingsRaw.qrUrl || (settingsRaw.payment && settingsRaw.payment.qrUrl) || ''
       }, settingsRaw.payment || {});
+      state.settings.mailServer = Object.assign({
+        enabled: false, host: 'smtp.gmail.com', port: 465, username: '', password: '', senderEmail: '', senderName: ''
+      }, settingsRaw.mailServer || {});
       state.tournaments = state.settings.tournaments || [];
       state.payments = await loadKey('bc_payments', {});
       state.fund = await loadKey('bc_fund', {});
@@ -998,6 +1049,9 @@
 
   function showForgotPasswordDialog() {
     let dialog = document.getElementById('forgot-pw-dialog');
+    const mailConfig = (state.settings && state.settings.mailServer) || {};
+    const isEmailEnabled = mailConfig.enabled && mailConfig.username;
+
     if (!dialog) {
       dialog = el(`<dialog id="forgot-pw-dialog" style="border:none; border-radius:12px; padding:0; max-width:420px; width:90%; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); background:#FAF8F5;">
         <div style="padding:1.5rem;">
@@ -1005,20 +1059,39 @@
             <h3 style="font-size:16px; font-weight:600; color:#1B4332; margin:0;">Khôi phục mật khẩu</h3>
             <button id="forgot-pw-close" style="background:none; border:none; font-size:20px; color:#8a877d; cursor:pointer; line-height:1;">&times;</button>
           </div>
-          <div style="font-size:13px; color:#6b7a73; margin-bottom:1rem; line-height:1.5;">
-            Hệ thống sử dụng mật khẩu mã hóa bảo mật. Để khôi phục mật khẩu mới, bạn vui lòng liên hệ trực tiếp với các <strong>Admin</strong> hoặc <strong>Ban điều hành (R1)</strong> hoạt động dưới đây:
+          
+          <div id="forgot-pw-email-flow" style="display:${isEmailEnabled ? 'block' : 'none'};">
+            <div style="font-size:13px; color:#6b7a73; margin-bottom:1rem; line-height:1.5;">
+              Nhập email hoặc tên đăng nhập của bạn. Hệ thống sẽ tạo một mật khẩu tạm thời mới và gửi về email đã đăng ký của bạn.
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:1rem;">
+              <input class="bc-input" id="forgot-pw-input" placeholder="Tên đăng nhập hoặc Email..." />
+              <button class="bc-btn" id="forgot-pw-submit-btn">Gửi mật khẩu tạm qua Email</button>
+              <div id="forgot-pw-msg" style="font-size:12px; margin-top:4px;"></div>
+            </div>
+            <div style="text-align:center; border-top:1px dashed #E3E0D6; padding-top:10px; font-size:12px;">
+              <a href="#" id="forgot-pw-switch-contact" style="color:#1B4332; font-weight:500;">Liên hệ trực tiếp Admin</a>
+            </div>
           </div>
-          <div id="forgot-pw-admins" style="display:flex; flex-direction:column; gap:10px; max-height:240px; overflow-y:auto; margin-bottom:1rem;">
-          </div>
-          <div style="text-align:right;">
-            <button class="bc-btn outline" id="forgot-pw-close-btn" style="padding:6px 16px; font-size:13px;">Đóng</button>
+
+          <div id="forgot-pw-contact-flow" style="display:${isEmailEnabled ? 'none' : 'block'};">
+            <div style="font-size:13px; color:#6b7a73; margin-bottom:1rem; line-height:1.5;">
+              Hệ thống sử dụng mật khẩu mã hóa bảo mật. Để khôi phục mật khẩu mới, bạn vui lòng liên hệ trực tiếp với các <strong>Admin</strong> hoặc <strong>Ban điều hành (R1)</strong> hoạt động dưới đây:
+            </div>
+            <div id="forgot-pw-admins" style="display:flex; flex-direction:column; gap:10px; max-height:240px; overflow-y:auto; margin-bottom:1rem;">
+            </div>
+            ${isEmailEnabled ? `
+              <div style="text-align:center; border-top:1px dashed #E3E0D6; padding-top:10px; font-size:12px; margin-bottom:10px;">
+                <a href="#" id="forgot-pw-switch-email" style="color:#1B4332; font-weight:500;">Khôi phục qua Email</a>
+              </div>
+            ` : ''}
+            <div style="text-align:right;">
+              <button class="bc-btn outline" id="forgot-pw-close-btn" style="padding:6px 16px; font-size:13px;">Đóng</button>
+            </div>
           </div>
         </div>
       </dialog>`);
       document.body.appendChild(dialog);
-      
-      document.getElementById('forgot-pw-close').onclick = () => dialog.close();
-      document.getElementById('forgot-pw-close-btn').onclick = () => dialog.close();
       
       const style = document.createElement('style');
       style.textContent = `
@@ -1028,13 +1101,36 @@
         }
       `;
       document.head.appendChild(style);
+    } else {
+      document.getElementById('forgot-pw-email-flow').style.display = isEmailEnabled ? 'block' : 'none';
+      document.getElementById('forgot-pw-contact-flow').style.display = isEmailEnabled ? 'none' : 'block';
     }
-    
+
+    document.getElementById('forgot-pw-close').onclick = () => dialog.close();
+    const closeBtn = document.getElementById('forgot-pw-close-btn');
+    if (closeBtn) closeBtn.onclick = () => dialog.close();
+
+    const switchContact = document.getElementById('forgot-pw-switch-contact');
+    if (switchContact) {
+      switchContact.onclick = (e) => {
+        e.preventDefault();
+        document.getElementById('forgot-pw-email-flow').style.display = 'none';
+        document.getElementById('forgot-pw-contact-flow').style.display = 'block';
+      };
+    }
+
+    const switchEmail = document.getElementById('forgot-pw-switch-email');
+    if (switchEmail) {
+      switchEmail.onclick = (e) => {
+        e.preventDefault();
+        document.getElementById('forgot-pw-email-flow').style.display = 'block';
+        document.getElementById('forgot-pw-contact-flow').style.display = 'none';
+      };
+    }
+
     const adminsContainer = document.getElementById('forgot-pw-admins');
     adminsContainer.innerHTML = '';
-    
     const contactable = state.members.filter(m => (m.role === 'admin' || m.role === 'r1') && m.status === 'active');
-    
     if (contactable.length === 0) {
       adminsContainer.appendChild(el(`<div style="font-size:13px; color:#993C1D; text-align:center; padding:10px;">Chưa có Admin nào hoạt động trong CLB.</div>`));
     } else {
@@ -1056,7 +1152,91 @@
         </div>`));
       });
     }
-    
+
+    const submitBtn = document.getElementById('forgot-pw-submit-btn');
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        const inputVal = document.getElementById('forgot-pw-input').value.trim().toLowerCase();
+        const msg = document.getElementById('forgot-pw-msg');
+        if (!inputVal) {
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Vui lòng nhập tên đăng nhập hoặc email.';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        msg.style.color = '#6b7a73';
+        msg.textContent = 'Đang kiểm tra thông tin tài khoản...';
+
+        const targetMember = state.members.find(m => 
+          m.username.toLowerCase() === inputVal || 
+          (m.email && m.email.toLowerCase() === inputVal)
+        );
+
+        if (!targetMember) {
+          submitBtn.disabled = false;
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Không tìm thấy tài khoản phù hợp với thông tin đã nhập.';
+          return;
+        }
+
+        if (!targetMember.email) {
+          submitBtn.disabled = false;
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Tài khoản này chưa có email đăng ký, không thể khôi phục tự động. Vui lòng liên hệ Admin.';
+          return;
+        }
+
+        const tempPassword = Math.random().toString(36).slice(-6).toUpperCase();
+        
+        try {
+          msg.textContent = 'Đang cập nhật mật khẩu mới lên máy chủ...';
+          const passwordHash = await hashPassword(tempPassword, targetMember.username);
+
+          let saveOk = false;
+          await mutateMembers(latest => {
+            saveOk = true;
+            return latest.map(x => x.id === targetMember.id ? Object.assign({}, x, { password: passwordHash }) : x);
+          });
+
+          if (!saveOk) {
+            submitBtn.disabled = false;
+            msg.style.color = '#993C1D';
+            msg.textContent = 'Lỗi cập nhật mật khẩu. Vui lòng thử lại.';
+            return;
+          }
+
+          msg.textContent = 'Đang gửi email chứa mật khẩu mới...';
+
+          const emailSubject = `[CLB ARON] Khôi phục mật khẩu tài khoản`;
+          const emailBody = `<h3>Chào ${targetMember.name},</h3>
+            <p>Yêu cầu khôi phục mật khẩu cho tài khoản <strong>${targetMember.username}</strong> đã được thực hiện thành công.</p>
+            <p>Mật khẩu tạm thời mới của bạn là: <strong style="font-size:16px; color:#993C1D; background:#FAECE7; padding:4px 8px; border-radius:4px; font-family:monospace;">${tempPassword}</strong></p>
+            <p>Vui lòng sử dụng mật khẩu này để đăng nhập và đổi lại mật khẩu cá nhân ngay tại tab <strong>Thành viên</strong> sau khi đăng nhập.</p>
+            <br/>
+            <p>Trân trọng,</p>
+            <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+
+          const emailSent = await sendSystemEmail(targetMember.email, emailSubject, emailBody);
+
+          submitBtn.disabled = false;
+          if (emailSent) {
+            msg.style.color = '#27500A';
+            msg.textContent = `Mật khẩu tạm thời đã được gửi tới email ${targetMember.email}. Vui lòng kiểm tra hộp thư (và cả mục Spam nếu không thấy).`;
+            document.getElementById('forgot-pw-input').value = '';
+          } else {
+            msg.style.color = '#993C1D';
+            msg.textContent = 'Lỗi gửi email. Mật khẩu đã được đặt lại nhưng không gửi đi được. Vui lòng báo với Admin để được cấp mật khẩu mới.';
+          }
+        } catch (e) {
+          submitBtn.disabled = false;
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
+          console.error(e);
+        }
+      };
+    }
+
     dialog.showModal();
   }
 
@@ -1473,6 +1653,18 @@
           // Sau khi đăng nhập thành công, tải lại toàn bộ danh sách thành viên mới nhất từ database
           state.members = await loadKey('bc_members', state.members);
           resolveMe(); 
+
+          // Xử lý chuyển hướng thanh toán tự động nếu khớp username
+          if (state.pendingRedirect) {
+            const pr = state.pendingRedirect;
+            if (state.me && state.me.username.toLowerCase() === pr.user.toLowerCase()) {
+              state.tab = 'fund';
+              state.viewMonth = pr.month;
+              state.autoOpenPaymentQr = true;
+            }
+            state.pendingRedirect = null;
+          }
+
           hideLoading();
           render();
         } catch (err) {
@@ -1521,7 +1713,35 @@
             render(); 
             return; 
           }
-          state.myUsername = username; state.authError = ''; saveMyUsername(); resolveMe(); render();
+          state.myUsername = username; state.authError = ''; saveMyUsername(); resolveMe();
+
+          // Gửi thông báo đăng ký mới cho Admin qua email
+          const isFirst = state.members.length <= 1;
+          if (!isFirst) {
+            const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email).map(m => m.email);
+            if (adminEmails.length > 0) {
+              const emailSubject = `[CLB ARON] Yêu cầu phê duyệt thành viên mới: ${name}`;
+              const emailBody = `<h3>Chào Ban quản trị CLB ARON,</h3>
+                <p>Hệ thống vừa nhận được yêu cầu đăng ký thành viên mới:</p>
+                <ul>
+                  <li><strong>Họ tên:</strong> ${name}</li>
+                  <li><strong>Tên đăng nhập (username):</strong> ${username}</li>
+                  <li><strong>Email:</strong> ${email}</li>
+                  <li><strong>Số điện thoại:</strong> ${phone || 'Chưa cập nhật'}</li>
+                  <li><strong>Trình độ:</strong> ${level}</li>
+                </ul>
+                <p>Vui lòng đăng nhập vào ứng dụng và chuyển sang tab <strong>Thành viên</strong> để duyệt hoặc từ chối yêu cầu đăng ký này.</p>
+                <br/>
+                <p>Trân trọng,</p>
+                <p><strong>Hệ thống CLB Cầu lông ARON</strong></p>`;
+              
+              adminEmails.forEach(adminEmail => {
+                sendSystemEmail(adminEmail, emailSubject, emailBody);
+              });
+            }
+          }
+
+          render();
         } catch (err) {
           hideLoading();
           state.authError = 'Lỗi kết nối mạng, vui lòng thử lại.';
@@ -1627,6 +1847,26 @@
       wrap.appendChild(t);
     });
     return wrap;
+  }
+
+  function checkUrlRedirects() {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const redirectMonth = params.get('month');
+    const redirectUser = params.get('user');
+
+    if (action === 'pay' && redirectMonth) {
+      state.viewMonth = redirectMonth;
+      state.tab = 'fund';
+      
+      if (state.me && state.me.username.toLowerCase() === (redirectUser || '').toLowerCase()) {
+        state.autoOpenPaymentQr = true;
+      } else {
+        state.authMode = 'login';
+        state.authError = `Vui lòng đăng nhập tài khoản @${redirectUser} để tiếp tục thanh toán phí tháng ${monthLabel(redirectMonth)}.`;
+        state.pendingRedirect = { action, month: redirectMonth, user: redirectUser };
+      }
+    }
   }
 
   // ---------- MEMBERS ----------
@@ -1929,7 +2169,20 @@
         if (m.status === 'pending') {
           const approveBtn = el(`<button class="bc-btn small" style="background:#27500A; border-color:#27500A; color:#FFF; font-weight:500;">Chấp nhận</button>`);
           approveBtn.onclick = async () => {
-            await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { status: 'active' }) : x));
+            showLoading('Đang duyệt tài khoản...');
+            const ok = await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { status: 'active' }) : x));
+            hideLoading();
+            if (ok && m.email) {
+              const emailSubject = `[CLB ARON] Tài khoản của bạn đã được phê duyệt`;
+              const emailBody = `<h3>Chào ${m.name},</h3>
+                <p>Chúc mừng! Yêu cầu đăng ký tài khoản của bạn tại CLB Cầu lông ARON đã được Ban quản trị phê duyệt thành công.</p>
+                <p>Bây giờ bạn đã có thể đăng nhập vào ứng dụng và bắt đầu tham gia hoạt động cùng CLB.</p>
+                <p><strong>Tên đăng nhập của bạn:</strong> ${m.username}</p>
+                <br/>
+                <p>Trân trọng,</p>
+                <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+              sendSystemEmail(m.email, emailSubject, emailBody);
+            }
             render();
           };
           actions.appendChild(approveBtn);
@@ -1937,7 +2190,19 @@
           const rejectBtn = el(`<button class="bc-btn danger small">Xoá</button>`);
           rejectBtn.onclick = async () => {
             if (!confirm(`Từ chối và xoá đăng ký của ${m.name}?`)) return;
-            await mutateMembers(latest => latest.filter(x => x.id !== m.id));
+            showLoading('Đang từ chối đăng ký...');
+            const ok = await mutateMembers(latest => latest.filter(x => x.id !== m.id));
+            hideLoading();
+            if (ok && m.email) {
+              const emailSubject = `[CLB ARON] Yêu cầu đăng ký tài khoản bị từ chối`;
+              const emailBody = `<h3>Chào ${m.name},</h3>
+                <p>Yêu cầu đăng ký tài khoản của bạn tại CLB Cầu lông ARON đã không được Ban quản trị phê duyệt.</p>
+                <p>Nếu có bất kỳ thắc mắc nào hoặc muốn đăng ký lại, vui lòng liên hệ trực tiếp với Ban quản trị.</p>
+                <br/>
+                <p>Trân trọng,</p>
+                <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+              sendSystemEmail(m.email, emailSubject, emailBody);
+            }
             render();
           };
           actions.appendChild(rejectBtn);
@@ -2253,6 +2518,7 @@
             <th style="padding:6px 4px;">Thành viên</th><th style="padding:6px 4px;">Buổi</th>
             <th style="padding:6px 4px; text-align:right;">Phải trả</th><th style="padding:6px 4px; text-align:right;">Đã nộp</th>
             <th style="padding:6px 4px; text-align:right;">Điều chỉnh</th><th style="padding:6px 4px; text-align:right;">Còn lại</th>
+            ${canManage() ? `<th style="padding:6px 4px; text-align:center;">Nhắc nợ</th>` : ''}
           </tr>
         </table></div>`);
         const table = tbl.querySelector('table');
@@ -2262,6 +2528,20 @@
           const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
           const editable = canManage();
           const canEditPaid = isOwner();
+          
+          let actionTdHtml = '';
+          if (canManage()) {
+            if (remaining > 0 && m.email) {
+              actionTdHtml = `<td style="padding:6px 4px; text-align:center;">
+                <button class="bc-btn outline small" id="remind-mail-${m.id}-${month}" style="padding:2px 6px; font-size:11px; border-color:#993C1D; color:#993C1D;">📧 Email</button>
+              </td>`;
+            } else if (remaining > 0 && !m.email) {
+              actionTdHtml = `<td style="padding:6px 4px; text-align:center; color:#8a877d; font-size:11px; font-style:italic;">Thiếu Email</td>`;
+            } else {
+              actionTdHtml = `<td style="padding:6px 4px; text-align:center; color:#27500A; font-weight:600; font-size:11px;">Đã xong</td>`;
+            }
+          }
+
           const tr = el(`<tr style="border-top:1px solid #F1EFE8;">
             <td style="padding:6px 4px;">${escapeHtml(m.name)}</td>
             <td style="padding:6px 4px;">${s.count}</td>
@@ -2269,7 +2549,55 @@
             <td style="padding:6px 4px; text-align:right;">${canEditPaid ? `<input class="bc-input" type="number" min="0" id="paid-${m.id}" value="${p.paid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : formatVND(p.paid||0)}</td>
             <td style="padding:6px 4px; text-align:right;">${isAdmin() ? `<input class="bc-input" type="number" id="prepaid-${m.id}" value="${p.prepaid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : (p.prepaid ? formatVND(p.prepaid, true) : '0đ')}</td>
             <td style="padding:6px 4px; text-align:right; font-weight:500; color:${remaining>0?'#993C1D':'#27500A'};">${formatVND(remaining)}</td>
+            ${actionTdHtml}
           </tr>`);
+
+          if (canManage() && remaining > 0 && m.email) {
+            const btn = tr.querySelector(`#remind-mail-${m.id}-${month}`);
+            if (btn) {
+              btn.onclick = async () => {
+                if (!confirm(`Gửi email nhắc nợ tháng ${monthLabel(month)} cho thành viên ${m.name}?`)) return;
+                
+                btn.disabled = true;
+                btn.textContent = 'Đang gửi...';
+                
+                const origin = window.location.origin + window.location.pathname;
+                const payUrl = `${origin}?action=pay&month=${month}&user=${m.username}`;
+                
+                const emailSubject = `[CLB ARON] Thông báo hoàn thành phí chơi cầu - Tháng ${monthLabel(month)}`;
+                const emailBody = `<h3>Chào ${m.name},</h3>
+                  <p>Ban quản trị CLB ARON gửi thông báo nhắc nhở về khoản phí chơi cầu chưa hoàn thành của bạn trong tháng <strong>${monthLabel(month)}</strong>:</p>
+                  <table style="border-collapse:collapse; font-size:13px; width:100%; max-width:400px; margin-bottom:15px;">
+                    <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Số buổi tham gia:</td><td style="padding:6px 0; font-weight:600; text-align:right;">${s.count} buổi</td></tr>
+                    <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Tổng phí phải trả:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#993C1D;">${formatVND(s.owed)}</td></tr>
+                    <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Đã nộp + Điều chỉnh:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#27500A;">${formatVND((p.paid||0) + (p.prepaid||0))}</td></tr>
+                    <tr style="border-bottom:1px solid #E3E0D6; font-size:14px;"><td style="padding:6px 0; font-weight:700; color:#1B4332;">Còn lại cần đóng:</td><td style="padding:6px 0; font-weight:700; text-align:right; color:#993C1D;">${formatVND(remaining)}</td></tr>
+                  </table>
+                  
+                  <p>Bạn vui lòng thanh toán khoản phí còn lại bằng cách bấm vào liên kết dưới đây để mở giao diện nộp tiền qua mã QR tự động của câu lạc bộ:</p>
+                  <p style="margin:20px 0;">
+                    <a href="${payUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">👉 Nộp Tiền Qua QR Ngay</a>
+                  </p>
+                  <p style="font-size:11px; color:#8a877d;">(Sau khi chuyển khoản thành công, vui lòng nhập số tiền đã đóng trên giao diện để gửi yêu cầu phê duyệt cho Thủ quỹ).</p>
+                  <br/>
+                  <p>Trân trọng,</p>
+                  <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+                
+                const sent = await sendSystemEmail(m.email, emailSubject, emailBody);
+                btn.disabled = false;
+                if (sent) {
+                  btn.textContent = 'Đã nhắc';
+                  btn.style.borderColor = '#27500A';
+                  btn.style.color = '#27500A';
+                  alert(`Đã gửi email nhắc nợ thành công cho ${m.name}!`);
+                } else {
+                  btn.textContent = 'Lỗi gửi';
+                  alert('Lỗi gửi email. Vui lòng kiểm tra lại cấu hình Mail Server.');
+                }
+              };
+            }
+          }
+
           table.appendChild(tr);
         });
         wrap.appendChild(tbl);
@@ -2376,6 +2704,26 @@
       setTimeout(() => {
         const btnQr = document.getElementById('r2-pay-qr-btn');
         const panelQr = document.getElementById('r2-qr-panel');
+
+        if (state.autoOpenPaymentQr && btnQr && panelQr) {
+          state.autoOpenPaymentQr = false; // consume flag
+          if (panelQr.style.display === 'none') {
+            panelQr.style.display = 'block';
+            btnQr.textContent = 'Ẩn thông tin nộp tiền';
+            const r2PaidInput = document.getElementById('r2-paid');
+            if (r2PaidInput) {
+              r2PaidInput.value = (p.paid || 0) + Math.max(0, remaining);
+            }
+            const r2NoteInput = document.getElementById('r2-note');
+            if (r2NoteInput) {
+              r2NoteInput.value = [myMember.name, myMember.phone || '', monthLabel(month).replace(/^Th/, '')].filter(Boolean).join(' - ');
+            }
+            setTimeout(() => {
+              panelQr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
+        }
+
         if (btnQr) btnQr.onclick = () => {
           const isHidden = panelQr.style.display === 'none';
           panelQr.style.display = isHidden ? 'block' : 'none';
@@ -2442,6 +2790,29 @@
               hideLoading();
               if (ok) {
                 alert('Gửi yêu cầu xác nhận chuyển tiền thành công! Vui lòng chờ Admin duyệt.');
+
+                // Gửi email thông báo cho Admin
+                const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email).map(m => m.email);
+                if (adminEmails.length > 0) {
+                  const emailSubject = `[CLB ARON] Yêu cầu duyệt đóng phí mới từ: ${myMember.name}`;
+                  const emailBody = `<h3>Chào Ban quản trị CLB ARON,</h3>
+                    <p>Hệ thống nhận được một yêu cầu duyệt đóng phí mới từ thành viên <strong>${myMember.name}</strong>:</p>
+                    <ul>
+                      <li><strong>Tháng đóng phí:</strong> ${monthLabel(month)}</li>
+                      <li><strong>Số tiền thực nộp (paid):</strong> ${formatVND(r2Paid)}</li>
+                      <li><strong>Số tiền nộp trước (prepaid):</strong> ${formatVND(r2Prepaid)}</li>
+                      <li><strong>Ghi chú chuyển khoản:</strong> ${note || 'Không có'}</li>
+                      <li><strong>Ngày gửi:</strong> ${formatDate(today)}</li>
+                    </ul>
+                    <p>Vui lòng đăng nhập vào hệ thống và chuyển sang tab <strong>Duyệt & Cấu hình</strong> để phê duyệt.</p>
+                    <br/>
+                    <p>Trân trọng,</p>
+                    <p><strong>Hệ thống CLB Cầu lông ARON</strong></p>`;
+                  
+                  adminEmails.forEach(adminEmail => {
+                    sendSystemEmail(adminEmail, emailSubject, emailBody);
+                  });
+                }
                 render();
               } else {
                 alert('Có lỗi xảy ra khi gửi yêu cầu xác nhận chuyển tiền.');
@@ -3110,6 +3481,22 @@
               });
               
               const memberObj = state.members.find(m => m.id === r.memberId);
+              if (memberObj && memberObj.email) {
+                const emailSubject = `[CLB ARON] Yêu cầu đóng phí của bạn đã được duyệt`;
+                const emailBody = `<h3>Chào ${memberObj.name},</h3>
+                  <p>Yêu cầu đóng phí tháng <strong>${monthLabel(r.month)}</strong> của bạn đã được Ban quản trị phê duyệt thành công.</p>
+                  <ul>
+                    <li><strong>Số tiền:</strong> ${formatVND(r.paid + r.prepaid)}</li>
+                    <li><strong>Người duyệt:</strong> ${state.me ? state.me.name : 'Admin'}</li>
+                    <li><strong>Ngày duyệt:</strong> ${new Date().toLocaleDateString('vi-VN')}</li>
+                  </ul>
+                  <p>Cảm ơn bạn đã hoàn thành nghĩa vụ đóng phí của mình!</p>
+                  <br/>
+                  <p>Trân trọng,</p>
+                  <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+                sendSystemEmail(memberObj.email, emailSubject, emailBody);
+              }
+
               if (memberObj && memberObj.phone) {
                 if (confirm(`Đã duyệt yêu cầu thành công! Bạn có muốn mở Zalo để gửi thông báo xác nhận cho thành viên ${memberObj.name} không?`)) {
                   const notifyText = `Chào ${memberObj.name}, yêu cầu nộp phí tháng ${monthLabel(r.month)} của bạn đã được duyệt thành công. Cảm ơn bạn!`;
@@ -3134,6 +3521,18 @@
             if (!reqOk) { alert('Lỗi từ chối yêu cầu.'); return; }
 
             const memberObj = state.members.find(m => m.id === r.memberId);
+            if (memberObj && memberObj.email) {
+              const emailSubject = `[CLB ARON] Yêu cầu đóng phí bị từ chối`;
+              const emailBody = `<h3>Chào ${memberObj.name},</h3>
+                <p>Yêu cầu xác nhận đóng phí tháng <strong>${monthLabel(r.month)}</strong> của bạn chưa được phê duyệt.</p>
+                <p><strong>Lý do:</strong> Thông tin chuyển khoản chưa khớp hoặc chưa nhận được tiền thực tế.</p>
+                <p>Bạn vui lòng kiểm tra lại thông tin giao dịch hoặc liên hệ với Ban quản trị/Thủ quỹ để được hỗ trợ.</p>
+                <br/>
+                <p>Trân trọng,</p>
+                <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+              sendSystemEmail(memberObj.email, emailSubject, emailBody);
+            }
+
             if (memberObj && memberObj.phone) {
               if (confirm(`Đã từ chối yêu cầu. Bạn có muốn mở Zalo để thông báo cho thành viên ${memberObj.name} kiểm tra lại không?`)) {
                 const notifyText = `Chào ${memberObj.name}, yêu cầu nộp phí tháng ${monthLabel(r.month)} của bạn chưa được duyệt (thông tin chuyển khoản chưa khớp). Bạn vui lòng kiểm tra lại hoặc liên hệ Thủ quỹ nhé!`;
@@ -3225,6 +3624,63 @@
       <div style="font-size:12px; color:#8a877d; margin-top:8px;">Chọn ảnh nhẹ (dưới ~1MB) để tránh lưu trữ quá nặng.</div>
     </div>`);
     wrap.appendChild(brandCard);
+
+    // 4.5 Cấu hình Mail Server (SMTP)
+    const mailConfig = state.settings.mailServer || { enabled: false, host: 'smtp.gmail.com', port: 465, username: '', password: '', senderEmail: '', senderName: '' };
+    const mailServerSection = el(`<div class="bc-card" style="margin-top:1rem;">
+      <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332; font-family:'Oswald', sans-serif; letter-spacing:0.5px;">✉️ Cấu hình Mail Server (SMTP)</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#1B4332; font-weight:600;">
+          <input type="checkbox" id="cfg-mail-enabled" ${mailConfig.enabled ? 'checked' : ''} ${isAdm ? '' : 'disabled'} /> Kích hoạt hệ thống Email thông báo
+        </label>
+        <div style="font-size:12px; color:#8a877d; margin-bottom:4px;">(Gửi email khôi phục mật khẩu, phê duyệt thành viên/đóng phí, và nhắc nợ)</div>
+        
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="flex:2; min-width:180px;">
+            <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">SMTP Host:</label>
+            <input class="bc-input" id="cfg-mail-host" value="${escapeHtml(mailConfig.host || '')}" placeholder="smtp.gmail.com" ${isAdm ? '' : 'disabled'} />
+          </div>
+          <div style="flex:1; min-width:90px;">
+            <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">SMTP Port:</label>
+            <input class="bc-input" type="number" id="cfg-mail-port" value="${mailConfig.port || 465}" placeholder="465" ${isAdm ? '' : 'disabled'} />
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:180px;">
+            <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">SMTP Username (Email tài khoản):</label>
+            <input class="bc-input" id="cfg-mail-username" value="${escapeHtml(mailConfig.username || '')}" placeholder="example@gmail.com" ${isAdm ? '' : 'disabled'} />
+          </div>
+          <div style="flex:1; min-width:180px;">
+            <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">SMTP Password (Mật khẩu ứng dụng):</label>
+            <input class="bc-input" type="password" id="cfg-mail-password" value="${escapeHtml(mailConfig.password || '')}" placeholder="••••••••••••••••" ${isAdm ? '' : 'disabled'} />
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:180px;">
+            <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">Email gửi đi (Sender Email):</label>
+            <input class="bc-input" id="cfg-mail-sender-email" value="${escapeHtml(mailConfig.senderEmail || '')}" placeholder="Bỏ trống để giống SMTP Username" ${isAdm ? '' : 'disabled'} />
+          </div>
+          <div style="flex:1; min-width:180px;">
+            <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">Tên hiển thị người gửi (Sender Name):</label>
+            <input class="bc-input" id="cfg-mail-sender-name" value="${escapeHtml(mailConfig.senderName || '')}" placeholder="CLB Cầu lông ARON" ${isAdm ? '' : 'disabled'} />
+          </div>
+        </div>
+
+        ${isAdm ? `
+          <div style="display:flex; gap:8px; align-items:flex-end; margin-top:6px; flex-wrap:wrap;">
+            <button class="bc-btn small" id="cfg-mail-save-btn">Lưu cấu hình Mail Server</button>
+            <div style="display:flex; gap:4px; align-items:center;">
+              <input class="bc-input" id="cfg-mail-test-to" placeholder="Email nhận thử..." style="width:160px; padding:4px 8px; font-size:12px;" />
+              <button class="bc-btn outline small" id="cfg-mail-test-btn" style="padding:4px 8px; font-size:12px;">Gửi thử</button>
+            </div>
+          </div>
+        ` : ''}
+        <span id="cfg-mail-msg" style="font-size:12px; margin-top:2px;"></span>
+      </div>
+    </div>`);
+    wrap.appendChild(mailServerSection);
 
     // 5. Cấu hình Sân cầu lông
     const courtsSection = el(`<div class="bc-card" style="margin-top:1rem;">
@@ -3351,6 +3807,87 @@
           });
         };
       }
+
+      const cfgMailSaveBtn = document.getElementById('cfg-mail-save-btn');
+      if (cfgMailSaveBtn) cfgMailSaveBtn.onclick = async () => {
+        const enabled = document.getElementById('cfg-mail-enabled').checked;
+        const host = document.getElementById('cfg-mail-host').value.trim();
+        const port = parseInt(document.getElementById('cfg-mail-port').value) || 465;
+        const username = document.getElementById('cfg-mail-username').value.trim();
+        const password = document.getElementById('cfg-mail-password').value.trim();
+        const senderEmail = document.getElementById('cfg-mail-sender-email').value.trim();
+        const senderName = document.getElementById('cfg-mail-sender-name').value.trim();
+        const msg = document.getElementById('cfg-mail-msg');
+
+        cfgMailSaveBtn.disabled = true;
+        msg.style.color = '#6b7a73';
+        msg.textContent = 'Đang lưu cấu hình...';
+
+        state.settings.mailServer = {
+          enabled,
+          host,
+          port,
+          username,
+          password,
+          senderEmail,
+          senderName
+        };
+
+        const ok = await saveSettings();
+        if (ok) {
+          msg.style.color = '#27500A';
+          msg.textContent = 'Đã lưu cấu hình Mail Server!';
+          setTimeout(() => { render(); }, 1200);
+        } else {
+          cfgMailSaveBtn.disabled = false;
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Lưu cấu hình thất bại.';
+        }
+      };
+
+      const cfgMailTestBtn = document.getElementById('cfg-mail-test-btn');
+      if (cfgMailTestBtn) cfgMailTestBtn.onclick = async () => {
+        const testTo = document.getElementById('cfg-mail-test-to').value.trim();
+        const msg = document.getElementById('cfg-mail-msg');
+        if (!testTo) {
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Vui lòng nhập email nhận thử.';
+          return;
+        }
+
+        cfgMailTestBtn.disabled = true;
+        msg.style.color = '#6b7a73';
+        msg.textContent = 'Đang gửi email thử...';
+
+        // Đọc các thông số hiện tại từ Form để test
+        const enabled = document.getElementById('cfg-mail-enabled').checked;
+        const host = document.getElementById('cfg-mail-host').value.trim();
+        const port = parseInt(document.getElementById('cfg-mail-port').value) || 465;
+        const username = document.getElementById('cfg-mail-username').value.trim();
+        const password = document.getElementById('cfg-mail-password').value.trim();
+        const senderEmail = document.getElementById('cfg-mail-sender-email').value.trim() || username;
+        const senderName = document.getElementById('cfg-mail-sender-name').value.trim() || 'CLB ARON Badminton';
+
+        const originalMailConfig = state.settings.mailServer;
+        state.settings.mailServer = { enabled: true, host, port, username, password, senderEmail, senderName };
+
+        const testSubject = `[CLB ARON] Kiểm tra cấu hình Mail Server`;
+        const testBody = `<h3>Cấu hình Mail Server của bạn hoạt động chính xác!</h3>
+          <p>Email này được gửi lúc ${new Date().toLocaleString('vi-VN')} để kiểm tra cấu hình SMTP.</p>
+          <p>Chúc mừng! Hệ thống gửi email tự động đã sẵn sàng hoạt động.</p>`;
+
+        const success = await sendSystemEmail(testTo, testSubject, testBody);
+        state.settings.mailServer = originalMailConfig; // khôi phục cấu hình cũ
+
+        cfgMailTestBtn.disabled = false;
+        if (success) {
+          msg.style.color = '#27500A';
+          msg.textContent = `Gửi email thử thành công đến ${testTo}!`;
+        } else {
+          msg.style.color = '#993C1D';
+          msg.textContent = 'Gửi email thử thất bại. Vui lòng kiểm tra lại cấu hình SMTP.';
+        }
+      };
 
       // 7. Cấu hình quản lý sân
       const ctAddBtn = document.getElementById('ct-add');
@@ -5788,6 +6325,7 @@
   ensureAuth().then(() => loadAll()).then(() => {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('root').style.display = 'block';
+    checkUrlRedirects();
     render();
     startAutoRefresh();
 
