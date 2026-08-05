@@ -2776,7 +2776,7 @@
 
     const rowsMembers = canManage() ? state.members : state.members.filter(m => state.me && m.id === state.me.id);
     const isCollapsed = !!state.memberFundCollapsed;
-    const remindAllBtnHtml = (canManage() && !isCollapsed)
+    const remindAllBtnHtml = (isAdmin() && !isCollapsed)
       ? `<button class="bc-btn danger small" id="remind-all-debt-btn" style="padding:2px 8px; font-size:11px; background:#993C1D; border-color:#993C1D; color:#FFF; display:flex; align-items:center; gap:4px;">📢 Nhắc nợ tất cả</button>`
       : '';
     const headerEl = el(`<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
@@ -2799,7 +2799,7 @@
             <th style="padding:6px 4px;">Thành viên</th><th style="padding:6px 4px;">Buổi</th>
             <th style="padding:6px 4px; text-align:right;">Phải trả</th><th style="padding:6px 4px; text-align:right;">Đã nộp</th>
             <th style="padding:6px 4px; text-align:right;">Điều chỉnh</th><th style="padding:6px 4px; text-align:right;">Còn lại</th>
-            ${canManage() ? `<th style="padding:6px 4px; text-align:center;">Nhắc nợ</th>` : ''}
+            ${isAdmin() ? `<th style="padding:6px 4px; text-align:center;">Nhắc nợ</th>` : ''}
           </tr>
         </table></div>`);
         const table = tbl.querySelector('table');
@@ -2811,7 +2811,7 @@
           const canEditPaid = isOwner();
           
           let actionTdHtml = '';
-          if (canManage()) {
+          if (isAdmin()) {
             if (remaining > 0 && m.email) {
               actionTdHtml = `<td style="padding:6px 4px; text-align:center;">
                 <button class="bc-btn outline small" id="remind-mail-${m.id}-${month}" style="padding:2px 6px; font-size:11px; border-color:#993C1D; color:#993C1D;">📧 Email</button>
@@ -2833,7 +2833,7 @@
             ${actionTdHtml}
           </tr>`);
 
-          if (canManage() && remaining > 0 && m.email) {
+          if (isAdmin() && remaining > 0 && m.email) {
             const btn = tr.querySelector(`#remind-mail-${m.id}-${month}`);
             if (btn) {
               btn.onclick = async () => {
@@ -3349,6 +3349,7 @@
       const remindAllBtn = document.getElementById('remind-all-debt-btn');
       if (remindAllBtn) {
         remindAllBtn.onclick = async () => {
+          if (!isAdmin()) return;
           const debtors = rowsMembers.filter(m => {
             const s = summary[m.id] || { count: 0, owed: 0 };
             const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
