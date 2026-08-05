@@ -1872,13 +1872,14 @@
           // Gửi thông báo đăng ký mới cho Admin qua email
           const isFirst = state.members.length <= 1;
           if (!isFirst) {
-            const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email).map(m => m.email);
+            const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email && normUsername(m.username) !== 'kietdmt').map(m => m.email);
             if (adminEmails.length > 0) {
               let origin = window.location.origin + window.location.pathname;
               if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
                 origin = 'https://kietdmt.github.io/ARON-Badmintion-Club/';
               }
               const approveUrl = `${origin}?action=approve_member&user=${username}`;
+              const rejectUrl = `${origin}?action=reject_member&user=${username}`;
 
               const emailSubject = `[CLB ARON] Yêu cầu phê duyệt thành viên mới: ${name}`;
               const emailBody = `<h3>Chào Ban quản trị CLB ARON,</h3>
@@ -1890,11 +1891,12 @@
                   <li><strong>Số điện thoại:</strong> ${phone || 'Chưa cập nhật'}</li>
                   <li><strong>Trình độ:</strong> ${level}</li>
                 </ul>
-                <p>Vui lòng nhấp vào liên kết dưới đây để thực hiện phê duyệt nhanh tài khoản thành viên mới này:</p>
-                <p style="margin:20px 0;">
-                  <a href="${approveUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">👉 Duyệt Thành Viên Ngay</a>
+                <p>Vui lòng nhấp vào một trong các liên kết dưới đây để phê duyệt hoặc từ chối yêu cầu đăng ký này:</p>
+                <p style="margin:20px 0; display:flex; gap:12px;">
+                  <a href="${approveUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px; margin-right:8px;">👉 Duyệt Thành Viên</a>
+                  <a href="${rejectUrl}" style="background:#993C1D; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">❌ Từ Chối</a>
                 </p>
-                <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp liên kết, nếu bạn chưa đăng nhập bằng tài khoản Admin, hệ thống sẽ yêu cầu đăng nhập trước khi tự động phê duyệt).</p>
+                <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp liên kết, nếu bạn chưa đăng nhập bằng tài khoản Admin, hệ thống sẽ yêu cầu đăng nhập trước khi tự động xử lý).</p>
                 <br/>
                 <p>Trân trọng,</p>
                 <p><strong>Hệ thống CLB Cầu lông ARON</strong></p>`;
@@ -2031,7 +2033,7 @@
         state.pendingRedirect = { action, month: redirectMonth, user: redirectUser };
       }
     } 
-    else if (action === 'approve_member' || action === 'approve_payment') {
+    else if (action === 'approve_member' || action === 'approve_payment' || action === 'reject_member' || action === 'reject_payment') {
       state.pendingAction = { action, user: redirectUser, month: redirectMonth };
       checkPendingAction();
     }
@@ -2134,6 +2136,77 @@
           sendSystemEmail(target.email, emailSubject, emailBody);
         }
         alert(`Đã duyệt thành công đóng phí tháng ${monthLabel(req.month)} của ${target.name}!`);
+      }
+      else if (pa.action === 'reject_member') {
+        const target = state.members.find(m => m.username.toLowerCase() === pa.user.toLowerCase());
+        if (!target) {
+          alert(`Không tìm thấy thành viên: ${pa.user}`);
+          return;
+        }
+        if (target.status !== 'pending') {
+          alert(`Thành viên ${target.name} đã được xử lý (hoạt động hoặc đã từ chối) trước đó.`);
+          return;
+        }
+        
+        const ok = await mutateMembers(latest => 
+          latest.filter(x => x.id !== target.id)
+        );
+        
+        if (ok) {
+          if (target.email) {
+            const emailSubject = `[CLB ARON] Yêu cầu đăng ký tài khoản bị từ chối`;
+            const emailBody = `<h3>Chào ${target.name},</h3>
+              <p>Yêu cầu đăng ký tài khoản của bạn tại CLB Cầu lông ARON đã bị Ban quản trị từ chối phê duyệt.</p>
+              <p>Vui lòng liên hệ Ban quản trị để được hỗ trợ giải đáp thắc mắc.</p>
+              <br/>
+              <p>Trân trọng,</p>
+              <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+            sendSystemEmail(target.email, emailSubject, emailBody);
+          }
+          alert(`Đã từ chối đăng ký của thành viên: ${target.name}`);
+        } else {
+          alert('Lỗi từ chối đăng ký thành viên.');
+        }
+      }
+      else if (pa.action === 'reject_payment') {
+        const target = state.members.find(m => m.username.toLowerCase() === pa.user.toLowerCase());
+        if (!target) {
+          alert(`Không tìm thấy thành viên: ${pa.user}`);
+          return;
+        }
+        
+        const req = (state.paymentRequests || []).find(r => 
+          r.memberId === target.id && 
+          r.month === pa.month && 
+          r.status === 'pending'
+        );
+        
+        if (!req) {
+          alert(`Không tìm thấy yêu cầu đóng phí chờ duyệt nào của ${target.name} trong tháng ${monthLabel(pa.month)}.`);
+          return;
+        }
+        
+        const reqOk = await mutatePaymentRequests(latest => {
+          const list = Array.isArray(latest) ? latest : [];
+          return list.map(x => x.id === req.id ? Object.assign({}, x, { status: 'rejected' }) : x);
+        });
+        
+        if (!reqOk) {
+          alert('Lỗi từ chối yêu cầu đóng phí.');
+          return;
+        }
+        
+        if (target.email) {
+          const emailSubject = `[CLB ARON] Yêu cầu đóng phí bị từ chối`;
+          const emailBody = `<h3>Chào ${target.name},</h3>
+            <p>Yêu cầu đóng phí tháng <strong>${monthLabel(req.month)}</strong> của bạn đã bị Ban quản trị từ chối phê duyệt.</p>
+            <p>Vui lòng kiểm tra lại thông tin chuyển khoản hoặc liên hệ Thủ quỹ để được hỗ trợ.</p>
+            <br/>
+            <p>Trân trọng,</p>
+            <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+          sendSystemEmail(target.email, emailSubject, emailBody);
+        }
+        alert(`Đã từ chối yêu cầu đóng phí tháng ${monthLabel(req.month)} của ${target.name}!`);
       }
     } catch (e) {
       console.error('Error handling pending action:', e);
@@ -3086,13 +3159,14 @@
                 alert('Gửi yêu cầu xác nhận chuyển tiền thành công! Vui lòng chờ Admin duyệt.');
 
                 // Gửi email thông báo cho Admin
-                const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email).map(m => m.email);
+                const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email && normUsername(m.username) !== 'kietdmt').map(m => m.email);
                 if (adminEmails.length > 0) {
                   let origin = window.location.origin + window.location.pathname;
                   if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
                     origin = 'https://kietdmt.github.io/ARON-Badmintion-Club/';
                   }
                   const approveUrl = `${origin}?action=approve_payment&user=${myMember.username}&month=${month}`;
+                  const rejectUrl = `${origin}?action=reject_payment&user=${myMember.username}&month=${month}`;
 
                   const emailSubject = `[CLB ARON] Yêu cầu duyệt đóng phí mới từ: ${myMember.name}`;
                   const emailBody = `<h3>Chào Ban quản trị CLB ARON,</h3>
@@ -3104,11 +3178,12 @@
                       <li><strong>Ghi chú chuyển khoản:</strong> ${note || 'Không có'}</li>
                       <li><strong>Ngày gửi:</strong> ${formatDate(today)}</li>
                     </ul>
-                    <p>Vui lòng nhấp vào liên kết dưới đây để thực hiện phê duyệt nhanh yêu cầu đóng phí này:</p>
-                    <p style="margin:20px 0;">
-                      <a href="${approveUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">👉 Duyệt Đóng Phí Ngay</a>
+                    <p>Vui lòng nhấp vào một trong các liên kết dưới đây để phê duyệt hoặc từ chối nhanh yêu cầu đóng phí này:</p>
+                    <p style="margin:20px 0; display:flex; gap:12px;">
+                      <a href="${approveUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px; margin-right:8px;">👉 Duyệt Đóng Phí</a>
+                      <a href="${rejectUrl}" style="background:#993C1D; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">❌ Từ Chối</a>
                     </p>
-                    <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp liên kết, nếu bạn chưa đăng nhập bằng tài khoản Admin, hệ thống sẽ yêu cầu đăng nhập trước khi tự động phê duyệt).</p>
+                    <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp liên kết, nếu bạn chưa đăng nhập bằng tài khoản Admin, hệ thống sẽ yêu cầu đăng nhập trước khi tự động xử lý).</p>
                     <br/>
                     <p>Trân trọng,</p>
                     <p><strong>Hệ thống CLB Cầu lông ARON</strong></p>`;
