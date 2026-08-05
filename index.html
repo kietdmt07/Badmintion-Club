@@ -382,6 +382,27 @@
     }
   }
   function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+  function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = el(`<div id="toast-container" style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none;"></div>`);
+      document.body.appendChild(container);
+    }
+    const bg = type === 'error' ? '#EF4444' : (type === 'warning' ? '#F59E0B' : '#2D6A4F');
+    const toast = el(`<div style="background:${bg}; color:#FFF; padding:12px 16px; border-radius:8px; font-size:13px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15); opacity:0; transform:translateY(20px); transition:all 0.3s ease; pointer-events:auto; display:flex; align-items:center; gap:8px;">
+      <span>${message}</span>
+    </div>`);
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    }, 10);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-20px)';
+      setTimeout(() => { toast.remove(); }, 300);
+    }, 3500);
+  }
   function formatVND(n, signed){
     n = Math.round(n || 0);
     const abs = Math.abs(n).toLocaleString('vi-VN');
@@ -2755,11 +2776,17 @@
 
     const rowsMembers = canManage() ? state.members : state.members.filter(m => state.me && m.id === state.me.id);
     const isCollapsed = !!state.memberFundCollapsed;
+    const remindAllBtnHtml = (canManage() && !isCollapsed)
+      ? `<button class="bc-btn danger small" id="remind-all-debt-btn" style="padding:2px 8px; font-size:11px; background:#993C1D; border-color:#993C1D; color:#FFF; display:flex; align-items:center; gap:4px;">📢 Nhắc nợ tất cả</button>`
+      : '';
     const headerEl = el(`<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
       <h3 style="font-size:15px; color:#1B4332; margin:0; font-family:'Oswald', sans-serif; letter-spacing:0.5px;">👥 TỔNG HỢP CHI PHÍ THÀNH VIÊN</h3>
-      <button class="bc-btn outline small" id="toggle-member-fund-btn" style="padding:2px 8px; font-size:11px; display:flex; align-items:center; gap:4px;">
-        ${isCollapsed ? '➕ Hiện bảng chi phí' : '➖ Ẩn bảng chi phí'}
-      </button>
+      <div style="display:flex; gap:8px; align-items:center;">
+        ${remindAllBtnHtml}
+        <button class="bc-btn outline small" id="toggle-member-fund-btn" style="padding:2px 8px; font-size:11px; display:flex; align-items:center; gap:4px;">
+          ${isCollapsed ? '➕ Hiện bảng chi phí' : '➖ Ẩn bảng chi phí'}
+        </button>
+      </div>
     </div>`);
     wrap.appendChild(headerEl);
 
@@ -2840,17 +2867,27 @@
                   <p>Trân trọng,</p>
                   <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
                 
-                const sent = await sendSystemEmail(m.email, emailSubject, emailBody);
-                btn.disabled = false;
-                if (sent) {
-                  btn.textContent = 'Đã nhắc';
-                  btn.style.borderColor = '#27500A';
-                  btn.style.color = '#27500A';
-                  alert(`Đã gửi email nhắc nợ thành công cho ${m.name}!`);
-                } else {
+                sendSystemEmail(m.email, emailSubject, emailBody).then(sent => {
+                  btn.disabled = false;
+                  if (sent) {
+                    btn.textContent = 'Đã nhắc';
+                    btn.style.borderColor = '#27500A';
+                    btn.style.color = '#27500A';
+                    showToast(`Đã gửi email nhắc nợ thành công cho ${m.name}!`);
+                  } else {
+                    btn.textContent = 'Lỗi gửi';
+                    showToast(`Lỗi gửi email nhắc nợ cho ${m.name}. Vui lòng kiểm tra lại cấu hình Mail Server.`, 'error');
+                  }
+                }).catch(e => {
+                  btn.disabled = false;
                   btn.textContent = 'Lỗi gửi';
-                  alert('Lỗi gửi email. Vui lòng kiểm tra lại cấu hình Mail Server.');
-                }
+                  showToast(`Lỗi gửi email nhắc nợ cho ${m.name}.`, 'error');
+                  console.error(e);
+                });
+                
+                // Cập nhật trạng thái UI lập tức
+                btn.textContent = 'Đang gửi...';
+                showToast(`Đang gửi email nhắc nợ cho ${m.name}...`, 'warning');
               };
             }
           }
@@ -3306,6 +3343,96 @@
         toggleBtn.onclick = () => {
           state.memberFundCollapsed = !state.memberFundCollapsed;
           render();
+        };
+      }
+
+      const remindAllBtn = document.getElementById('remind-all-debt-btn');
+      if (remindAllBtn) {
+        remindAllBtn.onclick = async () => {
+          const debtors = rowsMembers.filter(m => {
+            const s = summary[m.id] || { count: 0, owed: 0 };
+            const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
+            const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
+            return remaining > 0 && m.email;
+          });
+
+          if (debtors.length === 0) {
+            showToast('Không có thành viên nào cần nhắc nợ hoặc thiếu email.', 'warning');
+            return;
+          }
+
+          if (!confirm(`Bạn có chắc chắn muốn gửi email nhắc nợ tự động song song cho tất cả ${debtors.length} thành viên còn nợ trong tháng ${monthLabel(month)} này không?`)) {
+            return;
+          }
+
+          remindAllBtn.disabled = true;
+          remindAllBtn.textContent = 'Đang gửi...';
+
+          let origin = window.location.origin + window.location.pathname;
+          if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
+            origin = 'https://kietdmt.github.io/ARON-Badmintion-Club/';
+          }
+
+          showToast(`Bắt đầu gửi email nhắc nợ song song cho ${debtors.length} thành viên...`, 'warning');
+
+          const promises = debtors.map(async (m) => {
+            const s = summary[m.id] || { count: 0, owed: 0 };
+            const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
+            const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
+            const payUrl = `${origin}?action=pay&month=${month}&user=${m.username}`;
+            
+            const emailSubject = `[CLB ARON] Thông báo hoàn thành phí chơi cầu - Tháng ${monthLabel(month)}`;
+            const emailBody = `<h3>Chào ${m.name},</h3>
+              <p>Ban quản trị CLB ARON gửi thông báo nhắc nhở về khoản phí chơi cầu chưa hoàn thành của bạn trong tháng <strong>${monthLabel(month)}</strong>:</p>
+              <table style="border-collapse:collapse; font-size:13px; width:100%; max-width:400px; margin-bottom:15px;">
+                <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Số buổi tham gia:</td><td style="padding:6px 0; font-weight:600; text-align:right;">${s.count} buổi</td></tr>
+                <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Tổng phí phải trả:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#993C1D;">${formatVND(s.owed)}</td></tr>
+                <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Đã nộp + Điều chỉnh:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#27500A;">${formatVND((p.paid||0) + (p.prepaid||0))}</td></tr>
+                <tr style="border-bottom:1px solid #E3E0D6; font-size:14px;"><td style="padding:6px 0; font-weight:700; color:#1B4332;">Còn lại cần đóng:</td><td style="padding:6px 0; font-weight:700; text-align:right; color:#993C1D;">${formatVND(remaining)}</td></tr>
+              </table>
+              <p>Bạn vui lòng thanh toán khoản phí còn lại bằng cách bấm vào liên kết dưới đây để mở giao diện nộp tiền qua mã QR tự động của câu lạc bộ:</p>
+              <p style="margin:20px 0;">
+                <a href="${payUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">👉 Nộp Tiền Qua QR Ngay</a>
+              </p>
+              <p style="font-size:11px; color:#8a877d;">(Sau khi chuyển khoản thành công, vui lòng nhập số tiền đã đóng trên giao diện để gửi yêu cầu phê duyệt cho Thủ quỹ).</p>
+              <br/>
+              <p>Trân trọng,</p>
+              <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+
+            const singleBtn = document.getElementById(`remind-mail-${m.id}-${month}`);
+            if (singleBtn) {
+              singleBtn.disabled = true;
+              singleBtn.textContent = 'Đang gửi...';
+            }
+
+            try {
+              const sent = await sendSystemEmail(m.email, emailSubject, emailBody);
+              if (singleBtn) {
+                singleBtn.disabled = false;
+                if (sent) {
+                  singleBtn.textContent = 'Đã nhắc';
+                  singleBtn.style.borderColor = '#27500A';
+                  singleBtn.style.color = '#27500A';
+                } else {
+                  singleBtn.textContent = 'Lỗi gửi';
+                }
+              }
+              return sent;
+            } catch (ex) {
+              if (singleBtn) {
+                singleBtn.disabled = false;
+                singleBtn.textContent = 'Lỗi gửi';
+              }
+              return false;
+            }
+          });
+
+          const results = await Promise.all(promises);
+          const successCount = results.filter(Boolean).length;
+          
+          remindAllBtn.disabled = false;
+          remindAllBtn.textContent = '📢 Nhắc nợ tất cả';
+          showToast(`Đã gửi thành công email nhắc nợ cho ${successCount}/${debtors.length} thành viên!`);
         };
       }
     }, 0);
