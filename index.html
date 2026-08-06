@@ -7017,8 +7017,11 @@
     
     const unvotedMembers = state.members.filter(m => {
       const t = (m.monthlyType || {})[mKey] || '';
-      const hasVoted = s.votes[m.name] !== undefined;
-      return m.status === 'active' && (t === 'fixed' || t === 'casual') && !hasVoted;
+      const v = s.votes ? s.votes[m.name] : undefined;
+      const hasPassed = t === 'fixed' && s.passes && s.passes[m.id];
+      const isReceiver = s.passes && Object.values(s.passes).includes(m.id);
+      const notVoted = !v && !hasPassed && !isReceiver;
+      return m.status === 'active' && (t === 'fixed' || t === 'casual') && notVoted;
     });
 
     if (unvotedMembers.length === 0) {
