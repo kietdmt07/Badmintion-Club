@@ -7079,19 +7079,28 @@
 
         const emailSubject = `[CLB ARON] Nhắc nhở biểu quyết tham gia buổi tập ngày ${formatDate(s.date)}`;
         const emailBody = `<h3>Chào ${m.name},</h3>
-          <p>Ban quản trị CLB ARON nhắc nhở bạn tham gia biểu quyết (vote) lịch chơi cầu sắp tới:</p>
-          <ul>
-            <li><strong>Thời gian:</strong> ${weekdayLabel(s.date)}, ngày ${formatDate(s.date)} (${formatTimeRange(s.time, s.timeEnd)})</li>
-            <li><strong>Sân tập:</strong> ${courtName}</li>
-            <li><strong>Loại hình đăng ký:</strong> ${t === 'fixed' ? 'Cố định' : 'Vãng lai'}</li>
-          </ul>
-          <p>Vui lòng nhấp vào liên kết dưới đây để thực hiện biểu quyết nhanh:</p>
-          <p style="margin:25px 0;">
+          <p>Để chuẩn bị tốt nhất cho buổi tập sắp tới, Ban quản trị CLB ARON gửi tin nhắc nhở bạn tham gia biểu quyết (vote) lịch chơi cầu:</p>
+          <div style="background:#FAF8F5; border:1px solid #E3E0D6; border-radius:8px; padding:15px; margin:15px 0; font-family:'Outfit', sans-serif;">
+            <strong>🏸 Thông tin buổi tập:</strong><br/>
+            - 📅 <strong>Thời gian:</strong> ${weekdayLabel(s.date)}, ngày ${formatDate(s.date)} (${formatTimeRange(s.time, s.timeEnd)})<br/>
+            - 📍 <strong>Sân tập:</strong> ${courtName}<br/>
+            - 👤 <strong>Loại hình của bạn:</strong> ${t === 'fixed' ? 'Cố định' : 'Vãng lai'}
+          </div>
+          <p>Vui lòng nhấp vào nút dưới đây để chọn trạng thái tham gia (Đi chơi, Báo vắng, Nhường lịch):</p>
+          <div style="margin:25px 0;">
             <a href="${quickVoteUrl}" style="background:#2D6A4F; color:#FFFFFF; text-decoration:none; padding:12px 24px; font-weight:600; border-radius:10px; display:inline-block; font-size:15px; box-shadow:0 4px 12px rgba(45,106,79,0.2);">👉 Biểu Quyết Một Chạm</a>
+          </div>
+          <p style="font-size:12px; color:#8a877d; margin-top:20px;">
+            Nếu không bấm được nút trên, bạn có thể truy cập trực tiếp đường link sau:<br/>
+            <a href="${quickVoteUrl}" style="color:#0C447C; word-break:break-all;">${quickVoteUrl}</a>
           </p>
-          <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp link, hệ thống sẽ mở màn hình biểu quyết trực quan. Nếu bạn chưa đăng nhập, vui lòng đăng nhập tài khoản của mình trước khi hoàn tất).</p>
+          <hr style="border:none; border-top:1px dashed #E3E0D6; margin:20px 0;"/>
+          <p style="font-size:11px; color:#8a877d; line-height:1.4;">
+            * Lưu ý: Để tránh việc thư thông báo từ CLB tiếp tục rơi vào hòm thư rác, bạn vui lòng nhấn vào nút <strong>"Không phải thư rác" (Not Spam)</strong> hoặc thêm địa chỉ email này vào danh sách người liên hệ tin cậy.<br/>
+            * Sau khi nhấp link, hệ thống sẽ tự động chuyển đến màn hình biểu quyết. Nếu chưa đăng nhập tài khoản của mình, bạn hãy đăng nhập trước để hoàn tất.
+          </p>
           <br/>
-          <p>Trân trọng,</p>
+          <p>Thân ái,</p>
           <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
         
         return await sendSystemEmail(m.email, emailSubject, emailBody);
