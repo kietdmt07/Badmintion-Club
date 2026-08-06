@@ -302,14 +302,15 @@
           p_subject: subject,
           p_body: htmlBody
         });
-        if (!rpcError && rpcRes && !rpcRes.startsWith('ERROR')) {
-          console.log('Email sent successfully via DB RPC.');
-          return true;
-        }
-        if (rpcError) {
-          console.warn('DB RPC failed or not installed. Falling back to client-side...', rpcError);
+        if (!rpcError) {
+          if (rpcRes && typeof rpcRes === 'string' && rpcRes.startsWith('ERROR')) {
+            console.warn('DB RPC error response:', rpcRes);
+          } else {
+            console.log('Email sent successfully via DB RPC.');
+            return true;
+          }
         } else {
-          console.warn('DB RPC error response:', rpcRes);
+          console.warn('DB RPC failed or not installed. Falling back to client-side...', rpcError);
         }
       } catch (rpcEx) {
         console.warn('Failed to call DB RPC:', rpcEx);
