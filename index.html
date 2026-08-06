@@ -700,6 +700,12 @@
     state.donations = updated;
     return true;
   }
+  async function mutateSessions(mutator){
+    const updated = await mutateKey('bc_sessions', mutator, []);
+    if (updated === null) return false;
+    state.sessions = updated;
+    return true;
+  }
   async function mutateMembers(mutator){
     const updated = await mutateKey('bc_members', latest => {
       const prev = latest || [];
@@ -1169,6 +1175,12 @@
     }
     const root = document.getElementById('root');
     root.innerHTML = '';
+    
+    if (state.me && state.quickVoteMode) {
+      root.appendChild(renderQuickVoteScreen());
+      return;
+    }
+    
     if (!state.me) {
       root.appendChild(renderAuth());
       return;
@@ -1189,6 +1201,212 @@
     if (state.tab === 'payments_mgr') root.appendChild(renderPaymentsMgr());
     if (state.tab === 'tournament') root.appendChild(renderTournament());
     if (state.tab === 'report') root.appendChild(renderReport());
+  }
+
+  function renderQuickVoteScreen() {
+    const qv = state.quickVoteMode;
+    const sess = state.sessions.find(s => s.id === qv.sessionId);
+    const member = state.members.find(m => m.username.toLowerCase() === qv.username.toLowerCase());
+    
+    const wrap = el(`<div style="display:flex; flex-direction:column; align-items:center; width:100%; padding:20px 0;"></div>`);
+    
+    if (!sess || !member) {
+      wrap.appendChild(el(`<div class="bc-card" style="text-align:center; padding:30px;">
+        <h3 style="color:#993C1D;">⚠ Lỗi dữ liệu</h3>
+        <p style="color:#6b7a73; font-size:14px; margin-bottom:20px;">Không tìm thấy thông tin buổi tập hoặc thành viên tương ứng.</p>
+        <button class="bc-btn" id="qv-goto-main">Vào ứng dụng chính</button>
+      </div>`));
+      setTimeout(() => {
+        document.getElementById('qv-goto-main').onclick = () => {
+          state.quickVoteMode = null;
+          render();
+        };
+      }, 0);
+      return wrap;
+    }
+
+    const court = state.courts.find(c => c.id === sess.courtId);
+    const courtName = court ? court.name : 'Chưa chọn sân';
+    const courtAddress = court && court.address ? court.address : '';
+    const mapLink = court && court.mapLink ? court.mapLink : '';
+    
+    const mKey = sessionMonthKey(sess);
+    const myType = (member.monthlyType || {})[mKey] || '';
+    const myVote = sess.votes[member.name];
+    
+    let statusText = 'Bạn chưa biểu quyết';
+    let statusColor = '#888780';
+    let statusBg = '#F1EFE8';
+    
+    const isReceiver = Object.values(sess.passes || {}).includes(member.id);
+    const hasPassed = myType === 'fixed' && sess.passes && sess.passes[member.id];
+    
+    if (hasPassed) {
+      statusText = 'Bạn đã nhường slot (tính vắng)';
+      statusColor = '#854F0B';
+      statusBg = '#FAEEDA';
+    } else if (isReceiver) {
+      statusText = 'Bạn tham gia (Nhận pass)';
+      statusColor = '#0C447C';
+      statusBg = '#E6F1FB';
+    } else if (myVote === 'yes') {
+      statusText = 'Bạn đã chọn: THAM GIA 🏸';
+      statusColor = '#27500A';
+      statusBg = '#EAF3DE';
+    } else if (myVote === 'no') {
+      statusText = 'Bạn đã chọn: BÁO VẮNG ❌';
+      statusColor = '#993C1D';
+      statusBg = '#FAECE7';
+    }
+
+    let isCasualFull = false;
+    if (myType === 'casual' && myVote !== 'yes') {
+      let casualPlaying = 0;
+      state.members.forEach(x => {
+        const t = (x.monthlyType || {})[mKey] || '';
+        const v = sess.votes[x.name];
+        if (x.status === 'active' && t === 'casual' && v === 'yes') {
+          casualPlaying++;
+        }
+      });
+      if (sess.maxCasual && casualPlaying >= sess.maxCasual) {
+        isCasualFull = true;
+      }
+    }
+
+    const card = el(`<div class="bc-card" style="width:100%; max-width:480px; box-shadow:0 12px 40px rgba(0,0,0,0.15); border-radius:16px; background:#FFF; border: 1px solid var(--card-border); padding:24px; text-align:center;">
+      <div style="font-size:36px; margin-bottom:10px;">🏸</div>
+      <h2 style="font-size:20px; font-weight:700; color:#1B4332; margin-top:0; margin-bottom:6px; font-family:'Oswald', sans-serif; letter-spacing:0.5px;">
+        BIỂU QUYẾT NHANH BUỔI TẬP
+      </h2>
+      <div style="font-size:13px; color:#6b7a73; margin-bottom:20px;">Chào <strong>${escapeHtml(member.name)}</strong> (${myType === 'fixed' ? 'Cố định' : 'Vãng lai'})</div>
+      
+      <div style="background:#FAF8F5; border:1px solid #E3E0D6; border-radius:10px; padding:12px; margin-bottom:20px; text-align:left; font-size:14px;">
+        <div style="font-weight:600; color:#1B4332; margin-bottom:4px;">📅 Lịch tập:</div>
+        <div style="color:#2D6A4F; font-weight:500;">${weekdayLabel(sess.date)}, ngày ${formatDate(sess.date)}</div>
+        <div style="color:#6b7a73; margin-top:2px;">⏰ Giờ: ${formatTimeRange(sess.time, sess.timeEnd)}</div>
+        <div style="color:#6b7a73; margin-top:2px;">📍 Sân: ${escapeHtml(courtName)}</div>
+        ${courtAddress ? `<div style="color:#8a877d; font-size:12px; margin-top:2px;">${escapeHtml(courtAddress)}</div>` : ''}
+        ${mapLink ? `<div style="margin-top:6px;"><a href="${escapeHtml(mapLink)}" target="_blank" style="color:#0C447C; font-weight:600; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">📍 Xem bản đồ Google Maps →</a></div>` : ''}
+      </div>
+
+      <div style="margin-bottom:25px; padding:10px; border-radius:8px; font-weight:600; font-size:14px; background:${statusBg}; color:${statusColor}; border:1px solid rgba(0,0,0,0.05);">
+        ${statusText}
+      </div>
+
+      ${sess.locked ? `<div style="color:#993C1D; font-weight:600; font-size:13px; margin-bottom:20px;">🔒 Buổi tập này đã chốt danh sách, không thể thay đổi vote!</div>` : `
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:25px;">
+          <button class="bc-btn" id="qv-yes-btn" style="background:linear-gradient(135deg, #2D6A4F 0%, #1B4332 100%); color:#FFF; font-size:15px; padding:12px; font-weight:600; border-radius:10px; box-shadow:0 4px 15px rgba(45,106,79,0.25); display:flex; align-items:center; justify-content:center; gap:8px;" ${isCasualFull ? 'disabled' : ''}>
+            🏸 ĐI CHƠI NGAY ${isCasualFull ? '(Hết chỗ)' : ''}
+          </button>
+          <button class="bc-btn outline" id="qv-no-btn" style="border-color:#993C1D; color:#993C1D; font-size:15px; padding:12px; font-weight:600; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+            ❌ BÁO VẮNG
+          </button>
+          ${myType === 'fixed' ? `
+            <button class="bc-btn outline" id="qv-pass-btn" style="border-color:#854F0B; color:#854F0B; font-size:15px; padding:12px; font-weight:600; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+              🔄 NHƯỜNG SLOT (PASS)
+            </button>
+          ` : ''}
+        </div>
+      `}
+
+      <div style="border-top:1px dashed #E3E0D6; padding-top:15px;">
+        <button class="bc-btn outline small" id="qv-main-btn" style="border-color:#8a877d; color:#8a877d; font-size:12px; padding:6px 16px;">
+          🏠 Vào trang chủ ứng dụng
+        </button>
+      </div>
+    </div>`);
+
+    wrap.appendChild(card);
+
+    setTimeout(() => {
+      const btnYes = card.querySelector('#qv-yes-btn');
+      const btnNo = card.querySelector('#qv-no-btn');
+      const btnPass = card.querySelector('#qv-pass-btn');
+      const btnMain = card.querySelector('#qv-main-btn');
+
+      if (btnYes) btnYes.onclick = async () => {
+        showLoading('Đang xử lý...');
+        const ok = await mutateSessions(latest => {
+          const list = Array.isArray(latest) ? latest : [];
+          return list.map(s => {
+            if (s.id === sess.id) {
+              const updatedSess = Object.assign({}, s);
+              updatedSess.votes = Object.assign({}, s.votes || {});
+              updatedSess.passes = Object.assign({}, s.passes || {});
+              updatedSess.votes[member.name] = 'yes';
+              delete updatedSess.passes[member.id];
+              return updatedSess;
+            }
+            return s;
+          });
+        });
+        hideLoading();
+        if (ok) {
+          showToast('Đã ghi nhận biểu quyết tham gia của bạn! 🏸', 'success');
+          render();
+        } else {
+          showToast('Có lỗi xảy ra, vui lòng thử lại.', 'error');
+        }
+      };
+
+      if (btnNo) btnNo.onclick = async () => {
+        showLoading('Đang xử lý...');
+        const ok = await mutateSessions(latest => {
+          const list = Array.isArray(latest) ? latest : [];
+          return list.map(s => {
+            if (s.id === sess.id) {
+              const updatedSess = Object.assign({}, s);
+              updatedSess.votes = Object.assign({}, s.votes || {});
+              updatedSess.passes = Object.assign({}, s.passes || {});
+              updatedSess.votes[member.name] = 'no';
+              delete updatedSess.passes[member.id];
+              return updatedSess;
+            }
+            return s;
+          });
+        });
+        hideLoading();
+        if (ok) {
+          showToast('Đã ghi nhận biểu quyết vắng của bạn! ❌', 'success');
+          render();
+        } else {
+          showToast('Có lỗi xảy ra, vui lòng thử lại.', 'error');
+        }
+      };
+
+      if (btnPass) btnPass.onclick = async () => {
+        showLoading('Đang xử lý...');
+        const ok = await mutateSessions(latest => {
+          const list = Array.isArray(latest) ? latest : [];
+          return list.map(s => {
+            if (s.id === sess.id) {
+              const updatedSess = Object.assign({}, s);
+              updatedSess.votes = Object.assign({}, s.votes || {});
+              updatedSess.passes = Object.assign({}, s.passes || {});
+              updatedSess.votes[member.name] = 'no';
+              updatedSess.passes[member.id] = 'pending';
+              return updatedSess;
+            }
+            return s;
+          });
+        });
+        hideLoading();
+        if (ok) {
+          showToast('Đã ghi nhận nhường slot của bạn! 🔄', 'success');
+          render();
+        } else {
+          showToast('Có lỗi xảy ra, vui lòng thử lại.', 'error');
+        }
+      };
+
+      if (btnMain) btnMain.onclick = () => {
+        state.quickVoteMode = null;
+        render();
+      };
+    }, 0);
+
+    return wrap;
   }
 
   function showForgotPasswordDialog() {
@@ -2037,18 +2255,33 @@
       state.pendingAction = { action, user: redirectUser, month: redirectMonth };
       checkPendingAction();
     }
+    else if (action === 'quick_vote') {
+      const voteSession = params.get('session');
+      state.pendingAction = { action, session: voteSession, user: redirectUser };
+      checkPendingAction();
+    }
   }
 
   async function checkPendingAction() {
     if (!state.pendingAction) return;
-    if (!isAdmin()) {
-      state.authMode = 'login';
-      state.authError = 'Vui lòng đăng nhập bằng tài khoản Admin để thực hiện phê duyệt nhanh từ email.';
-      render();
-      return;
-    }
     
     const pa = state.pendingAction;
+    if (pa.action === 'quick_vote') {
+      if (!state.me || state.me.username.toLowerCase() !== (pa.user || '').toLowerCase()) {
+        state.authMode = 'login';
+        state.authError = `Vui lòng đăng nhập tài khoản @${pa.user} để hoàn tất vote nhanh.`;
+        render();
+        return;
+      }
+    } else {
+      if (!isAdmin()) {
+        state.authMode = 'login';
+        state.authError = 'Vui lòng đăng nhập bằng tài khoản Admin để thực hiện phê duyệt nhanh từ email.';
+        render();
+        return;
+      }
+    }
+    
     state.pendingAction = null; // Xoá để tránh lặp lại hành động
     
     // Xoá tham số URL để làm sạch thanh địa chỉ trình duyệt
@@ -2056,9 +2289,18 @@
       window.history.replaceState({}, document.title, window.location.pathname);
     }
     
-    showLoading('Đang xử lý phê duyệt nhanh từ email...');
+    showLoading('Đang mở màn hình biểu quyết...');
     try {
-      if (pa.action === 'approve_member') {
+      if (pa.action === 'quick_vote') {
+        const sess = state.sessions.find(s => s.id === pa.session);
+        const member = state.members.find(m => m.username.toLowerCase() === pa.user.toLowerCase());
+        if (!sess || !member) {
+          alert('Không tìm thấy buổi tập hoặc thành viên tương ứng!');
+          return;
+        }
+        state.quickVoteMode = { sessionId: pa.session, username: pa.user };
+      }
+      else if (pa.action === 'approve_member') {
         const target = state.members.find(m => m.username.toLowerCase() === pa.user.toLowerCase());
         if (!target) {
           alert(`Không tìm thấy thành viên: ${pa.user}`);
@@ -6044,6 +6286,7 @@
           ${s.note ? `<div style="font-size:13px; color:#8a877d; margin-top:2px;">${escapeHtml(s.note)}</div>` : ''}
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
+          ${(canManage() && !s.locked) ? `<button class="bc-btn outline small" id="remind-vote-${s.id}" style="border-color:#F26419; color:#F26419; padding:2px 8px; font-size:11px;">📢 Nhắc vote</button>` : ''}
           ${canManage() ? `<button class="bc-btn ${s.locked?'danger':'outline'} small" id="lock-${s.id}">${s.locked ? 'Mở chốt' : 'Chốt buổi'}</button>` : ''}
           ${canDelete() ? `<button class="bc-btn danger small" id="del-${s.id}">Xoá</button>` : ''}
         </div>
@@ -6081,6 +6324,10 @@
     if (canManage()) {
       const lockBtn = card.querySelector(`#lock-${s.id}`);
       lockBtn.onclick = () => { s.locked = !s.locked; saveSessions(); render(); };
+      const remindBtn = card.querySelector(`#remind-vote-${s.id}`);
+      if (remindBtn) {
+        remindBtn.onclick = () => showRemindVoteDialog(s);
+      }
     }
 
     const voteRow = card.querySelector(`#vote-${s.id}`);
@@ -6210,12 +6457,14 @@
             const availableCasuals = casualList.filter(c => !otherPasses.includes(c.id));
 
             passCell = `<select class="bc-select" id="pass-${s.id}-${m.id}" style="width:150px; padding:4px 6px; font-size:12px;">
-              <option value="">Không pass</option>
+              <option value="" ${passes[m.id] === 'pending' ? 'selected' : ''}>${passes[m.id] === 'pending' ? '🔍 Chờ người nhận...' : 'Không pass'}</option>
               ${availableCasuals.map(c => `<option value="${c.id}" ${passes[m.id]===c.id?'selected':''}>Pass cho ${escapeHtml(c.name)}</option>`).join('')}
             </select>`;
           } else if (passes[m.id]) {
             const target = state.members.find(x => x.id === passes[m.id]);
-            passCell = target ? `<span style="font-size:12px; color:#8a877d;">Đã pass cho ${escapeHtml(target.name)}</span>` : '';
+            passCell = passes[m.id] === 'pending'
+              ? `<span style="font-size:12px; color:#854F0B; font-weight:500;">🔍 Chờ người nhận...</span>`
+              : (target ? `<span style="font-size:12px; color:#8a877d;">Đã pass cho ${escapeHtml(target.name)}</span>` : '');
           }
         } else {
           const fromId = Object.keys(passes).find(fid => passes[fid] === m.id);
@@ -6737,6 +6986,129 @@
     }
 
     return card;
+  }
+
+  function showRemindVoteDialog(s) {
+    if (!canManage()) {
+      showToast('Bạn không có quyền thực hiện chức năng này!', 'error');
+      return;
+    }
+    if (s.locked) {
+      showToast('Buổi tập này đã chốt danh sách, không thể nhắc biểu quyết!', 'error');
+      return;
+    }
+
+    state.lastRemindVoteTime = state.lastRemindVoteTime || {};
+    const lastSent = state.lastRemindVoteTime[s.id] || 0;
+    const cooldown = 5 * 60 * 1000;
+    const now = Date.now();
+    if (now - lastSent < cooldown) {
+      const remainingSecs = Math.ceil((cooldown - (now - lastSent)) / 1000);
+      const mins = Math.floor(remainingSecs / 60);
+      const secs = remainingSecs % 60;
+      showToast(`Bạn vừa gửi nhắc nhở cho buổi tập này. Vui lòng đợi ${mins} phút ${secs} giây nữa để tránh spam email!`, 'warning');
+      return;
+    }
+
+    const mKey = sessionMonthKey(s);
+    const court = state.courts.find(c => c.id === s.courtId);
+    const courtName = court ? court.name : 'Chưa chọn sân';
+    
+    const unvotedMembers = state.members.filter(m => {
+      const t = (m.monthlyType || {})[mKey] || '';
+      const hasVoted = s.votes[m.name] !== undefined;
+      return m.status === 'active' && (t === 'fixed' || t === 'casual') && !hasVoted;
+    });
+
+    if (unvotedMembers.length === 0) {
+      showToast('Tất cả thành viên đã hoàn thành biểu quyết (vote) cho buổi tập này!', 'success');
+      return;
+    }
+
+    const backdrop = el(`<div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center; padding:15px;"></div>`);
+    const dialog = el(`<div class="bc-card" style="width:100%; max-width:450px; background:#FFF; padding:20px; box-shadow:0 8px 30px rgba(0,0,0,0.3); border-radius:12px;">
+      <h3 style="font-size:16px; color:#1B4332; margin-top:0; margin-bottom:12px; font-family:'Oswald', sans-serif; display:flex; align-items:center; gap:6px;">
+        📢 NHẮC NHỞ BIỂU QUYẾT (CHƯA VOTE: ${unvotedMembers.length})
+      </h3>
+      <p style="font-size:13px; color:#6b7a73; margin-bottom:20px; line-height:1.5;">Gửi email nhắc nhở biểu quyết cho các thành viên chưa vote trong buổi tập ngày <strong>${formatDate(s.date)}</strong> (${formatTimeRange(s.time, s.timeEnd)}):</p>
+      
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+        <button class="bc-btn" id="remind-email-unvoted-btn" style="width:100%; justify-content:center; display:flex; align-items:center; gap:8px;">
+          📧 Gửi Email nhắc nhở hàng loạt
+        </button>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="bc-btn outline small" id="remind-close-btn" style="padding:4px 12px; font-size:12px;">Đóng</button>
+      </div>
+    </div>`);
+    
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const closeBtn = dialog.querySelector('#remind-close-btn');
+    const closeDialog = () => { backdrop.remove(); };
+    closeBtn.onclick = closeDialog;
+    backdrop.onclick = (e) => { if (e.target === backdrop) closeDialog(); };
+
+    const emailBtn = dialog.querySelector('#remind-email-unvoted-btn');
+    emailBtn.onclick = async () => {
+      const emailable = unvotedMembers.filter(m => m.email);
+      if (emailable.length === 0) {
+        showToast('Không có thành viên nào chưa vote có cấu hình địa chỉ email!', 'warning');
+        return;
+      }
+
+      if (!confirm(`Bạn có chắc chắn muốn gửi email nhắc nhở biểu quyết cho ${emailable.length} thành viên chưa vote không?`)) {
+        return;
+      }
+
+      emailBtn.disabled = true;
+      emailBtn.textContent = 'Đang gửi...';
+
+      let origin = window.location.origin + window.location.pathname;
+      if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
+        origin = 'https://kietdmt.github.io/ARON-Badmintion-Club/';
+      }
+
+      showToast(`Đang gửi email nhắc nhở cho ${emailable.length} thành viên...`, 'warning');
+
+      const promises = emailable.map(async (m) => {
+        const t = (m.monthlyType || {})[mKey] || '';
+        const quickVoteUrl = `${origin}?action=quick_vote&session=${s.id}&user=${m.username}`;
+
+        const emailSubject = `[CLB ARON] Nhắc nhở biểu quyết tham gia buổi tập ngày ${formatDate(s.date)}`;
+        const emailBody = `<h3>Chào ${m.name},</h3>
+          <p>Ban quản trị CLB ARON nhắc nhở bạn tham gia biểu quyết (vote) lịch chơi cầu sắp tới:</p>
+          <ul>
+            <li><strong>Thời gian:</strong> ${weekdayLabel(s.date)}, ngày ${formatDate(s.date)} (${formatTimeRange(s.time, s.timeEnd)})</li>
+            <li><strong>Sân tập:</strong> ${courtName}</li>
+            <li><strong>Loại hình đăng ký:</strong> ${t === 'fixed' ? 'Cố định' : 'Vãng lai'}</li>
+          </ul>
+          <p>Vui lòng nhấp vào liên kết dưới đây để thực hiện biểu quyết nhanh:</p>
+          <p style="margin:25px 0;">
+            <a href="${quickVoteUrl}" style="background:#2D6A4F; color:#FFFFFF; text-decoration:none; padding:12px 24px; font-weight:600; border-radius:10px; display:inline-block; font-size:15px; box-shadow:0 4px 12px rgba(45,106,79,0.2);">👉 Biểu Quyết Một Chạm</a>
+          </p>
+          <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp link, hệ thống sẽ mở màn hình biểu quyết trực quan. Nếu bạn chưa đăng nhập, vui lòng đăng nhập tài khoản của mình trước khi hoàn tất).</p>
+          <br/>
+          <p>Trân trọng,</p>
+          <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+        
+        return await sendSystemEmail(m.email, emailSubject, emailBody);
+      });
+
+      const results = await Promise.all(promises);
+      const successCount = results.filter(Boolean).length;
+      
+      if (successCount > 0) {
+        state.lastRemindVoteTime[s.id] = Date.now();
+      }
+      
+      emailBtn.disabled = false;
+      emailBtn.textContent = '📧 Gửi Email nhắc nhở hàng loạt';
+      showToast(`Đã gửi thành công email nhắc nhở cho ${successCount}/${emailable.length} thành viên!`);
+      closeDialog();
+    };
   }
 
   // ---------- LÀM MỚI DỮ LIỆU ----------
