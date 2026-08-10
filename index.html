@@ -62,6 +62,29 @@
     100% { opacity: 0.9; transform: scale(1); }
   }
 
+  @keyframes spotlightPulse {
+    0% { box-shadow: 0 0 0 0 rgba(242, 100, 25, 0.45), 0 4px 20px rgba(242, 100, 25, 0.15); }
+    70% { box-shadow: 0 0 0 10px rgba(242, 100, 25, 0), 0 4px 20px rgba(242, 100, 25, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(242, 100, 25, 0), 0 4px 20px rgba(242, 100, 25, 0.15); }
+  }
+
+  @keyframes beaconGlow {
+    0% { transform: scale(0.92); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 6px rgba(242, 100, 25, 0.9)); }
+    100% { transform: scale(0.92); opacity: 0.8; }
+  }
+
+  @keyframes shuttleBounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-4px) rotate(10deg); }
+  }
+
+  @keyframes titleGlowPulse {
+    0% { opacity: 0.9; filter: drop-shadow(0 0 0 rgba(242,100,25,0)); }
+    50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(242,100,25,0.75)); color: #F26419; }
+    100% { opacity: 0.9; filter: drop-shadow(0 0 0 rgba(242,100,25,0)); }
+  }
+
   #app * { box-sizing: border-box; }
   #app { font-family: 'Outfit', system-ui, sans-serif !important; color: var(--text-primary); }
   #app h1, #app h2, #app h3 { font-family: 'Oswald', sans-serif; letter-spacing: 0.01em; margin: 0; color: var(--text-primary); }
@@ -622,6 +645,54 @@
     render();
   }
 
+  // Thiết lập Rule: Tự động mặc định vote "Tham gia" cho các thành viên Cố định chưa vote
+  // vào lúc 10:00 sáng của ngày hôm trước ngày đánh (khi chưa chốt buổi)
+  function applyFixedAutoVote(sessions) {
+    if (!Array.isArray(sessions) || !Array.isArray(state.members) || state.members.length === 0) return false;
+    let modified = false;
+    const now = new Date();
+    const nowStamp = now.toLocaleDateString('sv-SE') + 'T' + now.toTimeString().slice(0, 8);
+
+    sessions.forEach(s => {
+      if (!s || !s.date || s.locked) return; // Buổi đã chốt thì giữ nguyên
+      
+      // Tính mốc 10:00 sáng của ngày hôm trước ngày đánh (s.date)
+      const parts = s.date.split('-').map(Number);
+      if (parts.length < 3) return;
+      const [y, m, d] = parts;
+      const prevDate = new Date(y, m - 1, d);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const prevY = prevDate.getFullYear();
+      const prevM = String(prevDate.getMonth() + 1).padStart(2, '0');
+      const prevD = String(prevDate.getDate()).padStart(2, '0');
+      const cutoffTimeStr = `${prevY}-${prevM}-${prevD}T10:00:00`;
+
+      // Nếu thời gian hiện tại >= 10:00 sáng ngày hôm trước
+      if (nowStamp >= cutoffTimeStr) {
+        const mKey = sessionMonthKey(s);
+        s.votes = s.votes || {};
+        s.passes = s.passes || {};
+
+        state.members.forEach(member => {
+          if (member.status !== 'active') return;
+          const curType = (member.monthlyType || {})[mKey] || '';
+          
+          // Với thành viên Cố định: nếu chưa vote và chưa pass thì mặc định tham gia (yes)
+          if (curType === 'fixed') {
+            const hasVoted = !!s.votes[member.name];
+            const hasPassed = !!s.passes[member.id];
+            if (!hasVoted && !hasPassed) {
+              s.votes[member.name] = 'yes';
+              modified = true;
+            }
+          }
+        });
+      }
+    });
+
+    return modified;
+  }
+
   // Helper cho ghi dữ liệu có kiểm tra xung đột đồng thời (Optimistic Concurrency Control)
   async function mutateKey(key, mutator, fallbackVal) {
     const currentRole = role();
@@ -1040,6 +1111,11 @@
       if (migrated) {
         await saveMembers();
       }
+    }
+
+    // Tự động áp dụng quy tắc mặc định Tham gia cho thành viên Cố định chưa vote sau 10h hôm trước
+    if (applyFixedAutoVote(state.sessions)) {
+      await saveSessions();
     }
 
     state.myUsername = lsGet('bc_my_username');
@@ -1930,45 +2006,166 @@
         wrap.appendChild(tourCard);
       }
 
-      // Thêm Bảng tin Lịch hoạt động sắp tới sau
-      const bulletinCard = el(`<div class="bc-card" style="margin-top: 1rem; background: linear-gradient(to bottom, rgba(250, 248, 245, 0.95), rgba(255, 255, 255, 0.95)); border: 1px solid rgba(64, 145, 108, 0.25);">
-        <h2 style="font-size:16px; color:#1B4332; font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:12px; font-family:'Oswald', sans-serif;">
-          📢 LỊCH HOẠT ĐỘNG SẮP TỚI
-        </h2>
-        <div id="bulletin-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+      // Thêm Bảng tin Lịch hoạt động sắp tới
+      const bulletinCard = el(`<div class="bc-card" style="margin-top: 1.25rem; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.98), rgba(250, 248, 245, 0.98)); border: 1px solid rgba(242, 100, 25, 0.3); padding: 1.2rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; border-bottom:1px solid rgba(0,0,0,0.06); padding-bottom:8px;">
+          <h2 style="font-size:16px; color:#1B4332; font-weight:700; display:flex; align-items:center; gap:8px; font-family:'Oswald', sans-serif; letter-spacing:0.5px; margin:0;">
+            📢 BẢN TIN LỊCH CHƠI CẦU
+          </h2>
+          <span style="font-size:11px; color:#8a877d; font-weight:500;">Cập nhật tự động</span>
+        </div>
+        <div id="bulletin-list" style="display:flex; flex-direction:column; gap:14px;"></div>
       </div>`);
       
       const bulletinList = bulletinCard.querySelector('#bulletin-list');
+      applyFixedAutoVote(state.sessions);
       const todayStr = new Date().toLocaleDateString('sv-SE');
       const upcoming = state.sessions
         .filter(s => s.date >= todayStr)
-        .sort((a,b) => a.date.localeCompare(b.date));
+        .sort((a,b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
         
       if (upcoming.length === 0) {
-        bulletinList.appendChild(el(`<div style="text-align:center; padding:15px; color:#8a877d; font-size:13px; font-style:italic;">
+        bulletinList.appendChild(el(`<div style="text-align:center; padding:20px; color:#8a877d; font-size:13px; font-style:italic;">
           Hiện chưa có lịch chơi cầu tiếp theo được lên kế hoạch. Vui lòng quay lại sau!
         </div>`));
       } else {
-        upcoming.forEach(s => {
-          const yesCount = Object.values(s.votes).filter(v => v === 'yes').length;
+        upcoming.forEach((s, idx) => {
+          const mKey = sessionMonthKey(s);
           const court = state.courts.find(c => c.id === s.courtId);
           const courtName = court ? court.name : 'Chưa xếp sân';
           const weekday = weekdayLabel(s.date);
           const formattedDate = formatDate(s.date);
           const timeRange = formatTimeRange(s.time, s.timeEnd);
-          
-          const sessionRow = el(`<div style="border-left:4px solid #40916C; padding:6px 12px; background:rgba(64,145,108,0.03); border-radius:4px 12px 12px 4px; display:flex; flex-direction:column; gap:4px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:4px;">
-              <span style="font-weight:600; font-size:14px; color:#1B4332;">${escapeHtml(s.note || 'Buổi sinh hoạt thường kỳ')}</span>
-              <span class="bc-badge" style="background:#EAF3DE; color:#27500A; font-size:11px; font-weight:600;">🔥 ${yesCount} tham gia</span>
-            </div>
-            <div style="font-size:12px; color:#6b7a73; display:flex; flex-direction:column; gap:2px;">
-              <div>📅 <strong>${weekday}, ${formattedDate}</strong></div>
-              <div>⏰ Giờ: <strong>${timeRange}</strong></div>
-              <div>📍 Sân: <strong>${courtName}</strong></div>
-            </div>
-          </div>`);
-          bulletinList.appendChild(sessionRow);
+          const passes = s.passes || {};
+
+          // Thống kê thành viên tham gia / chưa vote
+          const activeMembers = state.members.filter(m => {
+            const curType = (m.monthlyType || {})[mKey] || '';
+            return m.status === 'active' && (curType === 'fixed' || curType === 'casual');
+          });
+
+          let yesCount = 0;
+          let noCount = 0;
+          let unvotedCount = 0;
+
+          activeMembers.forEach(m => {
+            const v = s.votes[m.name];
+            const t = (m.monthlyType || {})[mKey] || '';
+            const isReceiver = Object.values(passes).includes(m.id);
+            const hasPassed = t === 'fixed' && passes[m.id];
+            
+            if (isReceiver || (v === 'yes' && !hasPassed)) {
+              yesCount++;
+            } else if (hasPassed || v === 'no') {
+              noCount++;
+            } else {
+              unvotedCount++;
+            }
+          });
+
+          // Bổ sung các phiếu yes từ người ngoài hoặc tài khoản cũ (nếu có)
+          const currentNames = state.members.map(m => m.name);
+          Object.entries(s.votes).forEach(([name, v]) => {
+            if (!currentNames.includes(name) && v === 'yes') {
+              yesCount++;
+            }
+          });
+
+          if (idx === 0) {
+            // BUỔI ĐÁNH GẦN NHẤT: HIGHLIGHT ĐẶC BIỆT VỚI ANIMATION
+            const isShortOfPlayers = yesCount < 4;
+            const targetPlayers = s.max || 24;
+            const progressPercent = Math.min(100, Math.round((yesCount / targetPlayers) * 100));
+
+            let alertBoxHtml = '';
+            if (isShortOfPlayers) {
+              alertBoxHtml = `
+                <div style="background: linear-gradient(135deg, rgba(242, 100, 25, 0.12) 0%, rgba(231, 111, 81, 0.18) 100%); border: 1.5px dashed #E76F51; border-radius: 10px; padding: 10px 12px; margin-top: 10px;">
+                  <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <span style="font-size: 20px; line-height:1; animation: shuttleBounce 1.2s infinite; display:inline-block;">⚠️</span>
+                    <div style="flex:1;">
+                      <div style="font-size:13px; font-weight:700; color:#993C1D; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                        <span>ĐANG THIẾU TAY VỢT THAM GIA!</span>
+                        <span style="font-size:11px; background:#993C1D; color:#FFF; padding:2px 6px; border-radius:10px;">Cần thêm người</span>
+                      </div>
+                      <div style="font-size:12px; color:#854F0B; margin-top:3px; line-height:1.35;">
+                        Hiện mới có <strong>${yesCount}</strong> người tham gia · Còn <strong style="color:#993C1D; font-size:13px;">${unvotedCount}</strong> thành viên chưa biểu quyết!
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Progress Bar based on max capacity -->
+                  <div style="margin-top:8px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:#854F0B; margin-bottom:3px;">
+                      <span>Tiến độ ghi danh:</span>
+                      <span><strong>${yesCount}/${targetPlayers}</strong> tay vợt (${progressPercent}%)</span>
+                    </div>
+                    <div style="width:100%; height:7px; background:rgba(0,0,0,0.08); border-radius:10px; overflow:hidden;">
+                      <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, #F26419, #E76F51); border-radius:10px; transition: width 0.4s ease;"></div>
+                    </div>
+                  </div>
+                  <div style="font-size:11.5px; color:#993C1D; font-weight:600; text-align:center; margin-top:6px;">
+                    👉 Hãy đăng nhập và biểu quyết (vote) ngay giúp CLB chốt sân!
+                  </div>
+                </div>`;
+            } else {
+              alertBoxHtml = `
+                <div style="background: rgba(45, 106, 79, 0.08); border: 1px solid rgba(45, 106, 79, 0.25); border-radius: 10px; padding: 10px 12px; margin-top: 10px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <span style="font-size:16px; animation: shuttleBounce 1.5s infinite; display:inline-block;">🏸</span>
+                      <span style="font-size:12.5px; font-weight:700; color:#27500A;">Đã sẵn sàng ${yesCount} tay vợt tham gia!</span>
+                    </div>
+                    ${unvotedCount > 0 ? `<span style="font-size:11px; color:#854F0B; font-weight:600;">Còn ${unvotedCount} người chưa vote</span>` : `<span style="font-size:11px; color:#27500A; font-weight:600;">✓ Đã biểu quyết đầy đủ</span>`}
+                  </div>
+                  <!-- Progress Bar based on max capacity -->
+                  <div style="margin-top:8px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:#27500A; margin-bottom:3px;">
+                      <span>Tiến độ ghi danh:</span>
+                      <span><strong>${yesCount}/${targetPlayers}</strong> tay vợt (${progressPercent}%)</span>
+                    </div>
+                    <div style="width:100%; height:7px; background:rgba(0,0,0,0.08); border-radius:10px; overflow:hidden;">
+                      <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, #40916C, #2D6A4F); border-radius:10px; transition: width 0.4s ease;"></div>
+                    </div>
+                  </div>
+                </div>`;
+            }
+
+            const heroRow = el(`<div style="background: linear-gradient(135deg, rgba(242, 100, 25, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%); border: 1.5px solid #F26419; border-radius: 14px; padding: 12px 14px; box-shadow: 0 4px 18px rgba(242,100,25,0.15); animation: spotlightPulse 3s infinite; position: relative;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F26419; animation: beaconGlow 1.5s infinite;"></span>
+                  <span style="font-size:11px; font-weight:700; color:#F26419; letter-spacing:0.6px; text-transform:uppercase; font-family:'Oswald', sans-serif;">⚡ TRẬN ĐÁNH TIẾP THEO (GẦN NHẤT)</span>
+                </div>
+                <span class="bc-badge" style="background:#F26419; color:#FFF; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px; box-shadow:0 2px 6px rgba(242,100,25,0.3);">
+                  🔥 ${yesCount} tham gia
+                </span>
+              </div>
+              <div style="font-weight:700; font-size:16px; color:#1B4332; margin-bottom:6px; animation: titleGlowPulse 2.2s infinite ease-in-out; display:inline-block;">
+                ${escapeHtml(s.note || 'Buổi sinh hoạt thường kỳ')}
+              </div>
+              <div style="font-size:12.5px; color:#4A5568; display:flex; flex-direction:column; gap:3px;">
+                <div>📅 <strong>${weekday}, ${formattedDate}</strong></div>
+                <div>⏰ Giờ: <strong>${timeRange}</strong></div>
+                <div>📍 Sân: <strong>${escapeHtml(courtName)}</strong></div>
+              </div>
+              ${alertBoxHtml}
+            </div>`);
+            bulletinList.appendChild(heroRow);
+          } else {
+            // CÁC BUỔI TIẾP THEO
+            const sessionRow = el(`<div style="border-left:4px solid #40916C; padding:8px 12px; background:rgba(64,145,108,0.03); border-radius:4px 12px 12px 4px; display:flex; flex-direction:column; gap:4px; border:1px solid rgba(64,145,108,0.15); border-left-width:4px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:4px;">
+                <span style="font-weight:600; font-size:13.5px; color:#1B4332;">${escapeHtml(s.note || 'Buổi sinh hoạt thường kỳ')}</span>
+                <span class="bc-badge" style="background:#EAF3DE; color:#27500A; font-size:11px; font-weight:600;">🔥 ${yesCount} tham gia</span>
+              </div>
+              <div style="font-size:12px; color:#6b7a73; display:flex; flex-direction:column; gap:2px;">
+                <div>📅 <strong>${weekday}, ${formattedDate}</strong></div>
+                <div>⏰ Giờ: <strong>${timeRange}</strong></div>
+                <div>📍 Sân: <strong>${escapeHtml(courtName)}</strong></div>
+              </div>
+            </div>`);
+            bulletinList.appendChild(sessionRow);
+          }
         });
       }
       wrap.appendChild(bulletinCard);
@@ -5564,6 +5761,10 @@
 
   // ---------- SESSIONS ----------
   function renderSessions(){
+    // Tự động kiểm tra và áp dụng quy tắc mặc định Tham gia cho thành viên Cố định chưa vote sau 10h hôm trước
+    if (applyFixedAutoVote(state.sessions)) {
+      saveSessions();
+    }
     const wrap = el(`<div></div>`);
     const nowStamp = (new Date()).toISOString().slice(0,16).replace('T','');
 
@@ -5753,39 +5954,130 @@
     }
     wrap.appendChild(bulletinCard);
 
-    // --- RENDER LỊCH HOẠT ĐỘNG SẮP TỚI (TÓM TẮT ĐẸP NHƯ HÌNH MẪU) ---
+    // --- RENDER LỊCH HOẠT ĐỘNG SẮP TỚI (SPOTLIGHT HERO CARD) ---
     const upcomingSessions = state.sessions
       .filter(s => (s.date + (s.time||'00:00')) >= nowStamp)
       .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
 
     if (upcomingSessions.length > 0) {
       const nearest = upcomingSessions[0];
-      const yesVoters = Object.entries(nearest.votes).filter(([,v]) => v === 'yes').map(([name]) => name);
       const nearestCourt = state.courts.find(c => c.id === nearest.courtId);
+      const courtName = nearestCourt ? nearestCourt.name : 'Chưa xếp sân';
+      const weekday = weekdayLabel(nearest.date);
+      const formattedDate = formatDate(nearest.date);
+      const timeRange = formatTimeRange(nearest.time, nearest.timeEnd);
+      const mKey = sessionMonthKey(nearest);
+      const passes = nearest.passes || {};
+
+      // Thống kê thành viên tham gia / chưa vote
+      const activeMembers = state.members.filter(m => {
+        const curType = (m.monthlyType || {})[mKey] || '';
+        return m.status === 'active' && (curType === 'fixed' || curType === 'casual');
+      });
+
+      let yesCount = 0;
+      let noCount = 0;
+      let unvotedCount = 0;
+
+      activeMembers.forEach(m => {
+        const v = nearest.votes[m.name];
+        const t = (m.monthlyType || {})[mKey] || '';
+        const isReceiver = Object.values(passes).includes(m.id);
+        const hasPassed = t === 'fixed' && passes[m.id];
+        
+        if (isReceiver || (v === 'yes' && !hasPassed)) {
+          yesCount++;
+        } else if (hasPassed || v === 'no') {
+          noCount++;
+        } else {
+          unvotedCount++;
+        }
+      });
+
+      // Bổ sung các phiếu yes từ người ngoài hoặc tài khoản cũ (nếu có)
+      const currentNames = state.members.map(m => m.name);
+      Object.entries(nearest.votes).forEach(([name, v]) => {
+        if (!currentNames.includes(name) && v === 'yes') {
+          yesCount++;
+        }
+      });
+
+      const isShortOfPlayers = yesCount < 4;
+      const targetPlayers = nearest.max || 24;
+      const progressPercent = Math.min(100, Math.round((yesCount / targetPlayers) * 100));
+
+      let alertBoxHtml = '';
+      if (isShortOfPlayers) {
+        alertBoxHtml = `
+          <div style="background: rgba(242, 100, 25, 0.15); border: 1.5px dashed #F26419; border-radius: 10px; padding: 10px 12px; margin-top: 12px;">
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <span style="font-size: 20px; line-height:1; animation: shuttleBounce 1.2s infinite; display:inline-block;">⚠️</span>
+              <div style="flex:1;">
+                <div style="font-size:13px; font-weight:700; color:#FF9F68; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+                  <span>ĐANG THIẾU TAY VỢT THAM GIA!</span>
+                  <span style="font-size:11px; background:#F26419; color:#FFF; padding:2px 7px; border-radius:10px; font-weight:600;">Cần thêm người</span>
+                </div>
+                <div style="font-size:12px; color:#E3E0D6; margin-top:3px; line-height:1.35;">
+                  Hiện mới có <strong style="color:#FFF;">${yesCount}</strong> người tham gia · Còn <strong style="color:#FF9F68; font-size:13px;">${unvotedCount}</strong> thành viên chưa biểu quyết!
+                </div>
+              </div>
+            </div>
+            <!-- Progress Bar based on max capacity -->
+            <div style="margin-top:8px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:#FF9F68; margin-bottom:3px;">
+                <span>Tiến độ ghi danh:</span>
+                <span><strong>${yesCount}/${targetPlayers}</strong> tay vợt (${progressPercent}%)</span>
+              </div>
+              <div style="width:100%; height:7px; background:rgba(255,255,255,0.12); border-radius:10px; overflow:hidden;">
+                <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, #F26419, #FF7F50); border-radius:10px; transition: width 0.4s ease;"></div>
+              </div>
+            </div>
+            <div style="font-size:11.5px; color:#FF9F68; font-weight:600; text-align:center; margin-top:6px;">
+              👉 Hãy biểu quyết (vote) ngay ở thẻ bên dưới để chốt danh sách!
+            </div>
+          </div>`;
+      } else {
+        alertBoxHtml = `
+          <div style="background: rgba(45, 106, 79, 0.25); border: 1px solid rgba(64, 145, 108, 0.4); border-radius: 10px; padding: 10px 12px; margin-top: 12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:16px; animation: shuttleBounce 1.5s infinite; display:inline-block;">🏸</span>
+                <span style="font-size:12.5px; font-weight:700; color:#52B788;">Đã sẵn sàng ${yesCount} tay vợt tham gia!</span>
+              </div>
+              ${unvotedCount > 0 ? `<span style="font-size:11px; color:#FFB703; font-weight:600;">Còn ${unvotedCount} người chưa vote</span>` : `<span style="font-size:11px; color:#52B788; font-weight:600;">✓ Đã đủ quân số</span>`}
+            </div>
+            <!-- Progress Bar based on max capacity -->
+            <div style="margin-top:8px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:#52B788; margin-bottom:3px;">
+                <span>Tiến độ ghi danh:</span>
+                <span><strong>${yesCount}/${targetPlayers}</strong> tay vợt (${progressPercent}%)</span>
+              </div>
+              <div style="width:100%; height:7px; background:rgba(255,255,255,0.12); border-radius:10px; overflow:hidden;">
+                <div style="width:${progressPercent}%; height:100%; background:linear-gradient(90deg, #52B788, #2D6A4F); border-radius:10px; transition: width 0.4s ease;"></div>
+              </div>
+            </div>
+          </div>`;
+      }
       
-      const summaryCard = el(`<div class="bc-card" style="background:#1E1E24; border:none; border-left:6px solid #F26419; border-radius:12px; padding:16px; color:#FAF8F5; margin-bottom:1rem; box-shadow:0 4px 15px rgba(0,0,0,0.15);">
-        <div style="font-size:13px; font-weight:600; color:#F26419; margin-bottom:8px; display:flex; align-items:center; gap:6px; font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.5px;">
-          📢 Lịch hoạt động sắp tới
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
-          <div style="display:flex; flex-direction:column; gap:6px;">
-            <div style="font-size:17px; font-weight:700; color:#FFF; font-family:'Outfit', sans-serif;">
-              ${escapeHtml(nearest.note || 'Buổi sinh hoạt thường kỳ')}
-            </div>
-            <div style="font-size:13px; color:#CCD2E3; display:flex; align-items:center; gap:6px;">
-              <span>📅</span> <strong>${weekdayLabel(nearest.date)}, ${formatDate(nearest.date)}</strong>
-            </div>
-            <div style="font-size:13px; color:#CCD2E3; display:flex; align-items:center; gap:6px;">
-              <span>⏰</span> <strong>Giờ: ${formatTimeRange(nearest.time, nearest.timeEnd)}</strong>
-            </div>
-            <div style="font-size:13px; color:#CCD2E3; display:flex; align-items:center; gap:6px;">
-              <span>📍</span> <strong>Sân: ${nearestCourt ? escapeHtml(nearestCourt.name) : 'Chưa chọn sân'}</strong>
-            </div>
+      const summaryCard = el(`<div class="bc-card" style="background:#1E1E24; border:1.5px solid #F26419; border-left:6px solid #F26419; border-radius:14px; padding:16px; color:#FAF8F5; margin-bottom:1rem; box-shadow:0 4px 20px rgba(242,100,25,0.2); animation:spotlightPulse 3s infinite;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-size:12px; font-weight:700; color:#F26419; display:flex; align-items:center; gap:6px; font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.6px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F26419; animation: beaconGlow 1.5s infinite;"></span>
+            <span>⚡ TRẬN ĐÁNH TIẾP THEO (GẦN NHẤT)</span>
           </div>
-          <div style="background:rgba(242,100,25,0.15); color:#F26419; border:1px solid rgba(242,100,25,0.3); border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:4px; align-self:center;">
-            🔥 ${yesVoters.length} tham gia
-          </div>
+          <span class="bc-badge" style="background:#F26419; color:#FFF; font-size:11px; font-weight:700; padding:3px 9px; border-radius:12px; box-shadow:0 2px 8px rgba(242,100,25,0.4);">
+            🔥 ${yesCount} tham gia
+          </span>
         </div>
+        <div style="font-size:17px; font-weight:700; color:#FFF; font-family:'Outfit', sans-serif; margin-bottom:8px; animation: titleGlowPulse 2.2s infinite ease-in-out; display:inline-block;">
+          ${escapeHtml(nearest.note || 'Buổi sinh hoạt thường kỳ')}
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:6px; font-size:13px; color:#CCD2E3;">
+          <div>📅 <strong>${weekday}, ${formattedDate}</strong></div>
+          <div>⏰ Giờ: <strong>${timeRange}</strong></div>
+          <div style="grid-column: 1 / -1;">📍 Sân: <strong>${escapeHtml(courtName)}</strong></div>
+        </div>
+        ${alertBoxHtml}
       </div>`);
       wrap.appendChild(summaryCard);
     }
