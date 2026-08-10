@@ -3249,27 +3249,31 @@
     return wrap;
   }
 
-  function avatarHtml(m, size){
+  function avatarHtml(m, size, customXP){
     size = size || 36;
-    const xp = calculateMemberXP(m.id, state.sessions);
+    const xp = customXP !== undefined ? customXP : calculateMemberXP(m.id, state.sessions);
     const rank = getXPRank(xp);
     const isLegendary = rank.key === 'legendary';
 
-    // Ưu tiên border theo rank XP, ghi đè bởi role nếu là owner/admin/r1
-    let borderStyle = `border: 2px solid ${rank.ringColor};`;
-    let overlayEmoji = '';
-    let rankOverlay = `<span style="position:absolute; bottom:-4px; right:-4px; font-size:${Math.max(10, Math.round(size*0.32))}px; line-height:1; z-index:3; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));">${rank.emoji}</span>`;
 
-    if (isOwner(m)) {
-      borderStyle = `border: 2px solid #D8973C; box-shadow: 0 0 6px rgba(216, 151, 60, 0.4);`;
-      overlayEmoji = '';
-    } else if (m.role === 'admin') {
-      borderStyle = `border: 2px solid #993C1D;`;
-      overlayEmoji = `<span style="position:absolute; top:-6px; right:-6px; font-size:12px; line-height:1; z-index:2;">⭐</span>`;
-    } else if (m.role === 'r1') {
-      borderStyle = `border: 2px solid #854F0B;`;
-      overlayEmoji = `<span style="position:absolute; top:-6px; right:-6px; font-size:12px; line-height:1; z-index:2;">🏸</span>`;
+    // Single unified border style based on XP rank
+    let borderStyle = `border: 2px solid ${rank.ringColor};`;
+    if (isLegendary) {
+      borderStyle = `border: 2px solid #FFD700; box-shadow: 0 0 8px rgba(255,215,0,0.6);`;
     }
+
+    // Role overlay (top-left) if owner/admin/r1
+    let roleOverlay = '';
+    if (isOwner(m)) {
+      roleOverlay = `<span style="position:absolute; top:-4px; left:-4px; font-size:${Math.max(10, Math.round(size*0.3))}px; line-height:1; z-index:3;" title="Owner">👑</span>`;
+    } else if (m.role === 'admin') {
+      roleOverlay = `<span style="position:absolute; top:-4px; left:-4px; font-size:${Math.max(10, Math.round(size*0.3))}px; line-height:1; z-index:3;" title="Admin">⭐</span>`;
+    } else if (m.role === 'r1') {
+      roleOverlay = `<span style="position:absolute; top:-4px; left:-4px; font-size:${Math.max(10, Math.round(size*0.3))}px; line-height:1; z-index:3;" title="R1">🏸</span>`;
+    }
+
+    // XP Rank emoji overlay (bottom-right) - ALWAYS present
+    const rankOverlay = `<span style="position:absolute; bottom:-4px; right:-4px; font-size:${Math.max(10, Math.round(size*0.32))}px; line-height:1; z-index:3; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));" title="${rank.label} (${xp} XP)">${rank.emoji}</span>`;
     
     let imgHtml = '';
     if (m.avatarUrl) {
@@ -3285,9 +3289,11 @@
     const glowWrap = isLegendary ? `class="xp-rank-legendary"` : '';
     return `<div ${glowWrap} style="position:relative; display:inline-block; width:${size}px; height:${size}px; flex-shrink:0;">
       ${imgHtml}
-      ${overlayEmoji || rankOverlay}
+      ${roleOverlay}
+      ${rankOverlay}
     </div>`;
   }
+
 
   function memberDisplayName(m) {
     if (!m) return '';
@@ -5323,7 +5329,9 @@
   }
 
   // ---------- ROAST BOT & FEED XÃ HỘI ----------
-  function renderRoastFeedCard() {
+  function renderRoastFeedCard(mode) {
+    mode = mode || state.lbMode || 'month';
+    const curMonth = state.viewMonth || monthKey();
     state.roastReactions = state.roastReactions || {};
     const activeMembers = state.members.filter(m => m.status === 'active');
     if (activeMembers.length === 0) return el(`<div></div>`);
@@ -5355,14 +5363,25 @@
       }
     }
 
-    const topMember = activeMembers.slice().map(m => ({ m, xp: calculateMemberXP(m.id, state.sessions) })).sort((a, b) => b.xp - a.xp)[0];
+    const topMember = activeMembers.slice().map(m => ({
+      m,
+      xp: mode === 'month'
+        ? calculateMemberMonthXP(m.id, state.sessions, curMonth)
+        : calculateMemberXP(m.id, state.sessions),
+      tieVotes: getMemberTieVotes(m.name, curMonth),
+      attended: countAttended(m.id, state.sessions)
+    })).sort((a, b) => b.xp - a.xp || b.tieVotes - a.tieVotes || b.attended - a.attended || a.m.name.localeCompare(b.m.name))[0];
+
     if (topMember && topMember.xp > 0) {
+      const labelMode = mode === 'month' ? `tháng ${monthLabel(curMonth)}` : 'Toàn thời gian';
       roasts.push({
         id: 'roast_top1_' + topMember.m.name.replace(/\s+/g, ''),
-        tag: '👑 THÁCH THỨC NGẠI VÀNG',
-        content: `<strong>${escapeHtml(topMember.m.nickname || topMember.m.name)}</strong> đang chễm chệ ở ngai vàng với <strong>${topMember.xp} XP</strong>! Anh em ai đủ trình độ ra phát chiến thư kéo sập ngai đi nào! 🔥`
+        tag: '👑 THÁCH THỨC NGAI VÀNG',
+        content: `<strong>${escapeHtml(topMember.m.nickname || topMember.m.name)}</strong> đang chễm chệ ở ngai vàng ${labelMode} với <strong>${topMember.xp.toLocaleString()} XP</strong>! Anh em ai đủ trình độ ra phát chiến thư kéo sập ngai đi nào! 🔥`
       });
     }
+
+
 
     const winCounts = activeMembers.map(m => ({ m, wins: getMemberChallengeWins(m.name, state.sessions) })).sort((a, b) => b.wins - a.wins)[0];
     if (winCounts && winCounts.wins > 0) {
@@ -5478,12 +5497,14 @@
     </div>`);
     wrap.appendChild(legendCard);
 
+    // ---- Roast Feed Container ----
+    const roastBox = el(`<div id="roast-feed-box"></div>`);
+    wrap.appendChild(roastBox);
+
     // ---- Main leaderboard container ----
     const lbContainer = el(`<div id="lb-main"></div>`);
     wrap.appendChild(lbContainer);
 
-    // ---- Roast Feed Card ----
-    wrap.insertBefore(renderRoastFeedCard(), lbContainer);
 
     // ---- My XP card (nếu đã đăng nhập) ----
     if (state.me) {
@@ -5535,7 +5556,8 @@
             🎉 Đã đạt cấp cao nhất — Huyền Thoại!
           </div>`}
         </div>`);
-        myCard.querySelector('#my-avatar-lb').innerHTML = avatarHtml(me, 48);
+        myCard.querySelector('#my-avatar-lb').innerHTML = avatarHtml(me, 48, myXP);
+
         wrap.insertBefore(myCard, lbContainer);
       }
     }
@@ -5548,9 +5570,13 @@
     function buildRankings(mode) {
       lbMode = mode;
       state.lbMode = mode;
+      roastBox.innerHTML = '';
+      roastBox.appendChild(renderRoastFeedCard(mode));
+
       state.tieVotes = state.tieVotes || {};
       const monthTieMap = state.tieVotes[curMonth] || {};
       const myTieVote = state.me ? monthTieMap[state.me.name] : null;
+
 
       const data = activeMembers.map(m => {
         const xp = mode === 'month'
@@ -5649,7 +5675,8 @@
             <span style="font-size:22px;font-weight:900;color:${podiumColors[dataIdx]};opacity:0.5;">${dataIdx+1}</span>
           </div>
         </div>`);
-        podItem.querySelector(`#pod-avatar-${m.id}`).innerHTML = avatarHtml(m, dataIdx===0 ? 52 : 42);
+        podItem.querySelector(`#pod-avatar-${m.id}`).innerHTML = avatarHtml(m, dataIdx===0 ? 52 : 42, xp);
+
         
         const ptBtn = podItem.querySelector(`#pod-tie-${m.id}`);
         if (ptBtn) ptBtn.onclick = (e) => {
@@ -5723,7 +5750,8 @@
           </div>
         </div>`);
 
-        row.querySelector(`#lb-avatar-${m.id}-${idx}`).innerHTML = avatarHtml(m, 34);
+        row.querySelector(`#lb-avatar-${m.id}-${idx}`).innerHTML = avatarHtml(m, 34, xp);
+
         
         const chBtn = row.querySelector(`#lb-ch-${m.id}`);
         if (chBtn) chBtn.onclick = (e) => { e.stopPropagation(); openQuickChallengeModal(m); };
@@ -7184,29 +7212,33 @@
         const team1Won = isDone && (c.score1 > c.score2);
         const team2Won = isDone && (c.score2 > c.score1);
 
+        const sMonth = sessionMonthKey(s);
         const team1Html = team1Names.map(name => {
           const m = state.members.find(x => x.name === name);
+          const mMonthXP = m ? calculateMemberMonthXP(m.id, state.sessions, sMonth) : 0;
           let textStyle = `font-weight:600; font-size:12px;`;
           if (isDone) {
             textStyle += team1Won ? ' color:#27500A; font-weight:bold;' : ' color:#8a877d; font-weight:normal;';
           }
           return `<div style="display:flex; align-items:center; gap:6px; ${textStyle}">
-            ${avatarHtml(m || { name }, 22)}
+            ${avatarHtml(m || { name }, 22, mMonthXP)}
             <span style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
           </div>`;
         }).join('');
 
         const team2Html = team2Names.map(name => {
           const m = state.members.find(x => x.name === name);
+          const mMonthXP = m ? calculateMemberMonthXP(m.id, state.sessions, sMonth) : 0;
           let textStyle = `font-weight:600; font-size:12px; justify-content:flex-end;`;
           if (isDone) {
             textStyle += team2Won ? ' color:#27500A; font-weight:bold;' : ' color:#8a877d; font-weight:normal;';
           }
           return `<div style="display:flex; align-items:center; gap:6px; ${textStyle}">
             <span style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(name)}</span>
-            ${avatarHtml(m || { name }, 22)}
+            ${avatarHtml(m || { name }, 22, mMonthXP)}
           </div>`;
         }).join('');
+
 
         const hasChallengePermission = c.team1.includes(myName) || c.team2.includes(myName) || canManage();
         let actionsHtml = '';
@@ -7631,13 +7663,15 @@
         } else if (v === 'yes' || isReceiver) {
           trStyle += ` background-color: rgba(45, 106, 79, 0.04);`;
         }
+        const mMonthXP = calculateMemberMonthXP(m.id, state.sessions, sessionMonthKey(s));
         tbl.appendChild(el(`<tr style="${trStyle}">
-          <td style="padding:5px 4px; width:30px;">${avatarHtml(m, 26)}</td>
+          <td style="padding:5px 4px; width:30px;">${avatarHtml(m, 26, mMonthXP)}</td>
           <td style="padding:5px 4px;">${nameLabel}</td>
           <td style="padding:5px 4px; color:#8a877d;">${t === 'fixed' ? 'Cố định' : 'Vãng lai'}</td>
           <td style="padding:5px 4px;">${passCell}</td>
           <td style="padding:5px 4px; text-align:right;">${statusBadge}</td>
         </tr>`));
+
       });
       voteTable.appendChild(tbl);
       if (s.locked && hiddenCount > 0) {
