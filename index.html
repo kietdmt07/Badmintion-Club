@@ -5233,17 +5233,6 @@
       wrap.appendChild(mailServerSection);
     }
 
-    setTimeout(() => {
-      const cfgMailSaveBtn = document.getElementById('cfg-mail-save-btn');
-      if (cfgMailSaveBtn) cfgMailSaveBtn.onclick = async () => {
-        const enabled = document.getElementById('cfg-mail-enabled').checked;
-        const modeEl = document.querySelector('input[name="cfg-mail-mode"]:checked');
-        const activeMode = modeEl ? modeEl.value : 'gas';
-        
-        const useGoogleScript = activeMode === 'gas';
-        const googleScriptUrl = document.getElementById('cfg-mail-gas-url').value.trim();
-        const useSecureToken = activeMode === 'token';
-        const secureToken = document.getElementById('cfg-mail-token').value.trim();
 
         const host = document.getElementById('cfg-mail-host').value.trim();
         const port = parseInt(document.getElementById('cfg-mail-port').value) || 465;
@@ -5442,6 +5431,61 @@
       });
     }
 
+    // 4. Vua Chuyển Nhượng (Thánh Hay Pass Slot)
+    const passGivers = activeMembers.map(m => {
+      let count = 0;
+      state.sessions.forEach(s => {
+        const passes = s.passes || {};
+        if (passes[m.id] && passes[m.id] !== 'pending') count++;
+      });
+      return { m, count };
+    }).sort((a, b) => b.count - a.count)[0];
+
+    if (passGivers && passGivers.count > 0) {
+      roasts.push({
+        id: 'roast_giver_' + passGivers.m.name.replace(/\s+/g, ''),
+        tag: '🕊️ VUA CHUYỂN NHƯỢNG (THÁNH PASS SLOT)',
+        content: `Gương mặt đại diện hội "bận đột xuất": <strong>${escapeHtml(passGivers.m.nickname || passGivers.m.name)}</strong> đã nhường pass thành công ${passGivers.count} lần! Danh hiệu Tay Pass Vàng chắc chắn thuộc về bác! 💸`
+      });
+    }
+
+    // 5. Vua Săn Pass (Thánh Nhận Pass Slot)
+    const passReceivers = activeMembers.map(m => {
+      let count = 0;
+      state.sessions.forEach(s => {
+        const passes = s.passes || {};
+        if (Object.values(passes).includes(m.id)) count++;
+      });
+      return { m, count };
+    }).sort((a, b) => b.count - a.count)[0];
+
+    if (passReceivers && passReceivers.count > 0) {
+      roasts.push({
+        id: 'roast_receiver_' + passReceivers.m.name.replace(/\s+/g, ''),
+        tag: '⚡ VUA SĂN PASS (THÁNH HỐT KÈO)',
+        content: `Thần tài gõ cửa: <strong>${escapeHtml(passReceivers.m.nickname || passReceivers.m.name)}</strong> là "Thánh hốt pass" đỉnh nhất CLB với ${passReceivers.count} lần săn pass thành công! Đỉnh cao canh giờ cướp slot! 🎯`
+      });
+    }
+
+    // 6. Vua Phát Chiến Thư (Thánh Tạo Thách Đấu)
+    const challengeCreators = activeMembers.map(m => {
+      let count = 0;
+      state.sessions.forEach(s => {
+        (s.challenges || []).forEach(c => {
+          if (c.createdBy === m.name) count++;
+        });
+      });
+      return { m, count };
+    }).sort((a, b) => b.count - a.count)[0];
+
+    if (challengeCreators && challengeCreators.count > 0) {
+      roasts.push({
+        id: 'roast_creator_' + challengeCreators.m.name.replace(/\s+/g, ''),
+        tag: '🥊 VUA PHÁT CHIẾN THƯ',
+        content: `Chúa tể tạo kèo: <strong>${escapeHtml(challengeCreators.m.nickname || challengeCreators.m.name)}</strong> đã mở màn ${challengeCreators.count} trận thách đấu nảy lửa! Tay vợt nào tiếp theo dám nhận kèo? ⚔️`
+      });
+    }
+
     if (roasts.length === 0) {
       roasts.push({
         id: 'roast_welcome',
@@ -5449,6 +5493,7 @@
         content: `Chào mừng anh em đến với hệ thống Gamification CLB! Hãy tham gia vote, giao lưu thách đấu để tích XP và mở khóa huy hiệu độc quyền nhé! 💪`
       });
     }
+
 
     const card = el(`<div class="bc-card" style="
         background: linear-gradient(135deg, rgba(242,100,25,0.08) 0%, rgba(255,183,3,0.06) 100%);
