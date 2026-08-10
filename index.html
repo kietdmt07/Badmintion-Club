@@ -885,8 +885,8 @@
             }
           } else {
             // Đang chỉnh sửa tài khoản của chính mình
-            // Thành viên thường (R1/R2) cấm thay đổi: vai trò (role), trạng thái (status), thông tin tài khoản cốt lõi
-            const forbiddenKeys = ['role', 'status', 'username', 'email', 'phone', 'level'];
+            // Thành viên thường (R1/R2) cấm tự ý thay đổi: vai trò (role), trạng thái (status), mã định danh (id)
+            const forbiddenKeys = ['role', 'status', 'id'];
             const violations = diffs.filter(k => forbiddenKeys.includes(k));
             if (violations.length > 0) {
               console.error('Security block: member attempted unauthorized self-modification.', violations);
@@ -1280,7 +1280,7 @@
       <h2 style="font-size:20px; font-weight:700; color:#1B4332; margin-top:0; margin-bottom:6px; font-family:'Oswald', sans-serif; letter-spacing:0.5px;">
         BIỂU QUYẾT NHANH BUỔI TẬP
       </h2>
-      <div style="font-size:13px; color:#6b7a73; margin-bottom:20px;">Chào <strong>${escapeHtml(member.name)}</strong> (${myType === 'fixed' ? 'Cố định' : 'Vãng lai'})</div>
+      <div style="font-size:13px; color:#6b7a73; margin-bottom:20px;">Chào <strong>${escapeHtml(memberDisplayName(member))}</strong> (${myType === 'fixed' ? 'Cố định' : 'Vãng lai'})</div>
       
       <div style="background:#FAF8F5; border:1px solid #E3E0D6; border-radius:10px; padding:12px; margin-bottom:20px; text-align:left; font-size:14px;">
         <div style="font-weight:600; color:#1B4332; margin-bottom:4px;">📅 Lịch tập:</div>
@@ -1869,9 +1869,10 @@
       const atLimit = state.members.length >= MAX_MEMBERS;
       card.appendChild(el(`<div style="display:flex; flex-direction:column; gap:8px;">
         ${atLimit ? `<div class="bc-err">Nhóm đã đạt giới hạn ${MAX_MEMBERS} thành viên, liên hệ Admin để được thêm.</div>` : ''}
-        <input class="bc-input" id="auth-name" placeholder="Họ tên" ${atLimit?'disabled':''} />
+        <input class="bc-input" id="auth-name" placeholder="Họ tên (bắt buộc)" ${atLimit?'disabled':''} />
+        <input class="bc-input" id="auth-nickname" placeholder="Biệt danh (tối đa 35 ký tự, tuỳ chọn)" maxlength="35" ${atLimit?'disabled':''} />
         <input class="bc-input" id="auth-username2" placeholder="Tên đăng nhập (username, không dấu cách)" ${atLimit?'disabled':''} />
-        <input class="bc-input" id="auth-email2" type="email" placeholder="Email của bạn" ${atLimit?'disabled':''} />
+        <input class="bc-input" id="auth-email2" type="email" placeholder="Email của bạn (bắt buộc)" ${atLimit?'disabled':''} />
         <input class="bc-input" id="auth-phone" placeholder="SĐT (tuỳ chọn)" ${atLimit?'disabled':''} />
         <select class="bc-select" id="auth-level" ${atLimit?'disabled':''}>${LEVELS.map(l=>`<option>${l}</option>`).join('')}</select>
         <input class="bc-input" id="auth-pw1" type="password" placeholder="Đặt mật khẩu (tối thiểu 4 ký tự)" ${atLimit?'disabled':''} />
@@ -2051,6 +2052,7 @@
       if (regBtn) regBtn.onclick = async () => {
         if (state.members.length >= MAX_MEMBERS) return;
         const name = document.getElementById('auth-name').value.trim();
+        const nickname = (document.getElementById('auth-nickname').value || '').trim().slice(0, 35);
         const username = normUsername(document.getElementById('auth-username2').value);
         const email = normEmail(document.getElementById('auth-email2').value);
         const phone = document.getElementById('auth-phone').value.trim();
@@ -2058,6 +2060,7 @@
         const pw1 = document.getElementById('auth-pw1').value;
         const pw2 = document.getElementById('auth-pw2').value;
         if (!name || !username || !email) { state.authError = 'Nhập đầy đủ họ tên, tên đăng nhập và email.'; render(); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { state.authError = 'Địa chỉ email không đúng định dạng.'; render(); return; }
         if (!/^[a-z0-9_.]+$/.test(username)) { state.authError = 'Tên đăng nhập chỉ gồm chữ, số, dấu chấm/gạch dưới, không dấu cách.'; render(); return; }
         if (!pw1 || pw1.length < 4) { state.authError = 'Mật khẩu cần ít nhất 4 ký tự.'; render(); return; }
         if (pw1 !== pw2) { state.authError = 'Hai mật khẩu không khớp.'; render(); return; }
@@ -2072,7 +2075,7 @@
             if (latest.length >= MAX_MEMBERS) { regError = 'Nhóm đã đạt giới hạn ' + MAX_MEMBERS + ' thành viên.'; return null; }
             const isFirst = latest.length === 0;
             const newMember = {
-              id: uid(), name, username, email, phone, level, password: passwordHash,
+              id: uid(), name, nickname, username, email, phone, level, password: passwordHash,
               status: isFirst ? 'active' : 'pending',
               role: isFirst ? 'admin' : 'r2',
               monthlyType: {}, avatarUrl: ''
@@ -2100,11 +2103,12 @@
               const approveUrl = `${origin}?action=approve_member&user=${username}`;
               const rejectUrl = `${origin}?action=reject_member&user=${username}`;
 
-              const emailSubject = `[CLB ARON] Yêu cầu phê duyệt thành viên mới: ${name}`;
+              const emailSubject = `[CLB ARON] Yêu cầu phê duyệt thành viên mới: ${name}${nickname ? ` (${nickname})` : ''}`;
               const emailBody = `<h3>Chào Ban quản trị CLB ARON,</h3>
                 <p>Hệ thống vừa nhận được yêu cầu đăng ký thành viên mới:</p>
                 <ul>
                   <li><strong>Họ tên:</strong> ${name}</li>
+                  ${nickname ? `<li><strong>Biệt danh:</strong> ${nickname}</li>` : ''}
                   <li><strong>Tên đăng nhập (username):</strong> ${username}</li>
                   <li><strong>Email:</strong> ${email}</li>
                   <li><strong>Số điện thoại:</strong> ${phone || 'Chưa cập nhật'}</li>
@@ -2506,9 +2510,10 @@
         <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332;">Thêm thành viên (thay họ, nếu họ không tự đăng ký được)</h3>
         ${atLimit ? `<div class="bc-err">Đã đạt giới hạn ${MAX_MEMBERS} thành viên.</div>` : ''}
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <input class="bc-input" id="mb-name" placeholder="Họ tên" style="flex:2; min-width:140px;" ${atLimit?'disabled':''} />
+          <input class="bc-input" id="mb-name" placeholder="Họ tên (bắt buộc)" style="flex:2; min-width:140px;" ${atLimit?'disabled':''} />
+          <input class="bc-input" id="mb-nickname" placeholder="Biệt danh (tuỳ chọn)" maxlength="35" style="flex:1.5; min-width:120px;" ${atLimit?'disabled':''} />
           <input class="bc-input" id="mb-username" placeholder="Username" style="flex:1.2; min-width:120px;" ${atLimit?'disabled':''} />
-          <input class="bc-input" id="mb-email" type="email" placeholder="Email" style="flex:2; min-width:160px;" ${atLimit?'disabled':''} />
+          <input class="bc-input" id="mb-email" type="email" placeholder="Email (bắt buộc)" style="flex:2; min-width:160px;" ${atLimit?'disabled':''} />
           <select class="bc-select" id="mb-level" style="flex:1; min-width:120px;" ${atLimit?'disabled':''}>${LEVELS.map(l=>`<option>${l}</option>`).join('')}</select>
           <input class="bc-input" id="mb-phone" placeholder="SĐT (tuỳ chọn)" style="flex:1; min-width:120px;" ${atLimit?'disabled':''} />
           <button class="bc-btn" id="mb-add" ${atLimit?'disabled':''}>Thêm</button>
@@ -2519,9 +2524,12 @@
         document.getElementById('mb-add').onclick = async () => {
           if (state.members.length >= MAX_MEMBERS) return;
           const name = document.getElementById('mb-name').value.trim();
+          const nickname = (document.getElementById('mb-nickname').value || '').trim().slice(0, 35);
           const username = normUsername(document.getElementById('mb-username').value);
           const email = normEmail(document.getElementById('mb-email').value);
           if (!name || !username || !email) { alert('Nhập đầy đủ họ tên, username và email.'); return; }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Địa chỉ email không đúng định dạng.'); return; }
+          if (!/^[a-z0-9_.]+$/.test(username)) { alert('Username chỉ gồm chữ thường, số, dấu chấm và gạch dưới.'); return; }
           const level = document.getElementById('mb-level').value;
           const phone = document.getElementById('mb-phone').value.trim();
           const tempPw = Math.random().toString(36).slice(2,8);
@@ -2531,11 +2539,11 @@
             if (latest.some(m => normUsername(m.username) === username)) { err = 'Username đã tồn tại.'; return null; }
             if (latest.some(m => normEmail(m.email) === email)) { err = 'Email đã tồn tại.'; return null; }
             if (latest.length >= MAX_MEMBERS) { err = 'Đã đạt giới hạn ' + MAX_MEMBERS + ' thành viên.'; return null; }
-            return latest.concat([{ id: uid(), name, username, email, phone, level, password: passwordHash, status: 'active', role: 'r2', monthlyType: {}, avatarUrl: '' }]);
+            return latest.concat([{ id: uid(), name, nickname, username, email, phone, level, password: passwordHash, status: 'active', role: 'r2', monthlyType: {}, avatarUrl: '' }]);
           });
           if (!ok) { alert(err || 'Thêm thất bại, thử lại.'); return; }
           render();
-          alert(`Đã thêm ${name}. Mật khẩu tạm: ${tempPw} — báo cho họ để đăng nhập rồi đổi qua Admin reset nếu cần.`);
+          alert(`Đã thêm ${name}${nickname ? ` (${nickname})` : ''}. Mật khẩu tạm: ${tempPw} — báo cho họ để đăng nhập rồi đổi qua Admin reset nếu cần.`);
         };
       }, 0);
     }
@@ -2656,6 +2664,41 @@
     </div>`;
   }
 
+  function memberDisplayName(m) {
+    if (!m) return '';
+    const nickname = (m.nickname || '').trim();
+    const fullName = (m.name || '').trim();
+    if (nickname && fullName && nickname.toLowerCase() !== fullName.toLowerCase()) {
+      return `${nickname} (${fullName})`;
+    }
+    return nickname || fullName || '';
+  }
+
+  function memberDisplayNameHtml(m, options = {}) {
+    if (!m) return '';
+    const nickname = (m.nickname || '').trim();
+    const fullName = (m.name || '').trim();
+    const isDeleted = m.isDeleted;
+    const isSelf = options.isSelf;
+    const mainSize = options.mainSize || '13px';
+    const subSize = options.subSize || '8px';
+    const carrotColor = '#E76F51'; // Màu cam cà rốt chuẩn thể thao, rõ nét
+
+    const selfBadge = isSelf ? ` <span style="font-size:11px; color:#D8973C; font-weight:700;">(Bạn)</span>` : '';
+    const deletedBadge = isDeleted ? ` <span style="font-size:11px; color:#993C1D; font-style:italic;">(Đã xoá)</span>` : '';
+
+    if (nickname) {
+      return `<div style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:left; line-height:1.2;">
+        <span style="font-size:${mainSize}; font-weight:${options.fontWeight || '500'}; color:inherit;">${escapeHtml(nickname)}${selfBadge}${deletedBadge}</span>
+        <span style="font-size:${subSize}; color:${carrotColor}; font-weight:500; margin-top:1px; line-height:1.1;">${escapeHtml(fullName)}</span>
+      </div>`;
+    } else {
+      return `<div style="display:inline-flex; flex-direction:column; vertical-align:middle; text-align:left; line-height:1.25;">
+        <span style="font-size:${mainSize}; font-weight:${options.fontWeight || '500'}; color:inherit;">${escapeHtml(fullName)}${selfBadge}${deletedBadge}</span>
+      </div>`;
+    }
+  }
+
   function renderMemberRow(m){
     const [lbg, lfg, llabel, lborder] = LEVEL_COLOR[m.level] || ["#F1EFE8","#444441", m.level, "none"];
     const [rbg, rfg] = ROLE_COLOR[m.role] || ["#F1EFE8","#444441"];
@@ -2674,23 +2717,26 @@
           <div id="avatar-box-${m.id}"></div>
           <div>
             ${isEditing 
-              ? `<input class="bc-input" id="edit-name-${m.id}" value="${escapeHtml(m.name)}" style="width:160px; padding:4px 6px; font-size:14px; font-weight:500; height: 28px; display:inline-block;" />`
-              : `<span style="font-weight:500; font-size:14px;">${escapeHtml(m.name)}</span>`
+              ? `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px;">
+                  <input class="bc-input" id="edit-name-${m.id}" value="${escapeHtml(m.name)}" placeholder="Họ tên (bắt buộc)" style="width:140px; padding:4px 6px; font-size:13px; font-weight:500; height: 28px;" />
+                  <input class="bc-input" id="edit-nickname-${m.id}" value="${escapeHtml(m.nickname || '')}" placeholder="Biệt danh (tối đa 35 ký tự)" maxlength="35" style="width:150px; padding:4px 6px; font-size:13px; height: 28px;" />
+                  <select class="bc-select" id="edit-level-${m.id}" style="width:110px; padding:4px 6px; font-size:12px; height: 28px;">
+                    ${LEVELS.map(l => `<option value="${l}" ${l===m.level?'selected':''}>${l}</option>`).join('')}
+                  </select>
+                </div>`
+              : `<div style="display:inline-block; vertical-align:middle;">
+                  ${memberDisplayNameHtml(m, { isSelf: false, mainSize: '14px', subSize: '11px', fontWeight: '600' })}
+                </div>`
             }
-            ${isSelf ? `<span class="bc-badge" style="background:#E6F1FB; color:#0C447C; margin-left:6px;">Bạn</span>` : ''}
-            ${isEditing && !isOwner(m)
-              ? `<select class="bc-select" id="edit-level-${m.id}" style="width:110px; padding:4px 6px; font-size:12px; height: 28px; display:inline-block; margin-left:6px;">
-                  ${LEVELS.map(l => `<option value="${l}" ${l===m.level?'selected':''}>${l}</option>`).join('')}
-                 </select>`
-              : `<span class="bc-badge" style="background:${lbg}; color:${lfg}; border:${lborder}; margin-left:6px;">${llabel}</span>`
-            }
+            ${isSelf && !isEditing ? `<span class="bc-badge" style="background:#E6F1FB; color:#0C447C; margin-left:6px;">Bạn</span>` : ''}
+            ${!isEditing ? `<span class="bc-badge" style="background:${lbg}; color:${lfg}; border:${lborder}; margin-left:6px;">${llabel}</span>` : ''}
             <span class="bc-badge" style="background:${rbg}; color:${rfg}; margin-left:6px;">${ROLE_LABEL[m.role]}</span>
             <span class="bc-badge" style="background:${statusBg}; color:${statusFg}; margin-left:6px;">${statusLabel}</span>
             ${isEditing
               ? `<div style="font-size:12px; color:#8a877d; margin-top:3px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                  <span>@${escapeHtml(m.username || '')}</span> · 
-                  <input class="bc-input" id="edit-email-${m.id}" type="email" value="${escapeHtml(m.email)}" style="width:180px; padding:2px 6px; font-size:12px; height: 24px; display:inline-block;" /> · 
-                  <input class="bc-input" id="edit-phone-${m.id}" value="${escapeHtml(m.phone || '')}" placeholder="SĐT" style="width:110px; padding:2px 6px; font-size:12px; height: 24px; display:inline-block;" />
+                  <input class="bc-input" id="edit-username-${m.id}" value="${escapeHtml(m.username || '')}" placeholder="Username" style="width:110px; padding:2px 6px; font-size:12px; height: 24px;" ${isOwner(m)?'disabled title="Không thể đổi username của Owner"':''} /> · 
+                  <input class="bc-input" id="edit-email-${m.id}" type="email" value="${escapeHtml(m.email)}" placeholder="Email" style="width:170px; padding:2px 6px; font-size:12px; height: 24px;" /> · 
+                  <input class="bc-input" id="edit-phone-${m.id}" value="${escapeHtml(m.phone || '')}" placeholder="SĐT" style="width:100px; padding:2px 6px; font-size:12px; height: 24px;" />
                  </div>`
               : `<div style="font-size:12px; color:#8a877d; margin-top:3px;">@${escapeHtml(m.username || '')} · ${escapeHtml(m.email)}${m.phone ? ' · ' + escapeHtml(m.phone) : ''}</div>`
             }
@@ -2723,25 +2769,70 @@
       const saveEditBtn = el(`<button class="bc-btn small" style="background:#27500A; border-color:#27500A; color:#FFF; font-weight:500;">Xác nhận</button>`);
       saveEditBtn.onclick = async () => {
         const newName = document.getElementById(`edit-name-${m.id}`).value.trim();
+        const newNickname = (document.getElementById(`edit-nickname-${m.id}`).value || '').trim().slice(0, 35);
+        const newUsernameInput = document.getElementById(`edit-username-${m.id}`);
+        const newUsername = newUsernameInput ? normUsername(newUsernameInput.value) : m.username;
         const newEmail = normEmail(document.getElementById(`edit-email-${m.id}`).value);
         const newPhone = document.getElementById(`edit-phone-${m.id}`).value.trim();
         const levelEl = document.getElementById(`edit-level-${m.id}`);
         const newLevel = levelEl ? levelEl.value : m.level;
         
-        if (!newName || !newEmail) { alert('Họ tên và email không được bỏ trống.'); return; }
+        if (!newName || !newEmail || !newUsername) { alert('Họ tên, username và email không được bỏ trống.'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { alert('Địa chỉ email không đúng định dạng.'); return; }
+        if (!/^[a-z0-9_.]+$/.test(newUsername)) { alert('Tên đăng nhập chỉ gồm chữ thường, số, dấu chấm và gạch dưới, không dấu cách.'); return; }
+
+        if (isOwner(m) && newUsername !== 'kietdmt') {
+          alert('Không thể thay đổi username của tài khoản Owner.');
+          return;
+        }
+
+        let newPasswordHash = undefined;
+        if (newUsername !== m.username) {
+          const pwPrompt = prompt(`Bạn đang đổi tên đăng nhập sang "${newUsername}".\nVui lòng nhập mật khẩu tài khoản để cập nhật đăng nhập cho username mới:`);
+          if (!pwPrompt) {
+            alert('Đã hủy thao tác đổi tên đăng nhập vì chưa nhập mật khẩu xác nhận.');
+            return;
+          }
+          newPasswordHash = await hashPassword(pwPrompt, newUsername);
+        }
         
         let err = '';
         const ok = await mutateMembers(latest => {
+          if (latest.some(x => x.id !== m.id && normUsername(x.username) === newUsername)) {
+            err = 'Tên đăng nhập này đã được sử dụng bởi thành viên khác.';
+            return null;
+          }
           if (latest.some(x => x.id !== m.id && normEmail(x.email) === newEmail)) {
             err = 'Email này đã được sử dụng bởi thành viên khác.';
             return null;
           }
-          return latest.map(x => x.id === m.id ? Object.assign({}, x, { name: newName, email: newEmail, phone: newPhone, level: newLevel }) : x);
+          return latest.map(x => x.id === m.id ? Object.assign({}, x, {
+            name: newName,
+            nickname: newNickname,
+            username: newUsername,
+            email: newEmail,
+            phone: newPhone,
+            level: newLevel,
+            ...(newPasswordHash ? { password: newPasswordHash } : {})
+          }) : x);
         });
         
         if (!ok) {
           alert(err || 'Chỉnh sửa thất bại.');
           return;
+        }
+
+        if (isSelf && newUsername !== m.username) {
+          state.myUsername = newUsername;
+          if (newPasswordHash) {
+            state.myPasswordHash = newPasswordHash;
+            if (state.rememberData) {
+              state.rememberData = { username: newUsername, password: newPasswordHash };
+              saveRemember(state.rememberData);
+            }
+          }
+          saveMyUsername();
+          resolveMe();
         }
         
         state.editingMemberId = null;
@@ -2806,22 +2897,22 @@
           actions.appendChild(statusBtn);
         }
       }
+
+      // Nút Sửa: Hiển thị cho chính mình (kể cả R2) HOẶC Admin/R1 có thẩm quyền
+      const isOwnerRow = isOwner(m);
+      const isCurrentUserOwner = isOwner();
+      const canEditThisMember = isSelf || (isAdmin() && (!isOwnerRow || isCurrentUserOwner)) || (role() === 'r1' && m.role !== 'admin' && !isOwnerRow);
+      if (canEditThisMember && m.status !== 'pending') {
+        const editBtn = el(`<button class="bc-btn outline small" id="edit-btn-${m.id}">Sửa</button>`);
+        editBtn.onclick = () => {
+          state.editingMemberId = m.id;
+          render();
+        };
+        actions.appendChild(editBtn);
+      }
+
       if ((isAdmin() || role() === 'r1') && m.status !== 'pending') {
-        const isOwnerRow = isOwner(m);
-        const isCurrentUserOwner = isOwner();
-
-        // 1. Chỉ cho phép sửa thông tin của R2/R1 (R1 không được sửa Admin/Owner)
-        const canEditMemberInfo = isAdmin() || (role() === 'r1' && m.role !== 'admin' && !isOwnerRow);
-        if (canEditMemberInfo && (!isOwnerRow || isCurrentUserOwner)) {
-          const editBtn = el(`<button class="bc-btn outline small" id="edit-btn-${m.id}">Sửa</button>`);
-          editBtn.onclick = () => {
-            state.editingMemberId = m.id;
-            render();
-          };
-          actions.appendChild(editBtn);
-        }
-
-        // 2. Chỉ cho phép đổi nhóm thành viên/quyền nếu là Admin/Owner (R1 không được đổi quyền)
+        // Chỉ cho phép đổi nhóm thành viên/quyền nếu là Admin/Owner (R1 không được đổi quyền)
         if (isAdmin()) {
           const roleSel = el(`<select class="bc-select" style="width:90px; padding:5px 6px;" ${isOwnerRow && !isCurrentUserOwner ? 'disabled' : ''}>
             <option value="r2" ${m.role==='r2'?'selected':''}>R2</option>
@@ -2850,7 +2941,7 @@
           actions.appendChild(roleSel);
         }
 
-        // 3. Reset mật khẩu: R1 được đổi mật khẩu thành viên nhưng không được đổi mật khẩu admin và owner
+        // Reset mật khẩu: R1 được đổi mật khẩu thành viên nhưng không được đổi mật khẩu admin và owner
         const canReset = isCurrentUserOwner || (!isOwnerRow && m.role !== 'admin' && (isAdmin() || role() === 'r1'));
         if (canReset) {
           const resetBtn = el(`<button class="bc-btn outline small">Reset mật khẩu</button>`);
@@ -3140,7 +3231,7 @@
           }
 
           const tr = el(`<tr style="border-top:1px solid #F1EFE8;">
-            <td style="padding:6px 4px;">${escapeHtml(m.name)}</td>
+            <td style="padding:6px 4px;">${memberDisplayNameHtml(m, { isSelf: state.me && state.me.id === m.id, mainSize: '13px', subSize: '11px', fontWeight: '500' })}</td>
             <td style="padding:6px 4px;">${s.count}</td>
             <td style="padding:6px 4px; text-align:right;">${formatVND(s.owed)}</td>
             <td style="padding:6px 4px; text-align:right;">${canEditPaid ? `<input class="bc-input" type="number" min="0" id="paid-${m.id}" value="${p.paid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : formatVND(p.paid||0)}</td>
@@ -4811,13 +4902,13 @@
           <div style="flex:1.2; min-width:140px;">
             <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Thành viên 1</label>
             <select class="bc-select" id="pair-member1" style="font-size:13px; padding:6px 10px;">
-              ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
+              ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))}</option>`).join('')}
             </select>
           </div>
           <div style="flex:1.2; min-width:140px;">
             <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Thành viên 2</label>
             <select class="bc-select" id="pair-member2" style="font-size:13px; padding:6px 10px;">
-              ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
+              ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))}</option>`).join('')}
             </select>
           </div>
           <div style="flex:1; min-width:120px;">
@@ -6459,26 +6550,24 @@
 
             passCell = `<select class="bc-select" id="pass-${s.id}-${m.id}" style="width:150px; padding:4px 6px; font-size:12px;">
               <option value="" ${passes[m.id] === 'pending' ? 'selected' : ''}>${passes[m.id] === 'pending' ? '🔍 Chờ người nhận...' : 'Không pass'}</option>
-              ${availableCasuals.map(c => `<option value="${c.id}" ${passes[m.id]===c.id?'selected':''}>Pass cho ${escapeHtml(c.name)}</option>`).join('')}
+              ${availableCasuals.map(c => `<option value="${c.id}" ${passes[m.id]===c.id?'selected':''}>Pass cho ${escapeHtml(memberDisplayName(c))}</option>`).join('')}
             </select>`;
           } else if (passes[m.id]) {
             const target = state.members.find(x => x.id === passes[m.id]);
             passCell = passes[m.id] === 'pending'
               ? `<span style="font-size:12px; color:#854F0B; font-weight:500;">🔍 Chờ người nhận...</span>`
-              : (target ? `<span style="font-size:12px; color:#8a877d;">Đã pass cho ${escapeHtml(target.name)}</span>` : '');
+              : (target ? `<span style="font-size:12px; color:#8a877d;">Đã pass cho ${escapeHtml(memberDisplayName(target))}</span>` : '');
           }
         } else {
           const fromId = Object.keys(passes).find(fid => passes[fid] === m.id);
           if (fromId) {
             const fromMember = state.members.find(x => x.id === fromId);
-            passCell = `<span class="bc-badge" style="background:#E6F1FB; color:#0C447C;">Nhận pass từ ${fromMember ? escapeHtml(fromMember.name) : '?'}</span>`;
+            passCell = `<span class="bc-badge" style="background:#E6F1FB; color:#0C447C;">Nhận pass từ ${fromMember ? escapeHtml(memberDisplayName(fromMember)) : '?'}</span>`;
           }
         }
 
         const isSelfRow = state.me && state.me.id === m.id;
-        const nameLabel = m.isDeleted
-          ? `${escapeHtml(m.name)} <span style="font-size:11px; color:#993C1D; font-style:italic;">(Đã xoá)</span>`
-          : (isSelfRow ? `${escapeHtml(m.name)} <span style="font-size:11px; color:#D8973C; font-weight:700;">(Bạn)</span>` : escapeHtml(m.name));
+        const nameLabel = memberDisplayNameHtml(m, { isSelf: isSelfRow, isDeleted: m.isDeleted, mainSize: '13px', subSize: '11px', fontWeight: '500' });
 
         let trStyle = `border-top:1px solid #F1EFE8;`;
         if (isSelfRow) {
@@ -6957,7 +7046,7 @@
           const typeLabel = p.type === 'fixed' ? 'Cố định' : p.type === 'free' ? '<span style="color:#27500A">Miễn phí (nhận pass)</span>' : 'Vãng lai';
           
           const isSelfRow = state.me && state.me.name === p.name;
-          const nameLabel = isSelfRow ? `${escapeHtml(p.name)} <span style="font-size:11px; color:#D8973C; font-weight:700;">(Bạn)</span>` : escapeHtml(p.name);
+          const nameLabel = mem ? memberDisplayNameHtml(mem, { isSelf: isSelfRow, mainSize: '13px', subSize: '11px', fontWeight: '500' }) : escapeHtml(p.name);
           const trStyle = `border-top:1px solid #F1EFE8; ${isSelfRow ? 'background-color: rgba(216, 151, 60, 0.08); font-weight: 600;' : ''}`;
           
           detail.appendChild(el(`<tr style="${trStyle}">
