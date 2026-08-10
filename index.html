@@ -6077,7 +6077,7 @@
       return curType === 'fixed' || curType === 'casual';
     });
     Object.keys(s.votes).forEach(name => {
-      if (!currentNames.includes(name)) {
+      if (!currentNames.includes(name) && s.votes[name] === 'yes') {
         displayMembers.push({
           id: 'deleted-' + name,
           name: name,
@@ -6482,7 +6482,7 @@
         return curType === 'fixed' || curType === 'casual';
       });
       Object.keys(s.votes).forEach(name => {
-        if (!currentNames.includes(name)) {
+        if (!currentNames.includes(name) && s.votes[name] === 'yes') {
           displayMembers.push({
             id: 'deleted-' + name,
             name: name,
