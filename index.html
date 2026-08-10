@@ -85,6 +85,43 @@
     100% { opacity: 0.9; filter: drop-shadow(0 0 0 rgba(242,100,25,0)); }
   }
 
+  @keyframes xpRankGlow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.5), 0 2px 8px rgba(0,0,0,0.15); }
+    50% { box-shadow: 0 0 0 5px rgba(255, 215, 0, 0), 0 2px 15px rgba(255, 200, 0, 0.4); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0), 0 2px 8px rgba(0,0,0,0.15); }
+  }
+  @keyframes xpRankShimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes xpBarFill {
+    from { width: 0%; }
+  }
+  @keyframes xpCountUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes rankBadgePop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    70%  { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  @keyframes lbRowIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes crown-float {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50%       { transform: translateY(-4px) rotate(5deg); }
+  }
+  .xp-rank-legendary .xp-avatar-ring {
+    animation: xpRankGlow 2s ease-in-out infinite;
+  }
+  .lb-row { animation: lbRowIn 0.35s ease both; }
+  .lb-top1 { background: linear-gradient(135deg, rgba(255,215,0,0.18) 0%, rgba(255,180,0,0.06) 100%) !important; }
+  .lb-top2 { background: linear-gradient(135deg, rgba(192,192,192,0.18) 0%, rgba(150,150,150,0.06) 100%) !important; }
+  .lb-top3 { background: linear-gradient(135deg, rgba(205,127,50,0.18) 0%, rgba(160,90,30,0.06) 100%) !important; }
+
   #app * { box-sizing: border-box; }
   #app { font-family: 'Outfit', system-ui, sans-serif !important; color: var(--text-primary); }
   #app h1, #app h2, #app h3 { font-family: 'Oswald', sans-serif; letter-spacing: 0.01em; margin: 0; color: var(--text-primary); }
@@ -274,6 +311,372 @@
   const MONTH_NAMES = ["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
   const ROLE_LABEL = { admin: "Admin", r1: "R1", r2: "R2" };
   const ROLE_COLOR = { admin: ["#FAECE7","#993C1D"], r1: ["#FAEEDA","#854F0B"], r2: ["#F1EFE8","#444441"] };
+
+  // ===================== XP RANK SYSTEM =====================
+  // 5 cấp độ tay vợt – tính theo XP tích lũy từ hoạt động thực tế
+  const XP_RANKS = [
+    { key: 'novice',    label: 'Tập sự',    emoji: '🐣', min: 0,    max: 99,   avatarBg: 'linear-gradient(135deg,#B0BEC5,#78909C)',      avatarFg: '#FFF',   ringColor: '#90A4AE' },
+    { key: 'student',   label: 'Học viên',  emoji: '🥉', min: 100,  max: 299,  avatarBg: 'linear-gradient(135deg,#66BB6A,#388E3C)',      avatarFg: '#FFF',   ringColor: '#4CAF50' },
+    { key: 'warrior',   label: 'Chiến binh',emoji: '🥈', min: 300,  max: 699,  avatarBg: 'linear-gradient(135deg,#42A5F5,#1565C0)',      avatarFg: '#FFF',   ringColor: '#1E88E5' },
+    { key: 'master',    label: 'Cao thủ',   emoji: '🥇', min: 700,  max: 1499, avatarBg: 'linear-gradient(135deg,#AB47BC,#6A1B9A)',      avatarFg: '#FFF',   ringColor: '#9C27B0' },
+    { key: 'legendary', label: 'Huyền thoại',emoji:'👑', min: 1500, max: Infinity, avatarBg: 'linear-gradient(135deg,#FFD700 0%,#FF8C00 50%,#FFD700 100%)', avatarFg: '#3E2400', ringColor: '#FFD700', shimmer: true }
+  ];
+
+  function getXPRank(xp) {
+    for (let i = XP_RANKS.length - 1; i >= 0; i--) {
+      if (xp >= XP_RANKS[i].min) return XP_RANKS[i];
+    }
+    return XP_RANKS[0];
+  }
+
+  // Tính XP của 1 thành viên dựa trên toàn bộ sessions (tự động tích lũy từ lịch sử)
+  function calculateMemberXP(memberId, sessions) {
+    if (!sessions || !memberId) return 0;
+    const mem = state.members.find(m => m.id === memberId);
+    const memberName = mem ? mem.name : null;
+    if (!memberName) return 0;
+    let xp = 0;
+    let streakCount = 0;
+    const sortedSessions = [...sessions].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    sortedSessions.forEach(s => {
+      const votes = s.votes || {};
+      const passes = s.passes || {};
+      const v = votes[memberName];
+      const isReceiver = Object.values(passes).includes(memberId);
+      const hasPassed   = Object.keys(passes).includes(memberId);
+      
+      if (isReceiver || (v === 'yes' && !hasPassed)) {
+        xp += 10; // +10 XP mỗi buổi tham gia
+        streakCount++;
+        if (streakCount >= 3 && streakCount % 3 === 0) xp += 20; // +20 mỗi 3 buổi liên tiếp
+      } else if (v === 'no' || hasPassed) {
+        streakCount = 0;
+      }
+
+      // +3 XP nếu tự vote (không bị auto-vote)
+      if ((v === 'yes' || v === 'no') && !(s.autoVoted && s.autoVoted[memberId])) {
+        xp += 3;
+      }
+
+      // + XP từ Thách đấu trong lịch sử
+      (s.challenges || []).forEach(c => {
+        if (c.createdBy === memberName) xp += 5; // +5 XP khi tạo kèo thách đấu
+        const isDone = c.status === 'done' || (c.score1 !== null && c.score2 !== null && c.score1 !== undefined && c.score2 !== undefined);
+        if (isDone) {
+          const s1 = parseInt(c.score1, 10) || 0;
+          const s2 = parseInt(c.score2, 10) || 0;
+          if ((c.team1 || []).includes(memberName)) {
+            if (s1 > s2) xp += 15;      // Thắng +15 XP
+            else if (s1 < s2) xp += 5;  // Thua +5 XP (khuyến khích giao lưu)
+            else xp += 8;               // Hòa +8 XP
+          }
+          if ((c.team2 || []).includes(memberName)) {
+            if (s2 > s1) xp += 15;      // Thắng +15 XP
+            else if (s2 < s1) xp += 5;  // Thua +5 XP
+            else xp += 8;               // Hòa +8 XP
+          }
+        }
+      });
+    });
+    return Math.max(0, xp);
+  }
+
+  // Tính XP tháng của 1 thành viên (dùng cho bảng XH tháng)
+  function calculateMemberMonthXP(memberId, sessions, month) {
+    if (!sessions || !memberId) return 0;
+    const mem = state.members.find(m => m.id === memberId);
+    const memberName = mem ? mem.name : null;
+    if (!memberName) return 0;
+    let xp = 0;
+    let streakCount = 0;
+    const monthSessions = sessions.filter(s => sessionMonthKey(s) === month)
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    monthSessions.forEach(s => {
+      const votes = s.votes || {};
+      const passes = s.passes || {};
+      const v = votes[memberName];
+      const isReceiver = Object.values(passes).includes(memberId);
+      const hasPassed   = Object.keys(passes).includes(memberId);
+
+      if (isReceiver || (v === 'yes' && !hasPassed)) {
+        xp += 10;
+        streakCount++;
+        if (streakCount >= 3 && streakCount % 3 === 0) xp += 20;
+      } else if (v === 'no' || hasPassed) {
+        streakCount = 0;
+      }
+
+      if ((v === 'yes' || v === 'no') && !(s.autoVoted && s.autoVoted[memberId])) {
+        xp += 3;
+      }
+
+      (s.challenges || []).forEach(c => {
+        if (c.createdBy === memberName) xp += 5;
+        const isDone = c.status === 'done' || (c.score1 !== null && c.score2 !== null && c.score1 !== undefined && c.score2 !== undefined);
+        if (isDone) {
+          const s1 = parseInt(c.score1, 10) || 0;
+          const s2 = parseInt(c.score2, 10) || 0;
+          if ((c.team1 || []).includes(memberName)) {
+            if (s1 > s2) xp += 15;
+            else if (s1 < s2) xp += 5;
+            else xp += 8;
+          }
+          if ((c.team2 || []).includes(memberName)) {
+            if (s2 > s1) xp += 15;
+            else if (s2 < s1) xp += 5;
+            else xp += 8;
+          }
+        }
+      });
+    });
+    return Math.max(0, xp);
+  }
+
+  // Số buổi tham gia của 1 thành viên (toàn thời gian)
+  function countAttended(memberId, sessions) {
+    if (!sessions) return 0;
+    const mem = state.members.find(m => m.id === memberId);
+    const memberName = mem ? mem.name : null;
+    if (!memberName) return 0;
+    return sessions.filter(s => {
+      const passes = s.passes || {};
+      const v = (s.votes || {})[memberName];
+      const isReceiver = Object.values(passes).includes(memberId);
+      const hasPassed   = Object.keys(passes).includes(memberId);
+      if (!v && !isReceiver) return false;
+      return isReceiver || (v === 'yes' && !hasPassed);
+    }).length;
+  }
+
+  // ===================== BADGES SYSTEM =====================
+  const BADGES = [
+    { id: 'streak_fire', label: 'Chuỗi Lửa', emoji: '🔥', desc: 'Tham gia 3+ buổi liên tiếp', color: '#F26419', bg: 'rgba(242,100,25,0.12)' },
+    { id: 'thunder_win', label: 'Sấm Sét',  emoji: '⚡', desc: 'Thắng 3+ trận thách đấu', color: '#EAB308', bg: 'rgba(234,179,8,0.12)' },
+    { id: 'sniper_vote', label: 'Bắn Tỉa',  emoji: '🎯', desc: 'Vote đúng giờ 5+ lần', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+    { id: 'mvp_master',  label: 'Cao Thủ',  emoji: '🏆', desc: 'Đạt cấp Cao thủ hoặc Huyền thoại', color: '#A855F7', bg: 'rgba(168,85,247,0.12)' },
+    { id: 'diligent',    label: 'Cần Mẫn',  emoji: '🐢', desc: 'Tham gia 10+ buổi tập', color: '#22C55E', bg: 'rgba(34,197,94,0.12)' }
+  ];
+
+  function getMemberChallengeWins(memberName, sessions) {
+    if (!sessions || !memberName) return 0;
+    let wins = 0;
+    sessions.forEach(s => {
+      (s.challenges || []).forEach(c => {
+        const isDone = c.status === 'done' || (c.score1 !== null && c.score2 !== null && c.score1 !== undefined && c.score2 !== undefined);
+        if (isDone) {
+          const s1 = parseInt(c.score1, 10) || 0;
+          const s2 = parseInt(c.score2, 10) || 0;
+          if ((c.team1 || []).includes(memberName) && s1 > s2) wins++;
+          if ((c.team2 || []).includes(memberName) && s2 > s1) wins++;
+        }
+      });
+    });
+    return wins;
+  }
+
+  function getMemberBadges(memberId, sessions) {
+    if (!memberId || !sessions) return [];
+    const mem = state.members.find(m => m.id === memberId);
+    if (!mem) return [];
+    const memberName = mem.name;
+    const badges = [];
+
+    // 1. Diligent (10+ attended)
+    const attended = countAttended(memberId, sessions);
+    if (attended >= 10) badges.push(BADGES[4]);
+
+    // 2. XP Rank Master/Legendary (XP >= 700)
+    const xp = calculateMemberXP(memberId, sessions);
+    if (xp >= 700) badges.push(BADGES[3]);
+
+    // 3. Challenge Wins (3+)
+    const wins = getMemberChallengeWins(memberName, sessions);
+    if (wins >= 3) badges.push(BADGES[1]);
+
+    // 4. Streak Fire (current streak >= 3)
+    let streak = 0;
+    const sorted = [...sessions].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    sorted.forEach(s => {
+      const passes = s.passes || {};
+      const v = (s.votes || {})[memberName];
+      const isReceiver = Object.values(passes).includes(memberId);
+      const hasPassed   = Object.keys(passes).includes(memberId);
+      if (isReceiver || (v === 'yes' && !hasPassed)) {
+        streak++;
+      } else if (v === 'no' || hasPassed) {
+        streak = 0;
+      }
+    });
+    if (streak >= 3) badges.push(BADGES[0]);
+
+    // 5. Sniper Vote (5+ manual votes)
+    let manualVotes = 0;
+    sessions.forEach(s => {
+      const v = (s.votes || {})[memberName];
+      if ((v === 'yes' || v === 'no') && !(s.autoVoted && s.autoVoted[memberId])) {
+        manualVotes++;
+      }
+    });
+    if (manualVotes >= 5) badges.push(BADGES[2]);
+
+    return badges.filter(Boolean);
+  }
+
+  // ===================== 1-CLICK QUICK CHALLENGE MODAL =====================
+  function openQuickChallengeModal(targetMember) {
+    if (!state.me) {
+      alert('Vui lòng đăng nhập để gửi chiến thư thách đấu!');
+      return;
+    }
+    if (state.me.id === targetMember.id) {
+      alert('Bạn không thể tự thách đấu chính mình!');
+      return;
+    }
+
+    const todayStr = (new Date()).toISOString().slice(0, 10);
+    const upcomingSessions = (state.sessions || [])
+      .filter(s => (s.date || '') >= todayStr)
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    if (upcomingSessions.length === 0) {
+      alert('Hiện chưa có buổi đánh sắp tới nào để đặt kèo thách đấu.');
+      return;
+    }
+
+    // Xóa modal cũ nếu có
+    const oldModal = document.getElementById('bc-quick-challenge-modal');
+    if (oldModal) oldModal.remove();
+
+    const myName = state.me.name;
+    const targetName = targetMember.name;
+    const activeMembers = state.members.filter(m => m.status === 'active' && m.id !== state.me.id && m.id !== targetMember.id);
+
+    const modalHtml = el(`<div id="bc-quick-challenge-modal" style="
+        position:fixed; top:0; left:0; width:100vw; height:100vh;
+        background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+        z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;">
+      <div class="bc-card" style="
+          width:100%; max-width:440px; background:var(--card-bg); border:2px solid #F26419;
+          border-radius:20px; padding:1.4rem; box-shadow:0 20px 40px rgba(0,0,0,0.4); animation:rankBadgePop 0.3s ease;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <div style="font-size:18px; font-weight:800; color:#F26419; font-family:'Oswald',sans-serif; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:24px; animation:shuttleBounce 1.2s infinite; display:inline-block;">⚡</span>
+            <span>GỬI CHIẾN THƯ THÁCH ĐẤU</span>
+          </div>
+          <button id="qc-close" style="background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;">✕</button>
+        </div>
+
+        <div style="background:rgba(242,100,25,0.08); border:1px dashed #F26419; border-radius:12px; padding:10px 14px; margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            ${avatarHtml(state.me, 32)}
+            <span style="font-size:13px; font-weight:700;">${escapeHtml(myName)}</span>
+          </div>
+          <span style="font-size:16px; font-weight:900; color:#F26419;">VS</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:13px; font-weight:700;">${escapeHtml(targetName)}</span>
+            ${avatarHtml(targetMember, 32)}
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+          <div>
+            <label style="font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">📅 Chọn buổi đánh:</label>
+            <select class="bc-select" id="qc-session" style="width:100%; padding:8px 10px;">
+              ${upcomingSessions.map(s => `<option value="${s.id}">${s.date} (${s.time||'18:00'}${s.note ? ' - ' + escapeHtml(s.note) : ''})</option>`).join('')}
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Đồng đội của bạn (tuỳ chọn):</label>
+              <select class="bc-select" id="qc-p2" style="width:100%; padding:6px 8px; font-size:12px;">
+                <option value="">-- Đánh đơn 1v1 --</option>
+                ${activeMembers.map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.nickname || m.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Đồng đội đối thủ (tuỳ chọn):</label>
+              <select class="bc-select" id="qc-p4" style="width:100%; padding:6px 8px; font-size:12px;">
+                <option value="">-- Đánh đơn 1v1 --</option>
+                ${activeMembers.map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.nickname || m.name)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">🎯 Mức chấp kèo:</label>
+            <select class="bc-select" id="qc-handicap" style="width:100%; padding:8px 10px;">
+              <option value="Đánh đều (không chấp)">Đánh đều (không chấp)</option>
+              <option value="Chấp 2 điểm">Chấp 2 điểm</option>
+              <option value="Chấp 3 điểm">Chấp 3 điểm</option>
+              <option value="Chấp 5 điểm">Chấp 5 điểm</option>
+              <option value="Thua chung 1 chai nước 🥤">Thua chung 1 chai nước 🥤</option>
+              <option value="Thua chung 1 ly trà sữa 🧋">Thua chung 1 ly trà sữa 🧋</option>
+            </select>
+          </div>
+
+          <button class="bc-btn" id="qc-submit" style="
+              background:linear-gradient(135deg,#F26419,#E76F51); border:none; color:#FFF;
+              font-weight:700; font-size:15px; padding:12px; border-radius:12px; margin-top:6px;
+              box-shadow:0 4px 15px rgba(242,100,25,0.35); cursor:pointer;">
+            🔥 PHÁT CHIẾN THƯ NGAY (+5 XP)
+          </button>
+        </div>
+      </div>
+    </div>`);
+
+    document.body.appendChild(modalHtml);
+
+    document.getElementById('qc-close').onclick = () => modalHtml.remove();
+    document.getElementById('qc-submit').onclick = () => {
+      const sessId = document.getElementById('qc-session').value;
+      const sess = state.sessions.find(s => s.id === sessId);
+      if (!sess) { alert('Không tìm thấy buổi đánh.'); return; }
+
+      const p2 = document.getElementById('qc-p2').value;
+      const p4 = document.getElementById('qc-p4').value;
+      const handicap = document.getElementById('qc-handicap').value;
+
+      sess.challenges = sess.challenges || [];
+      sess.challenges.push({
+        id: uid(),
+        team1: [myName, p2].filter(Boolean),
+        team2: [targetName, p4].filter(Boolean),
+        handicap: handicap,
+        status: 'pending',
+        score1: null,
+        score2: null,
+        createdBy: myName,
+        createdAt: Date.now()
+      });
+
+      // Tạo bài đăng thách đấu trên bảng tin
+      const t1Str = [myName, p2].filter(Boolean).join(' & ');
+      const t2Str = [targetName, p4].filter(Boolean).join(' & ');
+      state.announcements = state.announcements || [];
+      state.announcements.push({
+        id: uid(),
+        category: 'match',
+        title: `🔥 CHIẾN THƯ THÁCH ĐẤU: ${t1Str} ⚔️ ${t2Str}`,
+        content: `⚡ ${myName} vừa chính thức gửi chiến thư thách đấu tới ${targetName} cho buổi ngày ${sess.date}!\n\n🏸 Đội 1: ${t1Str}\n🏸 Đội 2: ${t2Str}\n📌 Thể thức: ${handicap}\n\n👉 Vui lòng vào app bấm "Nhận kèo" để chính thức mở màn trận đánh đỉnh cao này! ⚔️🔥`,
+        expireDate: null,
+        pinned: false,
+        author: myName,
+        phone: 'Thách đấu',
+        createdAt: Date.now(),
+        reactions: { thumbs: [], heart: [], fire: [] },
+        isChallengeResult: true,
+        sessionId: sess.id
+      });
+
+      saveAnnouncements();
+      saveSessions();
+      modalHtml.remove();
+      render();
+      showToast(`⚡ Đã phát chiến thư thách đấu tới ${targetName}! (+5 XP)`, 'success');
+    };
+  }
 
   function monthKey(d){ d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
   function monthLabel(key){ const [y,m] = key.split('-'); return MONTH_NAMES[parseInt(m,10)-1] + '/' + y; }
@@ -628,12 +1031,19 @@
   const saveSettings = () => save('bc_settings', state.settings);
   const savePayments = () => save('bc_payments', state.payments);
   const saveFund = () => save('bc_fund', state.fund);
-  const saveDonations = () => save('bc_donations', state.donations);
   const saveAnnouncements = () => save('bc_announcements', state.announcements);
+  const saveTieVotes = () => save('bc_tie_votes', state.tieVotes);
+
+  function getMemberTieVotes(memberName, monthKey) {
+    if (!state.tieVotes || !state.tieVotes[monthKey] || !memberName) return 0;
+    const monthVotes = state.tieVotes[monthKey];
+    return Object.values(monthVotes).filter(v => v === memberName).length;
+  }
 
   function isMonthLocked(month) {
     return (state.settings.lockedMonths || []).includes(month);
   }
+
   async function toggleMonthLock(month) {
     if (!state.settings.lockedMonths) state.settings.lockedMonths = [];
     if (state.settings.lockedMonths.includes(month)) {
@@ -1043,6 +1453,7 @@
       state.courts = dbMap['bc_courts'] || [];
       state.sessions = dbMap['bc_sessions'] || [];
       state.announcements = dbMap['bc_announcements'] || [];
+      state.tieVotes = dbMap['bc_tie_votes'] || {};
       const settingsRaw = dbMap['bc_settings'] || {};
       if (settingsRaw.mailServer) {
         settingsRaw.mailServer = Object.assign({}, settingsRaw.mailServer, {
@@ -1273,6 +1684,7 @@
     }
     root.appendChild(renderTabs());
     if (state.tab === 'sessions') root.appendChild(renderSessions());
+    if (state.tab === 'leaderboard') root.appendChild(renderLeaderboard());
     if (state.tab === 'members') root.appendChild(renderMembers());
     if (state.tab === 'fund') root.appendChild(renderFund());
     if (state.tab === 'payments_mgr') root.appendChild(renderPaymentsMgr());
@@ -2407,6 +2819,7 @@
     
     let tabs = [
       ['sessions', 'Lịch đánh'],
+      ['leaderboard', '🏆 BXH'],
       ['tournament', 'Giải đấu'],
       ['fund', 'Quỹ & chi phí'],
       ['report', 'Báo cáo']
@@ -2833,9 +3246,15 @@
 
   function avatarHtml(m, size){
     size = size || 36;
-    let borderStyle = '';
+    const xp = calculateMemberXP(m.id, state.sessions);
+    const rank = getXPRank(xp);
+    const isLegendary = rank.key === 'legendary';
+
+    // Ưu tiên border theo rank XP, ghi đè bởi role nếu là owner/admin/r1
+    let borderStyle = `border: 2px solid ${rank.ringColor};`;
     let overlayEmoji = '';
-    
+    let rankOverlay = `<span style="position:absolute; bottom:-4px; right:-4px; font-size:${Math.max(10, Math.round(size*0.32))}px; line-height:1; z-index:3; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));">${rank.emoji}</span>`;
+
     if (isOwner(m)) {
       borderStyle = `border: 2px solid #D8973C; box-shadow: 0 0 6px rgba(216, 151, 60, 0.4);`;
       overlayEmoji = '';
@@ -2852,12 +3271,16 @@
       imgHtml = `<img src="${m.avatarUrl}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; flex-shrink:0; ${borderStyle}" />`;
     } else {
       const initial = (m.name||'?').trim().charAt(0).toUpperCase();
-      imgHtml = `<div style="width:${size}px; height:${size}px; border-radius:50%; background:#E6F1FB; color:#0C447C; display:flex; align-items:center; justify-content:center; font-size:${Math.round(size*0.42)}px; font-weight:600; flex-shrink:0; ${borderStyle}">${initial}</div>`;
+      const shimmerStyle = isLegendary
+        ? `background: ${rank.avatarBg}; background-size: 200% auto; animation: xpRankShimmer 2.5s linear infinite;`
+        : `background: ${rank.avatarBg};`;
+      imgHtml = `<div style="width:${size}px; height:${size}px; border-radius:50%; ${shimmerStyle} color:${rank.avatarFg}; display:flex; align-items:center; justify-content:center; font-size:${Math.round(size*0.42)}px; font-weight:700; flex-shrink:0; ${borderStyle}">${initial}</div>`;
     }
     
-    return `<div style="position:relative; display:inline-block; width:${size}px; height:${size}px; flex-shrink:0;">
+    const glowWrap = isLegendary ? `class="xp-rank-legendary"` : '';
+    return `<div ${glowWrap} style="position:relative; display:inline-block; width:${size}px; height:${size}px; flex-shrink:0;">
       ${imgHtml}
-      ${overlayEmoji}
+      ${overlayEmoji || rankOverlay}
     </div>`;
   }
 
@@ -2908,6 +3331,10 @@
     const statusLabel = m.status === 'active' ? 'Hoạt động' : (m.status === 'pending' ? 'Chờ duyệt' : 'Ngưng hoạt động');
     const isEditing = state.editingMemberId === m.id;
 
+    const mXP = calculateMemberXP(m.id, state.sessions);
+    const mRank = getXPRank(mXP);
+    const mBadges = getMemberBadges(m.id, state.sessions);
+
     const row = el(`<div class="bc-card" style="padding:0.7rem 1rem;">
       <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:6px;">
         <div style="display:flex; gap:10px; align-items:flex-start;">
@@ -2929,6 +3356,9 @@
             ${!isEditing ? `<span class="bc-badge" style="background:${lbg}; color:${lfg}; border:${lborder}; margin-left:6px;">${llabel}</span>` : ''}
             <span class="bc-badge" style="background:${rbg}; color:${rfg}; margin-left:6px;">${ROLE_LABEL[m.role]}</span>
             <span class="bc-badge" style="background:${statusBg}; color:${statusFg}; margin-left:6px;">${statusLabel}</span>
+            <span class="bc-badge" style="background:${mRank.avatarBg}; color:${mRank.avatarFg}; margin-left:6px; font-weight:700;">${mRank.emoji} ${mRank.label} (${mXP} XP)</span>
+            ${mBadges.map(b => `<span title="${b.label}: ${b.desc}" class="bc-badge" style="background:${b.bg}; color:${b.color}; border:1px solid ${b.color}40; margin-left:4px;">${b.emoji} ${b.label}</span>`).join('')}
+
             ${isEditing
               ? `<div style="font-size:12px; color:#8a877d; margin-top:3px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                   <input class="bc-input" id="edit-username-${m.id}" value="${escapeHtml(m.username || '')}" placeholder="Username" style="width:110px; padding:2px 6px; font-size:12px; height: 24px;" ${isOwner(m)?'disabled title="Không thể đổi username của Owner"':''} /> · 
@@ -3093,6 +3523,12 @@
           };
           actions.appendChild(statusBtn);
         }
+      }
+
+      if (!isSelf && m.status === 'active' && !isEditing) {
+        const challengeBtn = el(`<button class="bc-btn small" style="background:linear-gradient(135deg,#F26419,#E76F51); color:#FFF; border:none; padding:4px 9px; font-size:11px; font-weight:700; border-radius:8px; box-shadow:0 2px 6px rgba(242,100,25,0.3); cursor:pointer;">⚡ Thách đấu</button>`);
+        challengeBtn.onclick = () => openQuickChallengeModal(m);
+        actions.appendChild(challengeBtn);
       }
 
       // Nút Sửa: Hiển thị cho chính mình (kể cả R2) HOẶC Admin/R1 có thẩm quyền
@@ -4736,144 +5172,7 @@
       wrap.appendChild(mailServerSection);
     }
 
-    // 5. Cấu hình Sân cầu lông
-    const courtsSection = el(`<div class="bc-card" style="margin-top:1rem;">
-      <h3 style="font-size:15px; color:#1B4332; margin-bottom:10px;">Quản lý Sân cầu lông</h3>
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <input class="bc-input" id="ct-name" placeholder="Tên sân" />
-        <input class="bc-input" id="ct-address" placeholder="Địa chỉ" />
-        <input class="bc-input" id="ct-maplink" placeholder="Link Google Maps" />
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <input class="bc-input" id="ct-price" placeholder="Giá / giờ (vd: 120.000đ)" style="flex:1;" />
-          <input class="bc-input" id="ct-phone" placeholder="SĐT liên hệ" style="flex:1;" />
-        </div>
-        <button class="bc-btn small" id="ct-add" style="align-self:flex-start;">Thêm sân</button>
-      </div>
-      
-      <div id="cfg-courts-list" style="margin-top:12px; display:flex; flex-direction:column; gap:8px;"></div>
-    </div>`);
-    wrap.appendChild(courtsSection);
-
-    // Render danh sách sân cầu
-    const courtsListContainer = courtsSection.querySelector('#cfg-courts-list');
-    if (state.courts.length === 0) {
-      courtsListContainer.appendChild(el(`<div style="font-size:12px; color:#8a877d; font-style:italic;">Chưa có sân nào được tạo.</div>`));
-    } else {
-      state.courts.slice().reverse().forEach(c => {
-        const item = el(`<div style="border-top:1px dashed #E3E0D6; padding-top:8px; display:flex; justify-content:space-between; align-items:flex-start; font-size:13px;">
-          <div>
-            <strong>${escapeHtml(c.name)}</strong>
-            <div style="font-size:12px; color:#6b7a73; margin-top:2px;">${escapeHtml(c.address || '')}</div>
-            <div style="font-size:12px; color:#8a877d; margin-top:1px;">${c.price ? 'Giá: ' + escapeHtml(c.price) : ''}${c.phone ? ' · ĐT: ' + escapeHtml(c.phone) : ''}</div>
-            ${c.mapLink ? `<a href="${escapeHtml(c.mapLink)}" target="_blank" style="font-size:12px; color:#0C447C; margin-top:3px; display:inline-block;">📍 Xem Bản đồ</a>` : ''}
-          </div>
-          <button class="bc-btn danger small" id="ct-del-${c.id}" style="padding:2px 6px; font-size:11px;">Xoá</button>
-        </div>`);
-        courtsListContainer.appendChild(item);
-      });
-    }
-    
     setTimeout(() => {
-      const typeSelect = document.getElementById('cfg-receive-type');
-      if (typeSelect) {
-        const updateTypeFields = () => {
-          const isMomo = typeSelect.value === 'momo';
-          document.getElementById('cfg-bank-id-container').style.display = isMomo ? 'none' : 'block';
-          document.getElementById('cfg-account-no-label').textContent = isMomo ? 'Số điện thoại đăng ký MoMo:' : 'Số tài khoản ngân hàng:';
-        };
-        typeSelect.onchange = updateTypeFields;
-        updateTypeFields();
-      }
-      
-      const cfgSaveBtn = document.getElementById('cfg-save-btn');
-      if (cfgSaveBtn) cfgSaveBtn.onclick = async () => {
-        const receiveTypeVal = document.getElementById('cfg-receive-type').value;
-        const bankVal = receiveTypeVal === 'momo' ? 'MOMO' : document.getElementById('cfg-bank-id').value.toUpperCase().replace(/\s+/g, '');
-        const accountVal = document.getElementById('cfg-account-no').value.trim();
-        const nameVal = document.getElementById('cfg-account-name').value.trim();
-        const treasurerPhoneVal = document.getElementById('cfg-treasurer-phone').value.trim();
-        const msg = document.getElementById('cfg-save-msg');
-        
-        cfgSaveBtn.disabled = true;
-        msg.style.color = '#6b7a73';
-        msg.textContent = 'Đang lưu cấu hình...';
-        
-        if (!state.settings.payment) state.settings.payment = {};
-        state.settings.payment.receiveType = receiveTypeVal;
-        state.settings.payment.bankId = bankVal;
-        state.settings.payment.accountNo = accountVal;
-        state.settings.payment.accountName = nameVal;
-        state.settings.payment.treasurerPhone = treasurerPhoneVal;
-        
-        const ok = await saveSettings();
-        if (ok) {
-          msg.style.color = '#27500A';
-          msg.textContent = 'Đã lưu cấu hình nhận tiền!';
-          setTimeout(() => { render(); }, 1200);
-        } else {
-          cfgSaveBtn.disabled = false;
-          msg.style.color = '#993C1D';
-          msg.textContent = 'Lưu cấu hình thất bại.';
-        }
-      };
-      
-      const cfgQrFile = document.getElementById('cfg-qr-file');
-      if (cfgQrFile) cfgQrFile.onchange = (e) => {
-        const f = e.target.files[0]; if (!f) return;
-        compressImage(f, 400, 0.8, async (url) => {
-          if (!state.settings.payment) state.settings.payment = {};
-          state.settings.payment.qrUrl = url;
-          await saveSettings();
-          render();
-        });
-      };
-
-      const ssMultiplier = document.getElementById('cfg-ss-multiplier');
-      if (ssMultiplier) {
-        ssMultiplier.onchange = (e) => {
-          const v = parseFloat(e.target.value);
-          state.settings.casualMultiplier = isNaN(v) || v < 1 ? 1 : v;
-          saveSettings();
-          render();
-        };
-      }
-
-      const brandLogoInput = document.getElementById('brand-logo-input');
-      if (brandLogoInput) {
-        brandLogoInput.onchange = (e) => {
-          const f = e.target.files[0]; if (!f) return;
-          compressImage(f, 150, 0.7, (url) => {
-            state.settings.logoUrl = url;
-            saveSettings();
-            render();
-          });
-        };
-      }
-
-      const brandBannerInput = document.getElementById('brand-banner-input');
-      if (brandBannerInput) {
-        brandBannerInput.onchange = (e) => {
-          const f = e.target.files[0]; if (!f) return;
-          compressImage(f, 800, 0.7, (url) => {
-            state.settings.bannerUrl = url;
-            saveSettings();
-            render();
-          });
-        };
-      }
-
-      // Radio mode change listeners
-      const mailModeRadios = document.getElementsByName('cfg-mail-mode');
-      mailModeRadios.forEach(r => {
-        r.onchange = () => {
-          const isGas = r.value === 'gas';
-          const isToken = r.value === 'token';
-          document.getElementById('cfg-mail-gas-container').style.display = isGas ? 'block' : 'none';
-          document.getElementById('cfg-mail-token-container').style.display = isToken ? 'block' : 'none';
-          document.getElementById('cfg-mail-manual-container').style.display = (!isGas && !isToken) ? 'block' : 'none';
-        };
-      });
-
       const cfgMailSaveBtn = document.getElementById('cfg-mail-save-btn');
       if (cfgMailSaveBtn) cfgMailSaveBtn.onclick = async () => {
         const enabled = document.getElementById('cfg-mail-enabled').checked;
@@ -4896,6 +5195,7 @@
         cfgMailSaveBtn.disabled = true;
         msg.style.color = '#6b7a73';
         msg.textContent = 'Đang lưu cấu hình...';
+
 
         state.settings.mailServer = {
           enabled,
@@ -4937,7 +5237,6 @@
         msg.style.color = '#6b7a73';
         msg.textContent = 'Đang gửi email thử...';
 
-        // Đọc các thông số hiện tại từ Form để test
         const enabled = document.getElementById('cfg-mail-enabled').checked;
         const modeEl = document.querySelector('input[name="cfg-mail-mode"]:checked');
         const activeMode = modeEl ? modeEl.value : 'gas';
@@ -4975,7 +5274,7 @@
           <p>Chúc mừng! Hệ thống gửi email tự động đã sẵn sàng hoạt động.</p>`;
 
         const success = await sendSystemEmail(testTo, testSubject, testBody);
-        state.settings.mailServer = originalMailConfig; // khôi phục cấu hình cũ
+        state.settings.mailServer = originalMailConfig;
 
         cfgMailTestBtn.disabled = false;
         if (success) {
@@ -4987,7 +5286,6 @@
         }
       };
 
-      // 7. Cấu hình quản lý sân
       const ctAddBtn = document.getElementById('ct-add');
       if (ctAddBtn) {
         ctAddBtn.onclick = () => {
@@ -5014,6 +5312,465 @@
           };
         }
       });
+    }, 0);
+
+    return wrap;
+  }
+
+  // ---------- ROAST BOT & FEED XÃ HỘI ----------
+  function renderRoastFeedCard() {
+    state.roastReactions = state.roastReactions || {};
+    const activeMembers = state.members.filter(m => m.status === 'active');
+    if (activeMembers.length === 0) return el(`<div></div>`);
+
+    const roasts = [];
+
+    const sortedSessions = [...state.sessions].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
+    if (sortedSessions.length > 0) {
+      const absentCounts = {};
+      activeMembers.forEach(m => {
+        let absent = 0;
+        sortedSessions.forEach(s => {
+          const v = (s.votes || {})[m.name];
+          const passes = s.passes || {};
+          const isReceiver = Object.values(passes).includes(m.id);
+          const hasPassed   = Object.keys(passes).includes(m.id);
+          if (v === 'no' || hasPassed || (!v && !isReceiver && s.locked)) absent++;
+        });
+        if (absent >= 2) absentCounts[m.name] = absent;
+      });
+      const absentNames = Object.keys(absentCounts);
+      if (absentNames.length > 0) {
+        const targetName = absentNames[Math.floor(Math.random() * absentNames.length)];
+        roasts.push({
+          id: 'roast_absent_' + targetName.replace(/\s+/g, ''),
+          tag: '👻 THÁNH VẮNG MẶT',
+          content: `Cảnh báo: <strong>${escapeHtml(targetName)}</strong> đã vắng ${absentCounts[targetName]} buổi gần đây! Liệu bao vợt có đang đóng tơ chưa bác ơi? 😂`
+        });
+      }
+    }
+
+    const topMember = activeMembers.slice().map(m => ({ m, xp: calculateMemberXP(m.id, state.sessions) })).sort((a, b) => b.xp - a.xp)[0];
+    if (topMember && topMember.xp > 0) {
+      roasts.push({
+        id: 'roast_top1_' + topMember.m.name.replace(/\s+/g, ''),
+        tag: '👑 THÁCH THỨC NGẠI VÀNG',
+        content: `<strong>${escapeHtml(topMember.m.nickname || topMember.m.name)}</strong> đang chễm chệ ở ngai vàng với <strong>${topMember.xp} XP</strong>! Anh em ai đủ trình độ ra phát chiến thư kéo sập ngai đi nào! 🔥`
+      });
+    }
+
+    const winCounts = activeMembers.map(m => ({ m, wins: getMemberChallengeWins(m.name, state.sessions) })).sort((a, b) => b.wins - a.wins)[0];
+    if (winCounts && winCounts.wins > 0) {
+      roasts.push({
+        id: 'roast_wins_' + winCounts.m.name.replace(/\s+/g, ''),
+        tag: '⚡ ĐỘC CÔ CẦU BẠI',
+        content: `<strong>${escapeHtml(winCounts.m.nickname || winCounts.m.name)}</strong> vừa quét sạch đối thủ với ${winCounts.wins} trận thắng thách đấu! Tay vợt nào dám hạ gục chuỗi thắng này? 🏸`
+      });
+    }
+
+    if (roasts.length === 0) {
+      roasts.push({
+        id: 'roast_welcome',
+        tag: '🔥 PHONG TRÀO CÂU LẠC BỘ',
+        content: `Chào mừng anh em đến với hệ thống Gamification CLB! Hãy tham gia vote, giao lưu thách đấu để tích XP và mở khóa huy hiệu độc quyền nhé! 💪`
+      });
+    }
+
+    const card = el(`<div class="bc-card" style="
+        background: linear-gradient(135deg, rgba(242,100,25,0.08) 0%, rgba(255,183,3,0.06) 100%);
+        border: 1.5px solid rgba(242,100,25,0.3); padding: 1.1rem 1.2rem; margin-bottom: 0.75rem;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+        <div style="font-size:14px; font-weight:800; color:#F26419; font-family:'Oswald',sans-serif; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:18px; animation:shuttleBounce 1.2s infinite; display:inline-block;">🔥</span>
+          <span>GÓC CÀ KHỊA & BẢN TIN TƯƠNG TÁC</span>
+        </div>
+        <span style="font-size:10px; background:#F26419; color:#FFF; padding:2px 7px; border-radius:10px; font-weight:700;">BOT CÀ KHỊA 🤖</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${roasts.map(r => {
+          const itemReactions = state.roastReactions[r.id] || { '😂':[], '🔥':[], '💪':[], '😤':[], '🏸':[] };
+          return `<div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:10px 12px;">
+            <div style="font-size:10px; font-weight:700; color:#F26419; margin-bottom:3px; letter-spacing:0.04em;">${r.tag}</div>
+            <div style="font-size:13px; color:var(--text-primary); line-height:1.4;">${r.content}</div>
+            <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;" id="roast-reacts-${r.id}">
+              ${['😂','🔥','💪','😤','🏸'].map(emoji => {
+                const users = itemReactions[emoji] || [];
+                const hasReacted = state.me && users.includes(state.me.name);
+                return `<button class="roast-emoji-btn" data-rid="${r.id}" data-emoji="${emoji}" style="
+                  background:${hasReacted ? 'rgba(242,100,25,0.18)' : 'rgba(0,0,0,0.04)'};
+                  border:1px solid ${hasReacted ? '#F26419' : 'transparent'};
+                  border-radius:14px; padding:2px 8px; font-size:12px; cursor:pointer; transition:all 0.15s;">
+                  ${emoji} <span style="font-size:11px; font-weight:600; color:${hasReacted ? '#F26419' : 'var(--text-muted)'};">${users.length || ''}</span>
+                </button>`;
+              }).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`);
+
+    setTimeout(() => {
+      card.querySelectorAll('.roast-emoji-btn').forEach(btn => {
+        btn.onclick = () => {
+          if (!state.me) { alert('Vui lòng đăng nhập để tương tác emoji.'); return; }
+          const rId = btn.getAttribute('data-rid');
+          const emoji = btn.getAttribute('data-emoji');
+          const myName = state.me.name;
+          state.roastReactions[rId] = state.roastReactions[rId] || { '😂':[], '🔥':[], '💪':[], '😤':[], '🏸':[] };
+          const list = state.roastReactions[rId][emoji] || [];
+          if (list.includes(myName)) {
+            state.roastReactions[rId][emoji] = list.filter(n => n !== myName);
+          } else {
+            state.roastReactions[rId][emoji] = list.concat([myName]);
+          }
+          save('bc_roast_reactions', state.roastReactions);
+          render();
+        };
+      });
+    }, 0);
+
+    return card;
+  }
+
+  // ---------- LEADERBOARD ----------
+  function renderLeaderboard() {
+    const wrap = el(`<div></div>`);
+
+    // ---- Header ----
+    const curMonth = state.viewMonth || monthKey();
+    const headerCard = el(`<div class="bc-card" style="
+        background: linear-gradient(135deg,#0A2540 0%,#1B4332 60%,#0A2540 100%);
+        border: 1px solid rgba(255,215,0,0.3);
+        padding: 1.5rem 1.4rem 1.1rem;
+        position:relative; overflow:hidden; margin-bottom:0.75rem;">
+      <div style="position:absolute;top:-20px;right:-10px;font-size:90px;opacity:0.08;line-height:1;pointer-events:none;">🏆</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.5rem;">
+        <span style="font-size:28px; animation:crown-float 2.5s ease-in-out infinite; display:inline-block;">👑</span>
+        <div>
+          <h2 style="color:#FFD700; font-family:'Oswald',sans-serif; font-size:20px; margin:0; letter-spacing:0.05em;">BẢNG XẾP HẠNG</h2>
+          <div style="color:rgba(255,255,255,0.65); font-size:12px; margin-top:2px;">Tích lũy XP từ việc tham gia & vote đúng giờ</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:0.6rem;" id="lb-month-bar">
+        <button id="lb-tab-month" style="padding:5px 14px; border-radius:20px; border:1px solid rgba(255,215,0,0.5); background:rgba(255,215,0,0.15); color:#FFD700; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">📅 Tháng này</button>
+        <button id="lb-tab-all" style="padding:5px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.7); font-size:13px; cursor:pointer; transition:all 0.2s;">🌐 Toàn thời gian</button>
+      </div>
+    </div>`);
+    wrap.appendChild(headerCard);
+
+    // ---- Rank Legend ----
+    const legendCard = el(`<div class="bc-card" style="padding:0.8rem 1.2rem; margin-bottom:0.75rem;">
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:0.5rem; font-weight:600; letter-spacing:0.04em;">CẤP ĐỘ TAY VỢT</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${XP_RANKS.map(r => `<div style="display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;
+            background:${r.avatarBg}; color:${r.avatarFg};
+            font-size:11px; font-weight:600; white-space:nowrap;
+            ${r.shimmer ? 'background-size:200% auto;animation:xpRankShimmer 2.5s linear infinite;' : ''}
+            border: 1px solid ${r.ringColor}40;">
+          ${r.emoji} ${r.label} <span style="opacity:0.75;">(${r.min === 0 ? '0' : r.min}${r.max === Infinity ? '+' : '–'+r.max} XP)</span>
+        </div>`).join('')}
+      </div>
+    </div>`);
+    wrap.appendChild(legendCard);
+
+    // ---- Main leaderboard container ----
+    const lbContainer = el(`<div id="lb-main"></div>`);
+    wrap.appendChild(lbContainer);
+
+    // ---- Roast Feed Card ----
+    wrap.insertBefore(renderRoastFeedCard(), lbContainer);
+
+    // ---- My XP card (nếu đã đăng nhập) ----
+    if (state.me) {
+      const me = state.members.find(m => m.id === state.me.id);
+      if (me) {
+        const myXP = calculateMemberXP(me.id, state.sessions);
+        const myRank = getXPRank(myXP);
+        const myBadges = getMemberBadges(me.id, state.sessions);
+        const nextRank = XP_RANKS.find(r => r.min > myXP);
+        const progressPct = nextRank
+          ? Math.min(100, Math.round((myXP - myRank.min) / (nextRank.min - myRank.min) * 100))
+          : 100;
+        const attended = countAttended(me.id, state.sessions);
+
+        const myCard = el(`<div class="bc-card" style="
+            border:2px solid ${myRank.ringColor}60;
+            background: linear-gradient(135deg, ${myRank.avatarBg.replace('linear-gradient(135deg,','').replace(')','').split(',')[0].trim()}18 0%, transparent 100%);
+            margin-bottom:0.75rem; padding:1rem 1.2rem;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:0.6rem;">THÀNH TÍCH CỦA BẠN</div>
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:0.75rem;">
+            <div id="my-avatar-lb"></div>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:700;color:var(--text-primary);">${escapeHtml(me.nickname || me.name)}</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
+                <span style="font-size:18px;">${myRank.emoji}</span>
+                <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">${myRank.label}</span>
+                <span style="font-size:12px;color:var(--text-muted);margin-left:4px;">${myXP.toLocaleString()} XP</span>
+              </div>
+              <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+                ${myBadges.map(b => `<span title="${b.label}: ${b.desc}" style="background:${b.bg};color:${b.color};border:1px solid ${b.color}40;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;">${b.emoji} ${b.label}</span>`).join('')}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:20px;font-weight:800;color:var(--text-primary);line-height:1;">${attended}</div>
+              <div style="font-size:10px;color:var(--text-muted);">buổi tham gia</div>
+            </div>
+          </div>
+          ${nextRank ? `
+          <div style="margin-bottom:4px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
+            <span>Tiến độ lên ${nextRank.emoji} ${nextRank.label}</span>
+            <span>${progressPct}%</span>
+          </div>
+          <div style="background:rgba(0,0,0,0.1);border-radius:99px;height:8px;overflow:hidden;">
+            <div style="height:100%;border-radius:99px;background:${myRank.avatarBg};width:${progressPct}%;
+              animation:xpBarFill 1s ease both; transition:width 0.5s ease;"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Cần thêm ${nextRank.min - myXP} XP để đạt ${nextRank.label}</div>` : `
+          <div style="text-align:center;padding:6px;background:rgba(255,215,0,0.1);border-radius:8px;font-size:13px;font-weight:600;color:#D8973C;">
+            🎉 Đã đạt cấp cao nhất — Huyền Thoại!
+          </div>`}
+        </div>`);
+        myCard.querySelector('#my-avatar-lb').innerHTML = avatarHtml(me, 48);
+        wrap.insertBefore(myCard, lbContainer);
+      }
+    }
+
+
+    // ---- Build rankings ----
+    const activeMembers = state.members.filter(m => m.status === 'active');
+    let lbMode = state.lbMode || 'month'; // 'month' | 'all'
+
+    function buildRankings(mode) {
+      lbMode = mode;
+      state.lbMode = mode;
+      state.tieVotes = state.tieVotes || {};
+      const monthTieMap = state.tieVotes[curMonth] || {};
+      const myTieVote = state.me ? monthTieMap[state.me.name] : null;
+
+      const data = activeMembers.map(m => {
+        const xp = mode === 'month'
+          ? calculateMemberMonthXP(m.id, state.sessions, curMonth)
+          : calculateMemberXP(m.id, state.sessions);
+        const attended = countAttended(m.id, state.sessions);
+        const tieVotes = getMemberTieVotes(m.name, curMonth);
+        const monthAttended = (() => {
+          const ms = state.sessions.filter(s => sessionMonthKey(s) === curMonth);
+          return ms.filter(s => {
+            const passes = s.passes || {};
+            const v = (s.votes||{})[m.name];
+            const ir = Object.values(passes).includes(m.id);
+            const hp = Object.keys(passes).includes(m.id);
+            if (!v && !ir) return false;
+            return ir || (v==='yes' && !hp);
+          }).length;
+        })();
+        return { m, xp, attended, tieVotes, monthAttended };
+      }).sort((a, b) => b.xp - a.xp || b.tieVotes - a.tieVotes || b.attended - a.attended || a.m.name.localeCompare(b.m.name));
+
+      lbContainer.innerHTML = '';
+
+      // Check if there are ties among members with XP > 0
+      const xpCounts = {};
+      data.forEach(item => { if (item.xp > 0) xpCounts[item.xp] = (xpCounts[item.xp] || 0) + 1; });
+      const hasTies = Object.values(xpCounts).some(cnt => cnt > 1);
+
+      if (hasTies) {
+        const tieBanner = el(`<div class="bc-card" style="
+            background: linear-gradient(135deg, rgba(156,39,176,0.1) 0%, rgba(103,58,183,0.06) 100%);
+            border: 1.5px dashed #9C27B0; border-radius:12px; padding:10px 14px; margin-bottom:0.75rem;">
+          <div style="font-size:13px; font-weight:800; color:#9C27B0; display:flex; align-items:center; gap:6px; font-family:'Oswald',sans-serif;">
+            <span style="font-size:16px;">🗳️</span>
+            <span>KÈO BÌNH CHỌN PHÂN HẠNG ĐỒNG ĐIỂM (${monthLabel(curMonth)})</span>
+          </div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:3px; line-height:1.35;">
+            Có các thành viên đang <strong>bằng điểm XP</strong>! Mỗi người 1 phiếu vote để bình chọn tay vợt xứng đáng đứng vị trí cao hơn.
+          </div>
+        </div>`);
+        lbContainer.appendChild(tieBanner);
+      }
+
+      // Update button styles
+      const btnMonth = document.getElementById('lb-tab-month');
+      const btnAll = document.getElementById('lb-tab-all');
+      if (btnMonth && btnAll) {
+        if (mode === 'month') {
+          btnMonth.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.2);color:#FFD700;font-size:13px;font-weight:700;cursor:pointer;';
+          btnAll.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);font-size:13px;cursor:pointer;';
+        } else {
+          btnAll.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.2);color:#FFD700;font-size:13px;font-weight:700;cursor:pointer;';
+          btnMonth.style.cssText = 'padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);font-size:13px;cursor:pointer;';
+        }
+      }
+
+      if (data.length === 0) {
+        lbContainer.appendChild(el(`<div class="bc-card" style="text-align:center;padding:30px;color:var(--text-muted);">Chưa có dữ liệu để xếp hạng.</div>`));
+        return;
+      }
+
+      // Top 3 podium
+      const podiumData = data.slice(0, 3);
+      const podiumEl = el(`<div style="display:flex;gap:8px;align-items:flex-end;justify-content:center;margin-bottom:0.75rem;padding:0 4px;"></div>`);
+
+      const podiumOrder = [1, 0, 2]; // visually: 2nd on left, 1st in middle, 3rd on right
+      const podiumHeight = [100, 140, 80];
+      const podiumMedals = ['👑', '🥈', '🥉']; // indexed by rank: 0=Top1, 1=Top2, 2=Top3
+      const podiumColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+      const podiumBgs = [
+        'linear-gradient(180deg,rgba(255,215,0,0.25),rgba(255,215,0,0.08))',
+        'linear-gradient(180deg,rgba(192,192,192,0.2),rgba(192,192,192,0.06))',
+        'linear-gradient(180deg,rgba(205,127,50,0.2),rgba(205,127,50,0.06))'
+      ];
+
+      podiumOrder.forEach((dataIdx, visIdx) => {
+        if (!podiumData[dataIdx]) return;
+        const { m, xp, tieVotes } = podiumData[dataIdx];
+        const isSelf = state.me && state.me.id === m.id;
+        const hasVotedForM = myTieVote === m.name;
+        const podItem = el(`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="font-size:${dataIdx===0?'24px':'18px'};animation:${dataIdx===0?'crown-float 2.5s ease-in-out infinite':'none'};display:inline-block;">${podiumMedals[dataIdx]}</div>
+          <div id="pod-avatar-${m.id}" style="position:relative;"></div>
+          <div style="text-align:center;">
+            <div style="font-size:${dataIdx===0?'13px':'12px'};font-weight:700;color:var(--text-primary);line-height:1.2;">${escapeHtml(m.nickname||m.name)}${isSelf?' (Bạn)':''}</div>
+            <div style="font-size:11px;color:${podiumColors[dataIdx]};font-weight:600;margin-top:2px;">${xp.toLocaleString()} XP</div>
+            <button class="bc-btn small pod-tie-btn" id="pod-tie-${m.id}" style="
+                background:${hasVotedForM ? '#9C27B0' : 'rgba(156,39,176,0.15)'};
+                color:${hasVotedForM ? '#FFF' : '#9C27B0'};
+                border:1px solid #9C27B0; padding:1px 6px; font-size:10px; font-weight:700; border-radius:10px; margin-top:2px; cursor:pointer;">
+              ${hasVotedForM ? '✓ Đã vote' : '🗳️ Vote'} (${tieVotes})
+            </button>
+          </div>
+          <div style="width:100%;height:${podiumHeight[visIdx]}px;background:${podiumBgs[dataIdx]};
+            border-top:3px solid ${podiumColors[dataIdx]};border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:22px;font-weight:900;color:${podiumColors[dataIdx]};opacity:0.5;">${dataIdx+1}</span>
+          </div>
+        </div>`);
+        podItem.querySelector(`#pod-avatar-${m.id}`).innerHTML = avatarHtml(m, dataIdx===0 ? 52 : 42);
+        
+        const ptBtn = podItem.querySelector(`#pod-tie-${m.id}`);
+        if (ptBtn) ptBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (!state.me) { alert('Vui lòng đăng nhập để bình chọn phân hạng!'); return; }
+          const myName = state.me.name;
+          state.tieVotes = state.tieVotes || {};
+          state.tieVotes[curMonth] = state.tieVotes[curMonth] || {};
+          if (state.tieVotes[curMonth][myName] === m.name) {
+            delete state.tieVotes[curMonth][myName];
+          } else {
+            state.tieVotes[curMonth][myName] = m.name;
+          }
+          saveTieVotes();
+          render();
+          showToast(`🗳️ Đã cập nhật phiếu bình chọn cho ${m.name}!`, 'success');
+        };
+
+        podiumEl.appendChild(podItem);
+      });
+
+      if (podiumData.length > 0) lbContainer.appendChild(podiumEl);
+
+      // Top 10 list
+      const listEl = el(`<div></div>`);
+      const top10Data = data.slice(0, 10);
+      top10Data.forEach(({ m, xp, attended, tieVotes, monthAttended }, idx) => {
+        const rank = getXPRank(xp);
+        const isSelf = state.me && state.me.id === m.id;
+        const mBadges = getMemberBadges(m.id, state.sessions);
+        const rankClass = idx === 0 ? 'lb-top1' : idx === 1 ? 'lb-top2' : idx === 2 ? 'lb-top3' : '';
+        const topIcon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+        const maxXP = data[0].xp || 1;
+        const barPct = Math.max(2, Math.round((xp / maxXP) * 100));
+        const hasVotedForM = myTieVote === m.name;
+
+        const row = el(`<div class="bc-card lb-row ${rankClass}" style="padding:0.7rem 1rem;margin-bottom:0.5rem;animation-delay:${idx*0.04}s;transition:transform 0.15s,box-shadow 0.15s;cursor:default;"
+          onmouseenter="this.style.transform='translateX(2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.1)'"
+          onmouseleave="this.style.transform='';this.style.boxShadow=''">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="min-width:26px;text-align:center;font-size:${idx<3?'18px':'14px'};font-weight:700;color:${idx<3?'var(--text-primary)':'var(--text-muted)'};">
+              ${topIcon || (idx+1)}
+            </div>
+            <div id="lb-avatar-${m.id}-${idx}" style="flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:14px;font-weight:${isSelf?'700':'600'};color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(m.nickname||m.name)}</span>
+                ${isSelf ? '<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:1px 6px;border-radius:99px;font-weight:700;">Bạn</span>' : ''}
+                <span style="font-size:11px;opacity:0.75;">${rank.emoji} ${rank.label}</span>
+                ${mBadges.map(b => `<span title="${b.label}: ${b.desc}" style="font-size:12px;">${b.emoji}</span>`).join('')}
+              </div>
+              <div style="margin-top:4px;background:rgba(0,0,0,0.07);border-radius:99px;height:5px;overflow:hidden;">
+                <div style="height:100%;border-radius:99px;background:${rank.avatarBg};width:${barPct}%;
+                  animation:xpBarFill 0.8s ease both;animation-delay:${0.1+idx*0.03}s;"></div>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;">
+              <div style="font-size:15px;font-weight:800;color:var(--text-primary);line-height:1;">${xp.toLocaleString()}</div>
+              <div style="font-size:10px;color:var(--text-muted);">XP</div>
+              
+              <div style="display:flex;gap:4px;align-items:center;margin-top:3px;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="bc-btn small tie-vote-btn" id="list-tie-${m.id}" style="
+                    background:${hasVotedForM ? '#9C27B0' : 'rgba(156,39,176,0.1)'};
+                    color:${hasVotedForM ? '#FFF' : '#9C27B0'};
+                    border:1px solid #9C27B0; padding:2px 7px; font-size:10px; font-weight:700; border-radius:6px; cursor:pointer;">
+                  ${hasVotedForM ? '✓ Đã vote' : '🗳️ Vote'} (${tieVotes})
+                </button>
+                ${!isSelf ? `<button class="bc-btn small lb-ch-btn" id="lb-ch-${m.id}" style="background:linear-gradient(135deg,#F26419,#E76F51);color:#FFF;border:none;padding:2px 7px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;">⚡ Thách đấu</button>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>`);
+
+        row.querySelector(`#lb-avatar-${m.id}-${idx}`).innerHTML = avatarHtml(m, 34);
+        
+        const chBtn = row.querySelector(`#lb-ch-${m.id}`);
+        if (chBtn) chBtn.onclick = (e) => { e.stopPropagation(); openQuickChallengeModal(m); };
+
+        const ltBtn = row.querySelector(`#list-tie-${m.id}`);
+        if (ltBtn) ltBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (!state.me) { alert('Vui lòng đăng nhập để bình chọn phân hạng!'); return; }
+          const myName = state.me.name;
+          state.tieVotes = state.tieVotes || {};
+          state.tieVotes[curMonth] = state.tieVotes[curMonth] || {};
+          if (state.tieVotes[curMonth][myName] === m.name) {
+            delete state.tieVotes[curMonth][myName];
+          } else {
+            state.tieVotes[curMonth][myName] = m.name;
+          }
+          saveTieVotes();
+          render();
+          showToast(`🗳️ Đã cập nhật phiếu bình chọn cho ${m.name}!`, 'success');
+        };
+
+        listEl.appendChild(row);
+      });
+      lbContainer.appendChild(listEl);
+
+      // XP explainer card
+      const explainer = el(`<div class="bc-card" style="padding:0.9rem 1.2rem;margin-top:0.5rem;background:rgba(0,0,0,0.03);">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;margin-bottom:0.5rem;">📖 CÁCH TÍNH XP, HUY HIỆU & ĐỒNG ĐIỂM</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;color:var(--text-secondary);">
+          <div>🏸 Tham gia buổi đánh <strong>+10 XP</strong></div>
+          <div>⏰ Vote đúng giờ <strong>+3 XP</strong></div>
+          <div>🔥 Chuỗi 3 buổi liên tiếp <strong>+20 XP</strong></div>
+          <div>⚡ Thắng thách đấu <strong>+15 XP</strong></div>
+          <div>⚔️ Thua thách đấu <strong>+5 XP</strong></div>
+          <div>✍️ Tạo kèo thách đấu <strong>+5 XP</strong></div>
+        </div>
+        <div style="font-size:11.5px;color:#9C27B0;font-weight:600;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(156,39,176,0.3);">
+          🗳️ <strong>Quy tắc Đồng Điểm XP:</strong> Khi 2 hoặc nhiều thành viên bằng điểm XP, các thành viên khác trong CLB được bấm <strong>"🗳️ Vote"</strong> bình chọn. Người có nhiều lượt vote từ cộng đồng hơn sẽ được ưu tiên xếp trên!
+        </div>
+      </div>`);
+      lbContainer.appendChild(explainer);
+    }
+
+    // Initial render
+    buildRankings(state.lbMode || 'month');
+
+    // Events
+    setTimeout(() => {
+      const btnMonth = document.getElementById('lb-tab-month');
+      const btnAll = document.getElementById('lb-tab-all');
+      if (btnMonth) btnMonth.onclick = () => buildRankings('month');
+      if (btnAll) btnAll.onclick = () => buildRankings('all');
     }, 0);
 
     return wrap;
@@ -5953,6 +6710,7 @@
       });
     }
     wrap.appendChild(bulletinCard);
+    wrap.appendChild(renderRoastFeedCard());
 
     // --- RENDER LỊCH HOẠT ĐỘNG SẮP TỚI (SPOTLIGHT HERO CARD) ---
     const upcomingSessions = state.sessions
