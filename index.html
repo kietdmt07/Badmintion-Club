@@ -5233,6 +5233,17 @@
       wrap.appendChild(mailServerSection);
     }
 
+    setTimeout(() => {
+      const cfgMailSaveBtn = document.getElementById('cfg-mail-save-btn');
+      if (cfgMailSaveBtn) cfgMailSaveBtn.onclick = async () => {
+        const enabled = document.getElementById('cfg-mail-enabled').checked;
+        const modeEl = document.querySelector('input[name="cfg-mail-mode"]:checked');
+        const activeMode = modeEl ? modeEl.value : 'gas';
+        
+        const useGoogleScript = activeMode === 'gas';
+        const googleScriptUrl = document.getElementById('cfg-mail-gas-url').value.trim();
+        const useSecureToken = activeMode === 'token';
+        const secureToken = document.getElementById('cfg-mail-token').value.trim();
 
         const host = document.getElementById('cfg-mail-host').value.trim();
         const port = parseInt(document.getElementById('cfg-mail-port').value) || 465;
@@ -5245,7 +5256,6 @@
         cfgMailSaveBtn.disabled = true;
         msg.style.color = '#6b7a73';
         msg.textContent = 'Đang lưu cấu hình...';
-
 
         state.settings.mailServer = {
           enabled,
@@ -5272,6 +5282,7 @@
           msg.textContent = 'Lưu cấu hình thất bại.';
         }
       };
+
 
       const cfgMailTestBtn = document.getElementById('cfg-mail-test-btn');
       if (cfgMailTestBtn) cfgMailTestBtn.onclick = async () => {
