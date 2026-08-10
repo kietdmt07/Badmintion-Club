@@ -314,12 +314,14 @@
 
   // ===================== XP RANK SYSTEM =====================
   // 5 cấp độ tay vợt – tính theo XP tích lũy từ hoạt động thực tế
+  // ===================== XP RANK SYSTEM =====================
+  // 5 cấp độ tay vợt – Chuẩn hóa cho CLB sinh hoạt 4 buổi/tháng
   const XP_RANKS = [
-    { key: 'novice',    label: 'Tập sự',    emoji: '🐣', min: 0,    max: 99,   avatarBg: 'linear-gradient(135deg,#B0BEC5,#78909C)',      avatarFg: '#FFF',   ringColor: '#90A4AE' },
-    { key: 'student',   label: 'Học viên',  emoji: '🥉', min: 100,  max: 299,  avatarBg: 'linear-gradient(135deg,#66BB6A,#388E3C)',      avatarFg: '#FFF',   ringColor: '#4CAF50' },
-    { key: 'warrior',   label: 'Chiến binh',emoji: '🥈', min: 300,  max: 699,  avatarBg: 'linear-gradient(135deg,#42A5F5,#1565C0)',      avatarFg: '#FFF',   ringColor: '#1E88E5' },
-    { key: 'master',    label: 'Cao thủ',   emoji: '🥇', min: 700,  max: 1499, avatarBg: 'linear-gradient(135deg,#AB47BC,#6A1B9A)',      avatarFg: '#FFF',   ringColor: '#9C27B0' },
-    { key: 'legendary', label: 'Huyền thoại',emoji:'👑', min: 1500, max: Infinity, avatarBg: 'linear-gradient(135deg,#FFD700 0%,#FF8C00 50%,#FFD700 100%)', avatarFg: '#3E2400', ringColor: '#FFD700', shimmer: true }
+    { key: 'novice',    label: 'Tập sự',    emoji: '🐣', min: 0,   max: 99,  avatarBg: 'linear-gradient(135deg,#B0BEC5,#78909C)',      avatarFg: '#FFF',   ringColor: '#90A4AE' },
+    { key: 'student',   label: 'Học viên',  emoji: '🥉', min: 100, max: 249, avatarBg: 'linear-gradient(135deg,#66BB6A,#388E3C)',      avatarFg: '#FFF',   ringColor: '#4CAF50' },
+    { key: 'warrior',   label: 'Chiến binh',emoji: '🥈', min: 250, max: 499, avatarBg: 'linear-gradient(135deg,#42A5F5,#1565C0)',      avatarFg: '#FFF',   ringColor: '#1E88E5' },
+    { key: 'master',    label: 'Cao thủ',   emoji: '🥇', min: 500, max: 899, avatarBg: 'linear-gradient(135deg,#AB47BC,#6A1B9A)',      avatarFg: '#FFF',   ringColor: '#9C27B0' },
+    { key: 'legendary', label: 'Huyền thoại',emoji:'👑', min: 900, max: Infinity, avatarBg: 'linear-gradient(135deg,#FFD700 0%,#FF8C00 50%,#FFD700 100%)', avatarFg: '#3E2400', ringColor: '#FFD700', shimmer: true }
   ];
 
   function getXPRank(xp) {
@@ -346,34 +348,35 @@
       const hasPassed   = Object.keys(passes).includes(memberId);
       
       if (isReceiver || (v === 'yes' && !hasPassed)) {
-        xp += 10; // +10 XP mỗi buổi tham gia
+        xp += 50; // +50 XP mỗi buổi tham gia
         streakCount++;
-        if (streakCount >= 3 && streakCount % 3 === 0) xp += 20; // +20 mỗi 3 buổi liên tiếp
+        if (streakCount === 2) xp += 30; // +30 XP chuỗi 2 buổi liên tiếp
+        if (streakCount >= 4) xp += 50; // +50 XP chuỗi 4 buổi hoàn hảo
       } else if (v === 'no' || hasPassed) {
         streakCount = 0;
       }
 
-      // +3 XP nếu tự vote (không bị auto-vote)
+      // +15 XP nếu tự vote đúng giờ (không bị auto-vote)
       if ((v === 'yes' || v === 'no') && !(s.autoVoted && s.autoVoted[memberId])) {
-        xp += 3;
+        xp += 15;
       }
 
       // + XP từ Thách đấu trong lịch sử
       (s.challenges || []).forEach(c => {
-        if (c.createdBy === memberName) xp += 5; // +5 XP khi tạo kèo thách đấu
+        if (c.createdBy === memberName) xp += 15; // +15 XP khi tạo kèo thách đấu
         const isDone = c.status === 'done' || (c.score1 !== null && c.score2 !== null && c.score1 !== undefined && c.score2 !== undefined);
         if (isDone) {
           const s1 = parseInt(c.score1, 10) || 0;
           const s2 = parseInt(c.score2, 10) || 0;
           if ((c.team1 || []).includes(memberName)) {
-            if (s1 > s2) xp += 15;      // Thắng +15 XP
-            else if (s1 < s2) xp += 5;  // Thua +5 XP (khuyến khích giao lưu)
-            else xp += 8;               // Hòa +8 XP
+            if (s1 > s2) xp += 40;      // Thắng +40 XP
+            else if (s1 < s2) xp += 15; // Thua +15 XP
+            else xp += 25;              // Hòa +25 XP
           }
           if ((c.team2 || []).includes(memberName)) {
-            if (s2 > s1) xp += 15;      // Thắng +15 XP
-            else if (s2 < s1) xp += 5;  // Thua +5 XP
-            else xp += 8;               // Hòa +8 XP
+            if (s2 > s1) xp += 40;      // Thắng +40 XP
+            else if (s2 < s1) xp += 15; // Thua +15 XP
+            else xp += 25;              // Hòa +25 XP
           }
         }
       });
@@ -399,38 +402,40 @@
       const hasPassed   = Object.keys(passes).includes(memberId);
 
       if (isReceiver || (v === 'yes' && !hasPassed)) {
-        xp += 10;
+        xp += 50; // +50 XP mỗi buổi tham gia
         streakCount++;
-        if (streakCount >= 3 && streakCount % 3 === 0) xp += 20;
+        if (streakCount === 2) xp += 30;
+        if (streakCount >= 4) xp += 50;
       } else if (v === 'no' || hasPassed) {
         streakCount = 0;
       }
 
       if ((v === 'yes' || v === 'no') && !(s.autoVoted && s.autoVoted[memberId])) {
-        xp += 3;
+        xp += 15; // +15 XP vote đúng giờ
       }
 
       (s.challenges || []).forEach(c => {
-        if (c.createdBy === memberName) xp += 5;
+        if (c.createdBy === memberName) xp += 15;
         const isDone = c.status === 'done' || (c.score1 !== null && c.score2 !== null && c.score1 !== undefined && c.score2 !== undefined);
         if (isDone) {
           const s1 = parseInt(c.score1, 10) || 0;
           const s2 = parseInt(c.score2, 10) || 0;
           if ((c.team1 || []).includes(memberName)) {
-            if (s1 > s2) xp += 15;
-            else if (s1 < s2) xp += 5;
-            else xp += 8;
+            if (s1 > s2) xp += 40;
+            else if (s1 < s2) xp += 15;
+            else xp += 25;
           }
           if ((c.team2 || []).includes(memberName)) {
-            if (s2 > s1) xp += 15;
-            else if (s2 < s1) xp += 5;
-            else xp += 8;
+            if (s2 > s1) xp += 40;
+            else if (s2 < s1) xp += 15;
+            else xp += 25;
           }
         }
       });
     });
     return Math.max(0, xp);
   }
+
 
   // Số buổi tham gia của 1 thành viên (toàn thời gian)
   function countAttended(memberId, sessions) {
@@ -5746,19 +5751,20 @@
 
       // XP explainer card
       const explainer = el(`<div class="bc-card" style="padding:0.9rem 1.2rem;margin-top:0.5rem;background:rgba(0,0,0,0.03);">
-        <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;margin-bottom:0.5rem;">📖 CÁCH TÍNH XP, HUY HIỆU & ĐỒNG ĐIỂM</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:0.05em;margin-bottom:0.5rem;">📖 CÁCH TÍNH XP, HUY HIỆU & ĐỒNG ĐIỂM (Chuẩn 4 buổi/tháng)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;color:var(--text-secondary);">
-          <div>🏸 Tham gia buổi đánh <strong>+10 XP</strong></div>
-          <div>⏰ Vote đúng giờ <strong>+3 XP</strong></div>
-          <div>🔥 Chuỗi 3 buổi liên tiếp <strong>+20 XP</strong></div>
-          <div>⚡ Thắng thách đấu <strong>+15 XP</strong></div>
-          <div>⚔️ Thua thách đấu <strong>+5 XP</strong></div>
-          <div>✍️ Tạo kèo thách đấu <strong>+5 XP</strong></div>
+          <div>🏸 Tham gia buổi đánh <strong>+50 XP</strong></div>
+          <div>⏰ Vote đúng giờ <strong>+15 XP</strong></div>
+          <div>🔥 Chuỗi 2 buổi <strong>+30 XP</strong> | 4 buổi <strong>+50 XP</strong></div>
+          <div>⚡ Thắng thách đấu <strong>+40 XP</strong></div>
+          <div>⚔️ Thua thách đấu <strong>+15 XP</strong></div>
+          <div>✍️ Tạo kèo thách đấu <strong>+15 XP</strong></div>
         </div>
         <div style="font-size:11.5px;color:#9C27B0;font-weight:600;margin-top:8px;padding-top:6px;border-top:1px dashed rgba(156,39,176,0.3);">
           🗳️ <strong>Quy tắc Đồng Điểm XP:</strong> Khi 2 hoặc nhiều thành viên bằng điểm XP, các thành viên khác trong CLB được bấm <strong>"🗳️ Vote"</strong> bình chọn. Người có nhiều lượt vote từ cộng đồng hơn sẽ được ưu tiên xếp trên!
         </div>
       </div>`);
+
       lbContainer.appendChild(explainer);
     }
 
