@@ -804,28 +804,7 @@
       return false;
     }
     try {
-      // 1. Gửi qua Database RPC (Bảo mật tuyệt đối, tránh lộ URL/Credentials ở Client)
-      try {
-        const { data: rpcRes, error: rpcError } = await sb.rpc('bc_send_email', {
-          p_to: to,
-          p_subject: subject,
-          p_body: htmlBody
-        });
-        if (!rpcError) {
-          if (rpcRes && typeof rpcRes === 'string' && rpcRes.startsWith('ERROR')) {
-            console.warn('DB RPC error response:', rpcRes);
-          } else {
-            console.log('Email sent successfully via DB RPC.');
-            return true;
-          }
-        } else {
-          console.warn('DB RPC failed or not installed. Falling back to client-side...', rpcError);
-        }
-      } catch (rpcEx) {
-        console.warn('Failed to call DB RPC:', rpcEx);
-      }
-
-      // 2. Fallback sang gửi ở client-side (chỉ chạy nếu RPC chưa cài hoặc lỗi, và chỉ có Owner mới có URL thật)
+      // 1. Ưu tiên Google Apps Script nếu User đã cấu hình và bật
       if (config.useGoogleScript && config.googleScriptUrl && config.googleScriptUrl !== '••••') {
         const payload = {
           to: to,
@@ -842,6 +821,27 @@
           body: JSON.stringify(payload)
         });
         return true;
+      }
+
+      // 2. Gửi qua Database RPC nếu không dùng Google Script (Bảo mật tuyệt đối, tránh lộ Credentials ở Client)
+      try {
+        const { data: rpcRes, error: rpcError } = await sb.rpc('bc_send_email', {
+          p_to: to,
+          p_subject: subject,
+          p_body: htmlBody
+        });
+        if (!rpcError) {
+          if (rpcRes && typeof rpcRes === 'string' && rpcRes.startsWith('ERROR')) {
+            console.warn('DB RPC error response:', rpcRes);
+          } else {
+            console.log('Email sent successfully via DB RPC.');
+            return true;
+          }
+        } else {
+          console.warn('DB RPC failed or not installed. Falling back to SMTPJS...', rpcError);
+        }
+      } catch (rpcEx) {
+        console.warn('Failed to call DB RPC:', rpcEx);
       }
 
       // 3. Fallback sang SMTPJS cũ (đã ngừng hoạt động, giữ lại để tương thích cấu hình cũ)
@@ -1141,42 +1141,55 @@
 
   // Thiết lập Rule: Tự động mặc định vote "Tham gia" cho các thành viên Cố định chưa vote
   // vào lúc 10:00 sáng của ngày hôm trước ngày đánh (khi chưa chốt buổi)
-  function applyFixedAutoVote(sessions) {
+  function applyAutoLockVote(sessions) {
     if (!Array.isArray(sessions) || !Array.isArray(state.members) || state.members.length === 0) return false;
+    
+    // Đọc cấu hình Rule 1 (Khóa vote) từ settings
+    const autoRules = (state.settings && state.settings.autoRules) || {};
+    const lockVoteCfg = autoRules.lockVote || { enabled: true, days: 1, time: '10:00' };
+    if (!lockVoteCfg.enabled) return false;
+
     let modified = false;
     const now = new Date();
     const nowStamp = now.toLocaleDateString('sv-SE') + 'T' + now.toTimeString().slice(0, 8);
 
     sessions.forEach(s => {
-      if (!s || !s.date || s.locked) return; // Buổi đã chốt thì giữ nguyên
+      if (!s || !s.date || s.locked) return;
       
-      // Tính mốc 10:00 sáng của ngày hôm trước ngày đánh (s.date)
       const parts = s.date.split('-').map(Number);
       if (parts.length < 3) return;
       const [y, m, d] = parts;
-      const prevDate = new Date(y, m - 1, d);
-      prevDate.setDate(prevDate.getDate() - 1);
-      const prevY = prevDate.getFullYear();
-      const prevM = String(prevDate.getMonth() + 1).padStart(2, '0');
-      const prevD = String(prevDate.getDate()).padStart(2, '0');
-      const cutoffTimeStr = `${prevY}-${prevM}-${prevD}T10:00:00`;
+      const cutoffDate = new Date(y, m - 1, d);
+      
+      // Lùi ngày theo cấu hình
+      const daysBefore = parseInt(lockVoteCfg.days) || 1;
+      cutoffDate.setDate(cutoffDate.getDate() - daysBefore);
+      
+      // Lấy giờ phút từ cấu hình
+      const [timeH, timeM] = (lockVoteCfg.time || '10:00').split(':');
+      cutoffDate.setHours(timeH, timeM, 0, 0);
 
-      // Nếu thời gian hiện tại >= 10:00 sáng ngày hôm trước
+      const cY = cutoffDate.getFullYear();
+      const cM = String(cutoffDate.getMonth() + 1).padStart(2, '0');
+      const cD = String(cutoffDate.getDate()).padStart(2, '0');
+      const cutoffTimeStr = `${cY}-${cM}-${cD}T${String(timeH).padStart(2, '0')}:${String(timeM).padStart(2, '0')}:00`;
+
       if (nowStamp >= cutoffTimeStr) {
         const mKey = sessionMonthKey(s);
         s.votes = s.votes || {};
         s.passes = s.passes || {};
+        s.autoVoted = s.autoVoted || {};
 
         state.members.forEach(member => {
           if (member.status !== 'active') return;
           const curType = (member.monthlyType || {})[mKey] || '';
           
-          // Với thành viên Cố định: nếu chưa vote và chưa pass thì mặc định tham gia (yes)
           if (curType === 'fixed') {
             const hasVoted = !!s.votes[member.name];
             const hasPassed = !!s.passes[member.id];
             if (!hasVoted && !hasPassed) {
-              s.votes[member.name] = 'yes';
+              s.votes[member.name] = 'no'; // Đổi trạng thái những người chưa vote thành "Không"
+              s.autoVoted[member.id] = true; // Kích hoạt cờ khóa
               modified = true;
             }
           }
@@ -1610,8 +1623,7 @@
       }
     }
 
-    // Tự động áp dụng quy tắc mặc định Tham gia cho thành viên Cố định chưa vote sau 10h hôm trước
-    let needSave = applyFixedAutoVote(state.sessions);
+    let needSave = applyAutoLockVote(state.sessions);
 
     function normStr(str) {
       return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -2559,7 +2571,7 @@
       </div>`);
       
       const bulletinList = bulletinCard.querySelector('#bulletin-list');
-      applyFixedAutoVote(state.sessions);
+      applyAutoLockVote(state.sessions);
       const todayStr = new Date().toLocaleDateString('sv-SE');
       const upcoming = state.sessions
         .filter(s => s.date >= todayStr)
@@ -5447,7 +5459,223 @@
           };
         }
       });
+      
+      // Auto-Rules Handler
+      const arSaveBtn = document.getElementById('ar-save-btn');
+      if (arSaveBtn) {
+        arSaveBtn.onclick = async () => {
+          arSaveBtn.disabled = true;
+          arSaveBtn.textContent = 'Đang lưu...';
+          try {
+            state.settings = state.settings || {};
+            state.settings.autoRules = state.settings.autoRules || {};
+            state.settings.autoRules.lockVote = state.settings.autoRules.lockVote || {};
+            state.settings.autoRules.remindVote = state.settings.autoRules.remindVote || {};
+            state.settings.autoRules.remindDebt = state.settings.autoRules.remindDebt || {};
+
+            state.settings.autoRules.lockVote.enabled = document.getElementById('ar-lock-enable').checked;
+            state.settings.autoRules.lockVote.days = document.getElementById('ar-lock-days').value;
+            state.settings.autoRules.lockVote.time = document.getElementById('ar-lock-time').value;
+
+            state.settings.autoRules.remindVote.enabled = document.getElementById('ar-remind-enable').checked;
+            state.settings.autoRules.remindVote.days = document.getElementById('ar-remind-days').value;
+            state.settings.autoRules.remindVote.time = document.getElementById('ar-remind-time').value;
+
+            state.settings.autoRules.remindDebt.enabled = document.getElementById('ar-debt-enable').checked;
+            state.settings.autoRules.remindDebt.days = document.getElementById('ar-debt-days').value;
+            state.settings.autoRules.remindDebt.time = document.getElementById('ar-debt-time').value;
+
+            await saveSettings();
+            showToast('Đã lưu cấu hình tự động!', 'success');
+          } finally {
+            arSaveBtn.disabled = false;
+            arSaveBtn.innerHTML = '<i class="fas fa-save"></i> Lưu cấu hình';
+          }
+        };
+      }
+      
+      // Test Button Handlers
+      const arTestLock = document.getElementById('ar-test-lock');
+      if (arTestLock) arTestLock.onclick = () => {
+         let msgs = [];
+         let total = 0;
+         state.sessions.forEach(s => {
+           if (!s || !s.date || s.locked) return;
+           if (s.date < (new Date()).toLocaleDateString('sv-SE')) return;
+           
+           let affected = 0;
+           const mKey = sessionMonthKey(s);
+           state.members.forEach(member => {
+             if (member.status !== 'active') return;
+             const curType = (member.monthlyType || {})[mKey] || '';
+             if (curType === 'fixed') {
+               const hasVoted = !!(s.votes||{})[member.name];
+               const hasPassed = !!(s.passes||{})[member.id];
+               if (!hasVoted && !hasPassed) affected++;
+             }
+           });
+
+           if (affected > 0) {
+             const parts = s.date.split('-');
+             const fDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : s.date;
+             msgs.push(` - Buổi ${fDate}: ${affected} người`);
+             total += affected;
+           }
+         });
+         
+         if (total === 0) {
+           alert("KẾT QUẢ CHẠY THỬ:\nTất cả các thành viên Cố định đều đã chốt danh sách trong các buổi sắp tới.");
+         } else {
+           alert(`KẾT QUẢ CHẠY THỬ (Tổng số người chưa vote):\nTổng cộng có ${total} lượt thành viên Cố định chưa vote trong các buổi đánh mở:\n${msgs.join('\n')}\n\n*Lưu ý: Việc khóa vote chỉ diễn ra khi thời gian vượt qua deadline cấu hình (vd: 10:00 ngày trước buổi đánh).`);
+         }
+      };
+
+      let isTestRemindRunning = false;
+      const arTestRemind = document.getElementById('ar-test-remind');
+      if (arTestRemind) arTestRemind.onclick = async () => {
+         if (isTestRemindRunning) return;
+         if (!state.me || !state.me.email) {
+           alert('Tài khoản Admin của bạn chưa có email. Vui lòng cập nhật email trong tab Tài khoản của tôi để nhận mail test!');
+           return;
+         }
+         isTestRemindRunning = true;
+         arTestRemind.disabled = true;
+         arTestRemind.textContent = 'Đang gửi...';
+         const subject = `[THÔNG BÁO TEST] Nhắc nhở chốt danh sách đánh cầu`;
+         const body = `<p>Chào bạn,</p>
+         <p><strong>ĐÂY LÀ EMAIL TEST TỪ HỆ THỐNG AUTO-RULES.</strong></p>
+         <p>Nhóm sẽ tự động chốt danh sách đánh cầu cho buổi sắp tới.</p>
+         <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán là <strong>KHÔNG THAM GIA</strong> và khóa vote.</p>
+         <p>Vui lòng vào ứng dụng để vote ngay nhé!</p>`;
+         const ok = await sendSystemEmail(state.me.email, subject, body);
+         arTestRemind.disabled = false;
+         arTestRemind.innerHTML = '<i class="fas fa-play"></i> Gửi thử';
+         isTestRemindRunning = false;
+         if (ok) showToast('Đã gửi email nhắc vote mẫu tới email của bạn!', 'success');
+         else alert('Lỗi khi gửi mail. Hãy kiểm tra cấu hình Mail Server.');
+      };
+
+      let isTestDebtRunning = false;
+      const arTestDebt = document.getElementById('ar-test-debt');
+      if (arTestDebt) arTestDebt.onclick = async () => {
+         if (isTestDebtRunning) return;
+         if (!state.me || !state.me.email) {
+           alert('Tài khoản Admin của bạn chưa có email. Vui lòng cập nhật email trong tab Tài khoản của tôi để nhận mail test!');
+           return;
+         }
+         isTestDebtRunning = true;
+         arTestDebt.disabled = true;
+         arTestDebt.textContent = 'Đang gửi...';
+         
+         const prevMonthKey = monthKey(); // Use current month for demo
+         const paymentCfg = state.settings.payment || {};
+         const bankId = paymentCfg.bankId || '';
+         const accountNo = paymentCfg.accountNo || '';
+         const accountName = paymentCfg.accountName || '';
+         const qrUrl = paymentCfg.qrUrl || '';
+         const treasurerPhone = paymentCfg.treasurerPhone || '';
+         
+         const subject = `[THÔNG BÁO TEST] Nhắc đóng quỹ cầu lông tháng ${monthLabel(prevMonthKey)}`;
+         let body = `<p>Chào ${escapeHtml(state.me.name)},</p>
+         <p><strong>ĐÂY LÀ EMAIL TEST TỪ HỆ THỐNG AUTO-RULES.</strong></p>
+         <p>Tổng kết quỹ cầu lông tháng <strong>${monthLabel(prevMonthKey)}</strong> của bạn như sau:</p>
+         <ul>
+           <li>Tổng phí cần đóng: <strong>${formatVND(300000)}</strong></li>
+           <li>Đã đóng: <strong>${formatVND(0)}</strong></li>
+           <li>Đóng trước: <strong>${formatVND(0)}</strong></li>
+           <li><strong>Số tiền còn nợ: <span style="color:red;">${formatVND(300000)}</span></strong></li>
+         </ul>
+         <p>Vui lòng chuyển khoản số tiền <strong>${formatVND(300000)}</strong> với nội dung: <strong>${escapeHtml(state.me.name)} nop tien thang ${monthLabel(prevMonthKey).replace('/','')}</strong>.</p>`;
+
+         if (qrUrl) {
+           body += `<p><img src="${qrUrl}" alt="QR Code" style="max-width:300px;"/></p>`;
+         } else if (bankId && accountNo) {
+           body += `<p><strong>Thông tin chuyển khoản:</strong><br/>Ngân hàng: ${bankId}<br/>Số tài khoản: ${accountNo}<br/>Chủ tài khoản: ${accountName}</p>`;
+         }
+         if (treasurerPhone) {
+           body += `<p>Nếu có thắc mắc, vui lòng liên hệ thủ quỹ: ${treasurerPhone}.</p>`;
+         }
+         
+         const ok = await sendSystemEmail(state.me.email, subject, body);
+         arTestDebt.disabled = false;
+         arTestDebt.innerHTML = '<i class="fas fa-play"></i> Gửi thử';
+         isTestDebtRunning = false;
+         if (ok) showToast('Đã gửi email nhắc nợ mẫu tới email của bạn!', 'success');
+         else alert('Lỗi khi gửi mail. Hãy kiểm tra cấu hình Mail Server.');
+      };
     }, 0);
+
+    // Render Auto-Rules UI
+    const autoRules = (state.settings && state.settings.autoRules) || {};
+    const lockVote = autoRules.lockVote || {};
+    const remindVote = autoRules.remindVote || {};
+    const remindDebt = autoRules.remindDebt || {};
+
+    wrap.appendChild(el(`<div class="bc-card" style="margin-top:1.5rem; border:1px solid var(--card-border);">
+      <h3 style="font-size:15px; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+        <i class="fas fa-robot"></i> Cấu hình Tự động (Auto-Rules)
+      </h3>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:16px;">
+        Hệ thống sẽ chạy ngầm các tác vụ này khi có Admin/Owner truy cập ứng dụng. Cấu hình này giúp bạn rảnh tay trong việc quản lý nhóm.
+      </p>
+
+      <div style="background:var(--tab-bg); padding:12px; border-radius:8px; margin-bottom:12px; border: 1px solid var(--card-border);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:8px; cursor:pointer;">
+            <input type="checkbox" id="ar-lock-enable" ${lockVote.enabled ? 'checked' : ''} style="width:16px;height:16px;">
+            Tự động chốt danh sách (Khóa Vote)
+          </label>
+          <button id="ar-test-lock" class="bc-btn small" style="font-size:11px; padding:4px 8px; background:transparent; color:var(--text-secondary); border:1px solid var(--input-border);"><i class="fas fa-play"></i> Chạy thử</button>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; margin-left:24px;">Hành động: Tự động khóa những người chưa vote thành "Không", bật cờ autoVoted. Chỉ áp dụng cho thành viên Cố định.</p>
+        <div style="display:flex; gap:12px; margin-left:24px; align-items:center;">
+          <span style="font-size:13px; color:var(--text-secondary);">Khóa trước buổi đánh:</span>
+          <input type="number" id="ar-lock-days" value="${lockVote.days || 1}" min="0" max="7" style="width:60px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
+          <span style="font-size:13px; color:var(--text-secondary);">ngày, vào lúc:</span>
+          <input type="time" id="ar-lock-time" value="${lockVote.time || '10:00'}" style="width:90px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
+        </div>
+      </div>
+
+      <div style="background:var(--tab-bg); padding:12px; border-radius:8px; margin-bottom:12px; border: 1px solid var(--card-border);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:8px; cursor:pointer;">
+            <input type="checkbox" id="ar-remind-enable" ${remindVote.enabled ? 'checked' : ''} style="width:16px;height:16px;">
+            Tự động gửi Email nhắc Vote
+          </label>
+          <button id="ar-test-remind" class="bc-btn small" style="font-size:11px; padding:4px 8px; background:transparent; color:var(--text-secondary); border:1px solid var(--input-border);"><i class="fas fa-play"></i> Gửi thử</button>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; margin-left:24px;">Hành động: Gửi mail nhắc nhở các thành viên Cố định/Vãng lai chưa vote.</p>
+        <div style="display:flex; gap:12px; margin-left:24px; align-items:center;">
+          <span style="font-size:13px; color:var(--text-secondary);">Gửi trước buổi đánh:</span>
+          <input type="number" id="ar-remind-days" value="${remindVote.days || 1}" min="0" max="7" style="width:60px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
+          <span style="font-size:13px; color:var(--text-secondary);">ngày, vào lúc:</span>
+          <input type="time" id="ar-remind-time" value="${remindVote.time || '08:00'}" style="width:90px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
+        </div>
+      </div>
+
+      <div style="background:var(--tab-bg); padding:12px; border-radius:8px; border: 1px solid var(--card-border);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:8px; cursor:pointer;">
+            <input type="checkbox" id="ar-debt-enable" ${remindDebt.enabled ? 'checked' : ''} style="width:16px;height:16px;">
+            Tự động gửi Email nhắc Nợ phí
+          </label>
+          <button id="ar-test-debt" class="bc-btn small" style="font-size:11px; padding:4px 8px; background:transparent; color:var(--text-secondary); border:1px solid var(--input-border);"><i class="fas fa-play"></i> Gửi thử</button>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; margin-left:24px;">Hành động: Gửi mail thông báo tiền quỹ cần đóng (nếu > 0) cho tháng vừa qua.</p>
+        <div style="display:flex; gap:12px; margin-left:24px; align-items:center;">
+          <span style="font-size:13px; color:var(--text-secondary);">Gửi vào ngày:</span>
+          <input type="number" id="ar-debt-days" value="${remindDebt.days || 5}" min="1" max="28" style="width:60px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
+          <span style="font-size:13px; color:var(--text-secondary);">hàng tháng, vào lúc:</span>
+          <input type="time" id="ar-debt-time" value="${remindDebt.time || '09:00'}" style="width:90px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
+        </div>
+      </div>
+      
+      <div style="text-align:right; margin-top:12px;">
+        <button id="ar-save-btn" class="bc-btn" style="background:#005A32; border-color:#005A32; font-size:13px; padding:8px 16px;">
+          <i class="fas fa-save"></i> Lưu cấu hình
+        </button>
+      </div>
+    </div>`));
 
     return wrap;
   }
@@ -6765,8 +6993,8 @@
 
   // ---------- SESSIONS ----------
   function renderSessions(){
-    // Tự động kiểm tra và áp dụng quy tắc mặc định Tham gia cho thành viên Cố định chưa vote sau 10h hôm trước
-    if (applyFixedAutoVote(state.sessions)) {
+    // Tự động kiểm tra và áp dụng quy tắc Khóa Vote (Rule 1)
+    if (applyAutoLockVote(state.sessions)) {
       saveSessions();
     }
     const wrap = el(`<div></div>`);
@@ -8734,6 +8962,164 @@
     }
   }
 
+  // ===================== LAZY ADMIN CRON (BACKGROUND TASKS) =====================
+  async function loadAutoLogs() {
+    try {
+      const { data, error } = await sb.from('bc_data').select('value').eq('key', 'bc_auto_logs').maybeSingle();
+      if (!error && data) return data.value || {};
+    } catch(e) {}
+    return {};
+  }
+  
+  async function saveAutoLog(logKey) {
+    await mutateKey('bc_auto_logs', (latest) => {
+      const updated = latest || {};
+      updated[logKey] = new Date().toISOString();
+      return updated;
+    }, {});
+  }
+
+  async function checkBackgroundTasks() {
+    if (!canManage()) return;
+    if (!state.settings || !state.settings.autoRules) return;
+    
+    const rules = state.settings.autoRules;
+    const now = new Date();
+    const nowStamp = now.toLocaleDateString('sv-SE') + 'T' + now.toTimeString().slice(0, 8);
+    const curMonthKey = monthKey();
+    
+    const autoLogs = await loadAutoLogs();
+    
+    // --- Rule 2: Tự động gửi Email nhắc Vote ---
+    if (rules.remindVote && rules.remindVote.enabled) {
+      for (const s of state.sessions) {
+        if (!s || !s.date || s.locked) continue;
+        
+        const logKey = `remind_vote_${s.id}`;
+        if (autoLogs[logKey]) continue;
+
+        const parts = s.date.split('-').map(Number);
+        if (parts.length < 3) continue;
+        const [y, m, d] = parts;
+        const cutoffDate = new Date(y, m - 1, d);
+        
+        const daysBefore = parseInt(rules.remindVote.days) || 1;
+        cutoffDate.setDate(cutoffDate.getDate() - daysBefore);
+        const [timeH, timeM] = (rules.remindVote.time || '08:00').split(':');
+        cutoffDate.setHours(timeH, timeM, 0, 0);
+        
+        const cY = cutoffDate.getFullYear();
+        const cM = String(cutoffDate.getMonth() + 1).padStart(2, '0');
+        const cD = String(cutoffDate.getDate()).padStart(2, '0');
+        const cutoffTimeStr = `${cY}-${cM}-${cD}T${String(timeH).padStart(2, '0')}:${String(timeM).padStart(2, '0')}:00`;
+        
+        if (nowStamp >= cutoffTimeStr) {
+          const sMonthKey = sessionMonthKey(s);
+          const targets = state.members.filter(mem => {
+             if (mem.status !== 'active') return false;
+             const mType = (mem.monthlyType || {})[sMonthKey] || '';
+             if (mType !== 'fixed' && mType !== 'casual') return false;
+             const hasVoted = !!(s.votes || {})[mem.name];
+             const hasPassed = !!(s.passes || {})[mem.id];
+             return !hasVoted && !hasPassed;
+          });
+          
+          if (targets.length > 0) {
+             const toEmails = targets.map(m => m.email).filter(Boolean);
+             if (toEmails.length > 0) {
+               const subject = `[THÔNG BÁO] Nhắc nhở chốt danh sách đánh cầu ngày ${formatDate(s.date)}`;
+               const body = `<p>Chào bạn,</p>
+               <p>Nhóm sẽ tự động chốt danh sách đánh cầu cho buổi <strong>${formatDate(s.date)}</strong> vào lúc <strong>${rules.lockVote?.time || '10:00'} ngày mai</strong>.</p>
+               <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán là <strong>KHÔNG THAM GIA</strong> và khóa vote.</p>
+               <p>Vui lòng vào ứng dụng để vote ngay nhé!</p>`;
+               
+               for (const email of toEmails) {
+                 await sendSystemEmail(email, subject, body);
+                 await new Promise(r => setTimeout(r, 500));
+               }
+             }
+          }
+          await saveAutoLog(logKey);
+          autoLogs[logKey] = true;
+        }
+      }
+    }
+
+    // --- Rule 3: Tự động gửi Email nhắc Nợ phí ---
+    if (rules.remindDebt && rules.remindDebt.enabled) {
+      const currentDay = now.getDate();
+      const targetDay = parseInt(rules.remindDebt.days) || 5;
+      
+      if (currentDay >= targetDay) {
+        const [timeH, timeM] = (rules.remindDebt.time || '09:00').split(':');
+        const cTime = new Date(now);
+        cTime.setHours(timeH, timeM, 0, 0);
+        
+        if (now >= cTime) {
+          let [y, m] = curMonthKey.split('_').map(Number);
+          m -= 1;
+          if (m === 0) { m = 12; y -= 1; }
+          const prevMonthKey = `${y}_${String(m).padStart(2, '0')}`;
+          const logKey = `remind_debt_${prevMonthKey}`;
+          
+          if (!autoLogs[logKey]) {
+            const summary = computeMemberMonthSummary(prevMonthKey);
+            const targets = state.members.filter(mem => {
+              if (mem.status !== 'active') return false;
+              const type = (mem.monthlyType || {})[prevMonthKey] || '';
+              if (type !== 'fixed' && type !== 'casual') return false;
+              
+              const sObj = summary[mem.id] || { owed: 0 };
+              const pObj = (state.payments[mem.id] || {})[prevMonthKey] || { paid: 0, prepaid: 0 };
+              const remaining = sObj.owed - pObj.paid - pObj.prepaid;
+              return remaining > 0 && mem.email;
+            });
+
+            if (targets.length > 0) {
+              const paymentCfg = state.settings.payment || {};
+              const bankId = paymentCfg.bankId || '';
+              const accountNo = paymentCfg.accountNo || '';
+              const accountName = paymentCfg.accountName || '';
+              const qrUrl = paymentCfg.qrUrl || '';
+              const treasurerPhone = paymentCfg.treasurerPhone || '';
+
+              for (const mem of targets) {
+                const sObj = summary[mem.id] || { owed: 0 };
+                const pObj = (state.payments[mem.id] || {})[prevMonthKey] || { paid: 0, prepaid: 0 };
+                const remaining = sObj.owed - pObj.paid - pObj.prepaid;
+                
+                const subject = `[THÔNG BÁO] Nhắc đóng quỹ cầu lông tháng ${monthLabel(prevMonthKey)}`;
+                let body = `<p>Chào ${escapeHtml(mem.name)},</p>
+                <p>Tổng kết quỹ cầu lông tháng <strong>${monthLabel(prevMonthKey)}</strong> của bạn như sau:</p>
+                <ul>
+                  <li>Tổng phí cần đóng: <strong>${formatVND(sObj.owed)}</strong></li>
+                  <li>Đã đóng: <strong>${formatVND(pObj.paid)}</strong></li>
+                  <li>Đóng trước: <strong>${formatVND(pObj.prepaid)}</strong></li>
+                  <li><strong>Số tiền còn nợ: <span style="color:red;">${formatVND(remaining)}</span></strong></li>
+                </ul>
+                <p>Vui lòng chuyển khoản số tiền <strong>${formatVND(remaining)}</strong> với nội dung: <strong>${escapeHtml(mem.name)} nop tien thang ${monthLabel(prevMonthKey).replace('/','')}</strong>.</p>`;
+
+                if (qrUrl) {
+                  body += `<p><img src="${qrUrl}" alt="QR Code" style="max-width:300px;"/></p>`;
+                } else if (bankId && accountNo) {
+                  body += `<p><strong>Thông tin chuyển khoản:</strong><br/>Ngân hàng: ${bankId}<br/>Số tài khoản: ${accountNo}<br/>Chủ tài khoản: ${accountName}</p>`;
+                }
+                if (treasurerPhone) {
+                  body += `<p>Nếu có thắc mắc, vui lòng liên hệ thủ quỹ: ${treasurerPhone}.</p>`;
+                }
+                
+                await sendSystemEmail(mem.email, subject, body);
+                await new Promise(r => setTimeout(r, 500));
+              }
+            }
+            await saveAutoLog(logKey);
+            autoLogs[logKey] = true;
+          }
+        }
+      }
+    }
+  }
+
   // Khởi động hệ thống: Đảm bảo ẩn loading màn hình ngay cả khi mất mạng hoặc Supabase lỗi
   async function initApp() {
     try {
@@ -8753,6 +9139,13 @@
       try { checkUrlRedirects(); } catch(e) {}
       try { render(); } catch(e) { console.error('Render error:', e); }
       try { startAutoRefresh(); } catch(e) {}
+      
+      // Chạy ngầm tiến trình gửi Mail tự động (Lazy Cron)
+      try {
+        if (canManage()) {
+          setTimeout(checkBackgroundTasks, 5000); // Đợi 5s cho UI render xong rồi mới check mail background
+        }
+      } catch(e) {}
 
       // Đăng ký Service Worker hỗ trợ cài đặt ứng dụng ngoại tuyến (PWA)
       if ('serviceWorker' in navigator) {
