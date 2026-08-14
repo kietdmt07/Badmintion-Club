@@ -1183,13 +1183,12 @@
         state.members.forEach(member => {
           if (member.status !== 'active') return;
           const curType = (member.monthlyType || {})[mKey] || '';
-          
-          if (curType === 'fixed') {
+          if (curType === 'fixed' || curType === 'casual') {
             const hasVoted = !!s.votes[member.name];
             const hasPassed = !!s.passes[member.id];
             if (!hasVoted && !hasPassed) {
-              s.votes[member.name] = 'no'; // Đổi trạng thái những người chưa vote thành "Không"
-              s.autoVoted[member.id] = true; // Kích hoạt cờ khóa
+              s.votes[member.name] = curType === 'fixed' ? 'yes' : 'no';
+              s.autoVoted[member.id] = true;
               modified = true;
             }
           }
@@ -5503,30 +5502,34 @@
            if (!s || !s.date || s.locked) return;
            if (s.date < (new Date()).toLocaleDateString('sv-SE')) return;
            
-           let affected = 0;
+           let affectedFixed = 0;
+           let affectedCasual = 0;
            const mKey = sessionMonthKey(s);
            state.members.forEach(member => {
              if (member.status !== 'active') return;
              const curType = (member.monthlyType || {})[mKey] || '';
-             if (curType === 'fixed') {
+             if (curType === 'fixed' || curType === 'casual') {
                const hasVoted = !!(s.votes||{})[member.name];
                const hasPassed = !!(s.passes||{})[member.id];
-               if (!hasVoted && !hasPassed) affected++;
+               if (!hasVoted && !hasPassed) {
+                 if (curType === 'fixed') affectedFixed++;
+                 else affectedCasual++;
+               }
              }
            });
 
-           if (affected > 0) {
+           if (affectedFixed > 0 || affectedCasual > 0) {
              const parts = s.date.split('-');
              const fDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : s.date;
-             msgs.push(` - Buổi ${fDate}: ${affected} người`);
-             total += affected;
+             msgs.push(` - Buổi ${fDate}: ${affectedFixed} Cố định (thành Tham gia), ${affectedCasual} Vãng lai (thành Vắng)`);
+             total += (affectedFixed + affectedCasual);
            }
          });
          
          if (total === 0) {
-           alert("KẾT QUẢ CHẠY THỬ:\nTất cả các thành viên Cố định đều đã chốt danh sách trong các buổi sắp tới.");
+           alert("KẾT QUẢ CHẠY THỬ:\nTất cả các thành viên đều đã chốt danh sách trong các buổi sắp tới.");
          } else {
-           alert(`KẾT QUẢ CHẠY THỬ (Tổng số người chưa vote):\nTổng cộng có ${total} lượt thành viên Cố định chưa vote trong các buổi đánh mở:\n${msgs.join('\n')}\n\n*Lưu ý: Việc khóa vote chỉ diễn ra khi thời gian vượt qua deadline cấu hình (vd: 10:00 ngày trước buổi đánh).`);
+           alert(`KẾT QUẢ CHẠY THỬ (Mô phỏng đếm số người chưa vote):\nTổng cộng có ${total} lượt thành viên chưa vote trong các buổi đánh mở:\n${msgs.join('\n')}\n\n*Lưu ý: Việc khóa tự động chỉ diễn ra khi thời gian vượt qua deadline cấu hình (vd: 10:00 ngày trước buổi đánh).`);
          }
       };
 
@@ -5545,7 +5548,11 @@
          const body = `<p>Chào bạn,</p>
          <p><strong>ĐÂY LÀ EMAIL TEST TỪ HỆ THỐNG AUTO-RULES.</strong></p>
          <p>Nhóm sẽ tự động chốt danh sách đánh cầu cho buổi sắp tới.</p>
-         <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán là <strong>KHÔNG THAM GIA</strong> và khóa vote.</p>
+         <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán mặc định và khóa vote như sau:</p>
+         <ul>
+            <li><strong>Thành viên Cố định</strong>: Tự động chuyển thành <strong>THAM GIA</strong>.</li>
+            <li><strong>Thành viên Vãng lai</strong>: Tự động chuyển thành <strong>VẮNG</strong>.</li>
+         </ul>
          <p>Vui lòng vào ứng dụng để vote ngay nhé!</p>`;
          const ok = await sendSystemEmail(state.me.email, subject, body);
          arTestRemind.disabled = false;
@@ -5627,7 +5634,7 @@
           </label>
           <button id="ar-test-lock" class="bc-btn small" style="font-size:11px; padding:4px 8px; background:transparent; color:var(--text-secondary); border:1px solid var(--input-border);"><i class="fas fa-play"></i> Chạy thử</button>
         </div>
-        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; margin-left:24px;">Hành động: Tự động khóa những người chưa vote thành "Không", bật cờ autoVoted. Chỉ áp dụng cho thành viên Cố định.</p>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; margin-left:24px;">Hành động: Tự động chốt những người chưa vote và bật cờ khóa. Cố định mặc định "Tham gia", Vãng lai mặc định "Vắng".</p>
         <div style="display:flex; gap:12px; margin-left:24px; align-items:center;">
           <span style="font-size:13px; color:var(--text-secondary);">Khóa trước buổi đánh:</span>
           <input type="number" id="ar-lock-days" value="${lockVote.days || 1}" min="0" max="7" style="width:60px; padding:4px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--input-color); border-radius:4px; font-size:13px;">
@@ -9030,7 +9037,11 @@
                const subject = `[THÔNG BÁO] Nhắc nhở chốt danh sách đánh cầu ngày ${formatDate(s.date)}`;
                const body = `<p>Chào bạn,</p>
                <p>Nhóm sẽ tự động chốt danh sách đánh cầu cho buổi <strong>${formatDate(s.date)}</strong> vào lúc <strong>${rules.lockVote?.time || '10:00'} ngày mai</strong>.</p>
-               <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán là <strong>KHÔNG THAM GIA</strong> và khóa vote.</p>
+               <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán mặc định và khóa vote như sau:</p>
+               <ul>
+                  <li><strong>Thành viên Cố định</strong>: Tự động chuyển thành <strong>THAM GIA</strong>.</li>
+                  <li><strong>Thành viên Vãng lai</strong>: Tự động chuyển thành <strong>VẮNG</strong>.</li>
+               </ul>
                <p>Vui lòng vào ứng dụng để vote ngay nhé!</p>`;
                
                for (const email of toEmails) {
