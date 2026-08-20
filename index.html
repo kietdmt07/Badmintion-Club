@@ -4629,16 +4629,17 @@
   }
 
   // ---------- BÁO CÁO THÁNG ----------
-  function exportReportToExcel(month, reportData, totalLocked, totalOwed, totalPaid, totalPrepaid, totalRemaining) {
+  function exportReportToExcel(month, reportData, totalLocked, totalOwed, totalPaid, totalPrepaid, totalRemaining, totalPrevDebt = 0) {
     let csvContent = "\uFEFF"; // UTF-8 BOM để Excel hiển thị đúng tiếng Việt có dấu
     
     csvContent += `BÁO CÁO CHI TIẾT CHUYÊN CẦN & CÔNG NỢ - THÁNG ${month}\n`;
     csvContent += `Số buổi đã chốt,${totalLocked} buổi\n`;
+    csvContent += `Công nợ tồn kỳ trước,${totalPrevDebt}\n`;
     csvContent += `Phải thu tháng,${totalOwed}\n`;
     csvContent += `Đã thu (gồm nộp trước),${totalPaid + totalPrepaid}\n`;
     csvContent += `Công nợ còn lại,${totalRemaining}\n\n`;
     
-    csvContent += "Thành viên,Loại,Tham gia (buổi),Vắng (buổi),Cảnh báo chuyên cần,Phải trả (đ),Đã nộp (đ),Điều chỉnh (đ),Còn lại (đ)\n";
+    csvContent += "Thành viên,Loại,Tham gia (buổi),Vắng (buổi),Cảnh báo chuyên cần,Nợ kỳ trước (đ),Phải trả (đ),Đã nộp (đ),Điều chỉnh (đ),Còn lại (đ)\n";
     
     reportData.forEach(row => {
       const name = `"${row.member.name.replace(/"/g, '""')}"`;
@@ -4647,7 +4648,7 @@
       const absent = row.type === 'fixed' ? row.absentCount : "-";
       const warning = row.showWarning ? "Vắng >= 75%" : "";
       
-      csvContent += `${name},${type},${played},${absent},${warning},${row.owed},${row.paid},${row.prepaid},${row.remaining}\n`;
+      csvContent += `${name},${type},${played},${absent},${warning},${row.prevDebt || 0},${row.owed},${row.paid},${row.prepaid},${row.remaining}\n`;
     });
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -4659,6 +4660,36 @@
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  function computeAllMembersPreviousDebt(currentMonth) {
+    const prevDebts = {};
+    state.members.forEach(m => prevDebts[m.id] = 0);
+    
+    const rx = /^\d{4}-\d{2}$/;
+    if (!rx.test(currentMonth)) return prevDebts;
+    
+    const months = new Set();
+    Object.keys(state.payments || {}).forEach(mId => {
+      Object.keys(state.payments[mId] || {}).forEach(m => {
+        if (rx.test(m) && m < currentMonth) months.add(m);
+      });
+    });
+    state.sessions.forEach(s => {
+      const m = sessionMonthKey(s);
+      if (rx.test(m) && m < currentMonth) months.add(m);
+    });
+    
+    Array.from(months).forEach(m => {
+       const summary = computeMemberMonthSummary(m);
+       state.members.forEach(mem => {
+          const sObj = summary[mem.id] || { owed: 0 };
+          const pObj = (state.payments[mem.id] || {})[m] || { paid: 0, prepaid: 0 };
+          prevDebts[mem.id] += (sObj.owed - pObj.paid - pObj.prepaid);
+       });
+    });
+    
+    return prevDebts;
   }
 
   function renderReport(){
@@ -4713,6 +4744,7 @@
     });
 
     const summary = computeMemberMonthSummary(month);
+    const prevDebts = computeAllMembersPreviousDebt(month);
 
     // Chuẩn bị dữ liệu tổng hợp ban đầu
     const allReportData = activeMembers.map(m => {
@@ -4753,10 +4785,11 @@
         }
       }
 
+      const prevDebt = prevDebts[m.id] || 0;
       const owed = s.owed;
       const paid = p.paid || 0;
       const prepaid = p.prepaid || 0;
-      const remaining = owed - paid - prepaid;
+      const remaining = prevDebt + owed - paid - prepaid;
 
       return {
         member: m,
@@ -4765,6 +4798,7 @@
         absentCount,
         absentRate,
         showWarning,
+        prevDebt,
         owed,
         paid,
         prepaid,
@@ -4773,6 +4807,7 @@
     });
 
     // Tính toán tổng số lượng tài chính dựa trên dữ liệu lọc hiện tại để hiển thị ban đầu
+    let totalPrevDebt = 0;
     let totalOwed = 0;
     let totalPaid = 0;
     let totalPrepaid = 0;
@@ -4783,6 +4818,7 @@
       const matchType = state.reportTypeFilter === 'all' || 
                         (state.reportTypeFilter === 'unpaid' ? row.remaining > 0 : row.type === state.reportTypeFilter);
       if (matchSearch && matchType) {
+        totalPrevDebt += row.prevDebt;
         totalOwed += row.owed;
         totalPaid += row.paid;
         totalPrepaid += row.prepaid;
@@ -4820,12 +4856,13 @@
       tblDiv = el(`<div class="bc-empty">Không có dữ liệu thành viên hoạt động trong tháng này.</div>`);
       wrap.appendChild(tblDiv);
     } else {
-      tblDiv = el(`<div class="bc-card" style="overflow-x:auto; margin:0; padding:10px;"><table id="report-table-el" style="width:100%; font-size:13px; border-collapse:collapse; min-width:750px;">
+      tblDiv = el(`<div class="bc-card" style="overflow-x:auto; margin:0; padding:10px;"><table id="report-table-el" style="width:100%; font-size:13px; border-collapse:collapse; min-width:850px;">
         <tr style="color:#8a877d; text-align:left; border-bottom:1px solid #E3E0D6;">
           <th style="padding:8px 6px;">Thành viên</th>
           <th style="padding:8px 6px;">Loại</th>
           <th style="padding:8px 6px; text-align:center;">Tham gia</th>
           <th style="padding:8px 6px; text-align:center;">Vắng (cố định)</th>
+          <th style="padding:8px 6px; text-align:right;">Nợ kỳ trước</th>
           <th style="padding:8px 6px; text-align:right;">Phải trả</th>
           <th style="padding:8px 6px; text-align:right;">Đã nộp</th>
           <th style="padding:8px 6px; text-align:right;">Điều chỉnh</th>
@@ -4850,6 +4887,7 @@
         const tr = el(`<tr class="report-row" style="border-top:1px solid #F1EFE8; ${rowStyle} ${displayStyle}"
           data-name="${escapeHtml(row.member.name.toLowerCase())}"
           data-type="${row.type}"
+          data-prevdebt="${row.prevDebt}"
           data-owed="${row.owed}"
           data-paid="${row.paid}"
           data-prepaid="${row.prepaid}"
@@ -4867,6 +4905,7 @@
           <td style="padding:8px 6px; text-align:center;">
             ${row.type==='fixed' ? `<span style="font-weight:500;">${row.absentCount} buổi${warningHtml}</span>` : '<span style="color:#8a877d; font-style:italic;">-</span>'}
           </td>
+          <td style="padding:8px 6px; text-align:right; color:#8a877d;">${row.prevDebt ? formatVND(row.prevDebt) : '0đ'}</td>
           <td style="padding:8px 6px; text-align:right;">${formatVND(row.owed)}</td>
           <td style="padding:8px 6px; text-align:right; color:#27500A; font-weight:500;">${formatVND(row.paid)}</td>
           <td style="padding:8px 6px; text-align:right; color:#8a877d;">${row.prepaid ? formatVND(row.prepaid, true) : '0đ'}</td>
@@ -4902,6 +4941,7 @@
         state.reportSearch = searchInput.value;
         state.reportTypeFilter = typeSel;
 
+        let filteredPrevDebt = 0;
         let filteredOwed = 0;
         let filteredPaid = 0;
         let filteredPrepaid = 0;
@@ -4913,6 +4953,7 @@
         rows.forEach(tr => {
           const name = tr.getAttribute('data-name');
           const type = tr.getAttribute('data-type');
+          const prevDebt = parseFloat(tr.getAttribute('data-prevdebt')) || 0;
           const owed = parseFloat(tr.getAttribute('data-owed')) || 0;
           const paid = parseFloat(tr.getAttribute('data-paid')) || 0;
           const prepaid = parseFloat(tr.getAttribute('data-prepaid')) || 0;
@@ -4925,6 +4966,7 @@
 
           if (matchSearch && matchType) {
             tr.style.display = '';
+            filteredPrevDebt += prevDebt;
             filteredOwed += owed;
             filteredPaid += paid;
             filteredPrepaid += prepaid;
@@ -4981,15 +5023,16 @@
           return matchSearch && matchType;
         });
 
-        let csvOwed = 0, csvPaid = 0, csvPrepaid = 0, csvRemaining = 0;
+        let csvPrevDebt = 0, csvOwed = 0, csvPaid = 0, csvPrepaid = 0, csvRemaining = 0;
         currentFilteredData.forEach(r => {
+          csvPrevDebt += r.prevDebt;
           csvOwed += r.owed;
           csvPaid += r.paid;
           csvPrepaid += r.prepaid;
           csvRemaining += r.remaining;
         });
 
-        exportReportToExcel(month, currentFilteredData, totalLocked, csvOwed, csvPaid + csvPrepaid, 0, csvRemaining);
+        exportReportToExcel(month, currentFilteredData, totalLocked, csvOwed, csvPaid + csvPrepaid, 0, csvRemaining, csvPrevDebt);
       };
     }, 0);
 
