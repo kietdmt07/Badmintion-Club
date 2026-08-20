@@ -3980,19 +3980,22 @@
       if (rowsMembers.length === 0) {
         wrap.appendChild(el(`<div class="bc-empty">Không có dữ liệu.</div>`));
       } else {
-        const tbl = el(`<div class="bc-card" style="overflow-x:auto;"><table style="width:100%; font-size:13px; border-collapse:collapse; min-width:560px;">
+        const tbl = el(`<div class="bc-card" style="overflow-x:auto;"><table style="width:100%; font-size:13px; border-collapse:collapse; min-width:640px;">
           <tr style="color:#8a877d; text-align:left;">
             <th style="padding:6px 4px;">Thành viên</th><th style="padding:6px 4px;">Buổi</th>
+            <th style="padding:6px 4px; text-align:right;">Nợ kỳ trước</th>
             <th style="padding:6px 4px; text-align:right;">Phải trả</th><th style="padding:6px 4px; text-align:right;">Đã nộp</th>
             <th style="padding:6px 4px; text-align:right;">Điều chỉnh</th><th style="padding:6px 4px; text-align:right;">Còn lại</th>
             ${isAdmin() ? `<th style="padding:6px 4px; text-align:center;">Nhắc nợ</th>` : ''}
           </tr>
         </table></div>`);
         const table = tbl.querySelector('table');
+        const prevDebts = computeAllMembersPreviousDebt(month);
         rowsMembers.forEach(m => {
           const s = summary[m.id] || { count: 0, owed: 0 };
           const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
-          const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
+          const prevDebt = prevDebts[m.id] || 0;
+          const remaining = prevDebt + s.owed - (p.paid||0) - (p.prepaid||0);
           const editable = canManage();
           const canEditPaid = isOwner();
           
@@ -4012,6 +4015,7 @@
           const tr = el(`<tr style="border-top:1px solid #F1EFE8;">
             <td style="padding:6px 4px;">${memberDisplayNameHtml(m, { isSelf: state.me && state.me.id === m.id, mainSize: '13px', subSize: '11px', fontWeight: '500' })}</td>
             <td style="padding:6px 4px;">${s.count}</td>
+            <td style="padding:6px 4px; text-align:right; color:#8a877d;">${prevDebt ? formatVND(prevDebt) : '0đ'}</td>
             <td style="padding:6px 4px; text-align:right;">${formatVND(s.owed)}</td>
             <td style="padding:6px 4px; text-align:right;">${canEditPaid ? `<input class="bc-input" type="number" min="0" id="paid-${m.id}" value="${p.paid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : formatVND(p.paid||0)}</td>
             <td style="padding:6px 4px; text-align:right;">${isAdmin() ? `<input class="bc-input" type="number" id="prepaid-${m.id}" value="${p.prepaid||0}" style="width:90px; padding:4px 6px; text-align:right;" />` : (p.prepaid ? formatVND(p.prepaid, true) : '0đ')}</td>
@@ -4039,6 +4043,7 @@
                   <p>Ban quản trị CLB ARON gửi thông báo nhắc nhở về khoản phí chơi cầu chưa hoàn thành của bạn trong tháng <strong>${monthLabel(month)}</strong>:</p>
                   <table style="border-collapse:collapse; font-size:13px; width:100%; max-width:400px; margin-bottom:15px;">
                     <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Số buổi tham gia:</td><td style="padding:6px 0; font-weight:600; text-align:right;">${s.count} buổi</td></tr>
+                    ${prevDebt > 0 ? `<tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Nợ kỳ trước:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#993C1D;">${formatVND(prevDebt)}</td></tr>` : ''}
                     <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Tổng phí phải trả:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#993C1D;">${formatVND(s.owed)}</td></tr>
                     <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Đã nộp + Điều chỉnh:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#27500A;">${formatVND((p.paid||0) + (p.prepaid||0))}</td></tr>
                     <tr style="border-bottom:1px solid #E3E0D6; font-size:14px;"><td style="padding:6px 0; font-weight:700; color:#1B4332;">Còn lại cần đóng:</td><td style="padding:6px 0; font-weight:700; text-align:right; color:#993C1D;">${formatVND(remaining)}</td></tr>
@@ -4538,10 +4543,12 @@
       if (remindAllBtn) {
         remindAllBtn.onclick = async () => {
           if (!isAdmin()) return;
+          const prevDebts = computeAllMembersPreviousDebt(month);
           const debtors = rowsMembers.filter(m => {
             const s = summary[m.id] || { count: 0, owed: 0 };
             const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
-            const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
+            const prevDebt = prevDebts[m.id] || 0;
+            const remaining = prevDebt + s.owed - (p.paid||0) - (p.prepaid||0);
             return remaining > 0 && m.email;
           });
 
@@ -4567,7 +4574,8 @@
           const promises = debtors.map(async (m) => {
             const s = summary[m.id] || { count: 0, owed: 0 };
             const p = (state.payments[m.id] || {})[month] || { paid: 0, prepaid: 0 };
-            const remaining = s.owed - (p.paid||0) - (p.prepaid||0);
+            const prevDebt = prevDebts[m.id] || 0;
+            const remaining = prevDebt + s.owed - (p.paid||0) - (p.prepaid||0);
             const payUrl = `${origin}?action=pay&month=${month}&user=${m.username}`;
             
             const emailSubject = `[CLB ARON] Thông báo hoàn thành phí chơi cầu - Tháng ${monthLabel(month)}`;
@@ -4575,6 +4583,7 @@
               <p>Ban quản trị CLB ARON gửi thông báo nhắc nhở về khoản phí chơi cầu chưa hoàn thành của bạn trong tháng <strong>${monthLabel(month)}</strong>:</p>
               <table style="border-collapse:collapse; font-size:13px; width:100%; max-width:400px; margin-bottom:15px;">
                 <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Số buổi tham gia:</td><td style="padding:6px 0; font-weight:600; text-align:right;">${s.count} buổi</td></tr>
+                ${prevDebt > 0 ? `<tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Nợ kỳ trước:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#993C1D;">${formatVND(prevDebt)}</td></tr>` : ''}
                 <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Tổng phí phải trả:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#993C1D;">${formatVND(s.owed)}</td></tr>
                 <tr style="border-bottom:1px solid #E3E0D6;"><td style="padding:6px 0; color:#8a877d;">Đã nộp + Điều chỉnh:</td><td style="padding:6px 0; font-weight:600; text-align:right; color:#27500A;">${formatVND((p.paid||0) + (p.prepaid||0))}</td></tr>
                 <tr style="border-bottom:1px solid #E3E0D6; font-size:14px;"><td style="padding:6px 0; font-weight:700; color:#1B4332;">Còn lại cần đóng:</td><td style="padding:6px 0; font-weight:700; text-align:right; color:#993C1D;">${formatVND(remaining)}</td></tr>
