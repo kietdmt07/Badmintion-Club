@@ -363,7 +363,6 @@
   const ROLE_COLOR = { admin: ["#FAECE7","#993C1D"], r1: ["#FAEEDA","#854F0B"], r2: ["#F1EFE8","#444441"] };
 
   // ===================== XP RANK SYSTEM =====================
-<<<<<<< HEAD
   // 5 cấp độ tay vợt – Chuẩn hóa cho CLB sinh hoạt 4 buổi/tháng (Mùa giải 6 tháng)
   const XP_RANKS = [
     { key: 'novice',    label: 'Tập sự',    emoji: '🐣', min: 0,    max: 299,  avatarBg: 'linear-gradient(135deg,#B0BEC5,#78909C)',      avatarFg: '#FFF',   ringColor: '#90A4AE' },
@@ -371,17 +370,6 @@
     { key: 'warrior',   label: 'Chiến binh',emoji: '⚔️', min: 900,  max: 1499, avatarBg: 'linear-gradient(135deg,#42A5F5,#1565C0)',      avatarFg: '#FFF',   ringColor: '#1E88E5' },
     { key: 'master',    label: 'Cao thủ',   emoji: '🐉', min: 1500, max: 2499, avatarBg: 'linear-gradient(135deg,#AB47BC,#6A1B9A)',      avatarFg: '#FFF',   ringColor: '#9C27B0' },
     { key: 'legendary', label: 'Huyền thoại',emoji:'👑', min: 2500, max: Infinity, avatarBg: 'linear-gradient(135deg,#FFD700 0%,#FF8C00 50%,#FFD700 100%)', avatarFg: '#3E2400', ringColor: '#FFD700', shimmer: true }
-=======
-  // 5 cấp độ tay vợt – tính theo XP tích lũy từ hoạt động thực tế
-  // ===================== XP RANK SYSTEM =====================
-  // 5 cấp độ tay vợt – Chuẩn hóa cho CLB sinh hoạt 4 buổi/tháng
-  const XP_RANKS = [
-    { key: 'novice',    label: 'Tập sự',    emoji: '🐣', min: 0,   max: 99,  avatarBg: 'linear-gradient(135deg,#B0BEC5,#78909C)',      avatarFg: '#FFF',   ringColor: '#90A4AE' },
-    { key: 'student',   label: 'Học viên',  emoji: '🥉', min: 100, max: 249, avatarBg: 'linear-gradient(135deg,#66BB6A,#388E3C)',      avatarFg: '#FFF',   ringColor: '#4CAF50' },
-    { key: 'warrior',   label: 'Chiến binh',emoji: '🥈', min: 250, max: 499, avatarBg: 'linear-gradient(135deg,#42A5F5,#1565C0)',      avatarFg: '#FFF',   ringColor: '#1E88E5' },
-    { key: 'master',    label: 'Cao thủ',   emoji: '🥇', min: 500, max: 899, avatarBg: 'linear-gradient(135deg,#AB47BC,#6A1B9A)',      avatarFg: '#FFF',   ringColor: '#9C27B0' },
-    { key: 'legendary', label: 'Huyền thoại',emoji:'👑', min: 900, max: Infinity, avatarBg: 'linear-gradient(135deg,#FFD700 0%,#FF8C00 50%,#FFD700 100%)', avatarFg: '#3E2400', ringColor: '#FFD700', shimmer: true }
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
   ];
 
   // Hàm kiểm tra vote đúng giờ: trước 10h sáng ngày hôm trước buổi đánh
@@ -414,7 +402,6 @@
     const mem = state.members.find(m => m.id === memberId);
     const memberName = mem ? mem.name : null;
     if (!memberName) return 0;
-<<<<<<< HEAD
     
     const seasonStart = (state.settings && state.settings.xpSeasonStartDate) || null;
     let filteredSessions = [...sessions];
@@ -425,11 +412,6 @@
     let xp = 0;
     let streakCount = 0;
     const sortedSessions = filteredSessions.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-=======
-    let xp = 0;
-    let streakCount = 0;
-    const sortedSessions = [...sessions].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     sortedSessions.forEach(s => {
       const votes = s.votes || {};
       const passes = s.passes || {};
@@ -3287,13 +3269,10 @@
           <input class="bc-input" id="mb-nickname" placeholder="Biệt danh (tuỳ chọn)" maxlength="35" style="flex:1.5; min-width:120px;" ${atLimit?'disabled':''} />
           <input class="bc-input" id="mb-username" placeholder="Username" style="flex:1.2; min-width:120px;" ${atLimit?'disabled':''} />
           <input class="bc-input" id="mb-email" type="email" placeholder="Email (bắt buộc)" style="flex:2; min-width:160px;" ${atLimit?'disabled':''} />
-<<<<<<< HEAD
           <select class="bc-select" id="mb-gender" style="flex:0.8; min-width:80px;" ${atLimit?'disabled':''}>
             <option value="Nam">Nam</option>
             <option value="Nữ">Nữ</option>
           </select>
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
           <select class="bc-select" id="mb-level" style="flex:1; min-width:120px;" ${atLimit?'disabled':''}>${LEVELS.map(l=>`<option>${l}</option>`).join('')}</select>
           <input class="bc-input" id="mb-phone" placeholder="SĐT (tuỳ chọn)" style="flex:1; min-width:120px;" ${atLimit?'disabled':''} />
           <button class="bc-btn" id="mb-add" ${atLimit?'disabled':''}>Thêm</button>
@@ -3320,11 +3299,7 @@
             if (latest.some(m => normUsername(m.username) === username)) { err = 'Username đã tồn tại.'; return null; }
             if (latest.some(m => normEmail(m.email) === email)) { err = 'Email đã tồn tại.'; return null; }
             if (latest.length >= MAX_MEMBERS) { err = 'Đã đạt giới hạn ' + MAX_MEMBERS + ' thành viên.'; return null; }
-<<<<<<< HEAD
             return latest.concat([{ id: uid(), name, nickname, username, email, phone, level, gender, password: passwordHash, status: 'active', role: 'r2', monthlyType: {}, avatarUrl: '' }]);
-=======
-            return latest.concat([{ id: uid(), name, nickname, username, email, phone, level, password: passwordHash, status: 'active', role: 'r2', monthlyType: {}, avatarUrl: '' }]);
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
           });
           if (!ok) { alert(err || 'Thêm thất bại, thử lại.'); return; }
           render();
@@ -3525,13 +3500,10 @@
               ? `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px;">
                   <input class="bc-input" id="edit-name-${m.id}" value="${escapeHtml(m.name)}" placeholder="Họ tên (bắt buộc)" style="width:140px; padding:4px 6px; font-size:13px; font-weight:500; height: 28px;" />
                   <input class="bc-input" id="edit-nickname-${m.id}" value="${escapeHtml(m.nickname || '')}" placeholder="Biệt danh (tối đa 35 ký tự)" maxlength="35" style="width:150px; padding:4px 6px; font-size:13px; height: 28px;" />
-<<<<<<< HEAD
                   <select class="bc-select" id="edit-gender-${m.id}" style="width:80px; padding:4px 6px; font-size:12px; height: 28px;">
                     <option value="Nam" ${m.gender !== 'Nữ' ? 'selected' : ''}>Nam</option>
                     <option value="Nữ" ${m.gender === 'Nữ' ? 'selected' : ''}>Nữ</option>
                   </select>
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
                   <select class="bc-select" id="edit-level-${m.id}" style="width:110px; padding:4px 6px; font-size:12px; height: 28px;">
                     ${LEVELS.map(l => `<option value="${l}" ${l===m.level?'selected':''}>${l}</option>`).join('')}
                   </select>
@@ -3542,10 +3514,7 @@
             }
             ${isSelf && !isEditing ? `<span class="bc-badge" style="background:#E6F1FB; color:#0C447C; margin-left:6px;">Bạn</span>` : ''}
             ${!isEditing ? `<span class="bc-badge" style="background:${lbg}; color:${lfg}; border:${lborder}; margin-left:6px;">${llabel}</span>` : ''}
-<<<<<<< HEAD
             <span class="bc-badge" style="background:#E3E0D6; color:#444441; margin-left:6px;">${m.gender === 'Nữ' ? 'Nữ 👩' : 'Nam 👨'}</span>
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
             <span class="bc-badge" style="background:${rbg}; color:${rfg}; margin-left:6px;">${ROLE_LABEL[m.role]}</span>
             <span class="bc-badge" style="background:${statusBg}; color:${statusFg}; margin-left:6px;">${statusLabel}</span>
             <span class="bc-badge" style="background:${mRank.avatarBg}; color:${mRank.avatarFg}; margin-left:6px; font-weight:700;">${mRank.emoji} ${mRank.label} (${mXP} XP)</span>
@@ -3634,10 +3603,7 @@
             email: newEmail,
             phone: newPhone,
             level: newLevel,
-<<<<<<< HEAD
             gender: newGender,
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
             ...(newPasswordHash ? { password: newPasswordHash } : {})
           }) : x);
         });
@@ -5714,7 +5680,6 @@
          if (ok) showToast('Đã gửi email nhắc nợ mẫu tới email của bạn!', 'success');
          else alert('Lỗi khi gửi mail. Hãy kiểm tra cấu hình Mail Server.');
       };
-<<<<<<< HEAD
 
       const resetXpBtn = document.getElementById('ar-reset-xp-btn');
       if (resetXpBtn) resetXpBtn.onclick = async () => {
@@ -5736,8 +5701,6 @@
         showToast('Đã khởi tạo mùa giải mới. Toàn bộ điểm XP đã được đặt lại về 0!', 'success');
         render();
       };
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     }, 0);
 
     // Render Auto-Rules UI
@@ -5812,7 +5775,6 @@
       </div>
     </div>`));
 
-<<<<<<< HEAD
     wrap.appendChild(el(`<div class="bc-card" style="margin-top:1.5rem; border:1px solid var(--card-border);">
       <h3 style="font-size:15px; color:var(--text-primary); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
         <i class="fas fa-sync-alt"></i> Khởi tạo Mùa giải mới (Reset XP)
@@ -5828,8 +5790,6 @@
       </div>
     </div>`));
 
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     return wrap;
   }
 
@@ -5841,18 +5801,12 @@
     const activeMembers = state.members.filter(m => m.status === 'active');
     if (activeMembers.length === 0) return el(`<div></div>`);
 
-<<<<<<< HEAD
     const seasonStart = (state.settings && state.settings.xpSeasonStartDate) || null;
     const targetSessions = (mode === 'all' && seasonStart) ? state.sessions.filter(s => (s.date || '') >= seasonStart) : state.sessions;
 
     const roasts = [];
 
     const sortedSessions = [...targetSessions].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
-=======
-    const roasts = [];
-
-    const sortedSessions = [...state.sessions].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     if (sortedSessions.length > 0) {
       const absentCounts = {};
       activeMembers.forEach(m => {
@@ -5881,7 +5835,6 @@
       m,
       xp: mode === 'month'
         ? calculateMemberMonthXP(m.id, state.sessions, curMonth)
-<<<<<<< HEAD
         : calculateMemberXP(m.id, targetSessions),
       tieVotes: getMemberTieVotes(m.name, curMonth),
       attended: countAttended(m.id, targetSessions)
@@ -5889,15 +5842,6 @@
 
     if (topMember && topMember.xp > 0) {
       const labelMode = mode === 'month' ? `tháng ${monthLabel(curMonth)}` : 'mùa giải hiện tại';
-=======
-        : calculateMemberXP(m.id, state.sessions),
-      tieVotes: getMemberTieVotes(m.name, curMonth),
-      attended: countAttended(m.id, state.sessions)
-    })).sort((a, b) => b.xp - a.xp || b.tieVotes - a.tieVotes || b.attended - a.attended || a.m.name.localeCompare(b.m.name))[0];
-
-    if (topMember && topMember.xp > 0) {
-      const labelMode = mode === 'month' ? `tháng ${monthLabel(curMonth)}` : 'Toàn thời gian';
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
       roasts.push({
         id: 'roast_top1_' + topMember.m.name.replace(/\s+/g, ''),
         tag: '👑 THÁCH THỨC NGAI VÀNG',
@@ -5905,13 +5849,7 @@
       });
     }
 
-<<<<<<< HEAD
     const winCounts = activeMembers.map(m => ({ m, wins: getMemberChallengeWins(m.name, targetSessions) })).sort((a, b) => b.wins - a.wins)[0];
-=======
-
-
-    const winCounts = activeMembers.map(m => ({ m, wins: getMemberChallengeWins(m.name, state.sessions) })).sort((a, b) => b.wins - a.wins)[0];
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     if (winCounts && winCounts.wins > 0) {
       roasts.push({
         id: 'roast_wins_' + winCounts.m.name.replace(/\s+/g, ''),
@@ -5923,11 +5861,7 @@
     // 4. Vua Chuyển Nhượng (Thánh Hay Pass Slot)
     const passGivers = activeMembers.map(m => {
       let count = 0;
-<<<<<<< HEAD
       targetSessions.forEach(s => {
-=======
-      state.sessions.forEach(s => {
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
         const passes = s.passes || {};
         if (passes[m.id] && passes[m.id] !== 'pending') count++;
       });
@@ -5945,11 +5879,7 @@
     // 5. Vua Săn Pass (Thánh Nhận Pass Slot)
     const passReceivers = activeMembers.map(m => {
       let count = 0;
-<<<<<<< HEAD
       targetSessions.forEach(s => {
-=======
-      state.sessions.forEach(s => {
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
         const passes = s.passes || {};
         if (Object.values(passes).includes(m.id)) count++;
       });
@@ -5967,11 +5897,7 @@
     // 6. Vua Phát Chiến Thư (Thánh Tạo Thách Đấu)
     const challengeCreators = activeMembers.map(m => {
       let count = 0;
-<<<<<<< HEAD
       targetSessions.forEach(s => {
-=======
-      state.sessions.forEach(s => {
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
         (s.challenges || []).forEach(c => {
           if (c.createdBy === m.name) count++;
         });
@@ -5987,7 +5913,6 @@
       });
     }
 
-<<<<<<< HEAD
     
     // Tournament Roasts
     const activeTourForRoast = state.tournaments && state.tournaments.find(t => t.status !== 'finished');
@@ -6026,8 +5951,6 @@
         }
     }
 
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     if (roasts.length === 0) {
       roasts.push({
         id: 'roast_welcome',
@@ -6114,11 +6037,7 @@
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:0.6rem;" id="lb-month-bar">
         <button id="lb-tab-month" style="padding:5px 14px; border-radius:20px; border:1px solid rgba(255,215,0,0.5); background:rgba(255,215,0,0.15); color:#FFD700; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">📅 Tháng này</button>
-<<<<<<< HEAD
         <button id="lb-tab-all" style="padding:5px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.7); font-size:13px; cursor:pointer; transition:all 0.2s;">🌐 Mùa giải hiện tại</button>
-=======
-        <button id="lb-tab-all" style="padding:5px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.7); font-size:13px; cursor:pointer; transition:all 0.2s;">🌐 Toàn thời gian</button>
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
       </div>
     </div>`);
     wrap.appendChild(headerCard);
@@ -6575,7 +6494,6 @@ function renderTournament(){
         </div>`);
         wrap.appendChild(setupCard);
 
-<<<<<<< HEAD
         setTimeout(() => {
           let bannerB64 = '';
           const bannerInput = document.getElementById('ts-banner-input');
@@ -6583,70 +6501,6 @@ function renderTournament(){
              const f = e.target.files[0];
              if(!f) return;
              compressImage(f, 800, 0.7, (b64) => { bannerB64 = b64; });
-=======
-      const pairsCard = el(`<div class="bc-card" style="margin-top:12px;">
-        <h3 style="font-size:15px; color:#1B4332; margin-bottom:10px; font-family:'Oswald', sans-serif;">👥 ĐĂNG KÝ CẶP ĐẤU</h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:flex-end;">
-          <div style="flex:1.2; min-width:140px;">
-            <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Thành viên 1</label>
-            <select class="bc-select" id="pair-member1" style="font-size:13px; padding:6px 10px;">
-              ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))}</option>`).join('')}
-            </select>
-          </div>
-          <div style="flex:1.2; min-width:140px;">
-            <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Thành viên 2</label>
-            <select class="bc-select" id="pair-member2" style="font-size:13px; padding:6px 10px;">
-              ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))}</option>`).join('')}
-            </select>
-          </div>
-          <div style="flex:1; min-width:120px;">
-            <label style="font-size:11px; color:#8a877d; display:block; margin-bottom:2px;">Nội dung</label>
-            <select class="bc-select" id="pair-cat" style="font-size:13px; padding:6px 10px;"></select>
-          </div>
-          <button class="bc-btn small" id="tour-add-pair-btn" style="height:36px;">Ghép cặp</button>
-        </div>
-        
-        <div style="font-size:13px; font-weight:600; color:#1B4332; margin-bottom:6px;">Cặp đấu đã ghép (${state.tourSetup.pairs.length})</div>
-        <div id="tour-pairs-list" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; background:rgba(0,0,0,0.02); padding:8px; border-radius:8px; border:1px solid #E3E0D6;">
-        </div>
-      </div>`);
-      wrap.appendChild(pairsCard);
-
-      const startCard = el(`<div class="bc-card" style="margin-top:12px;">
-        <h3 style="font-size:15px; color:#1B4332; font-family:'Oswald', sans-serif; margin-bottom:10px;">⚔️ KHỞI TRANH</h3>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-          <div style="font-size:13px; color:#6b7a73;">Số bảng đấu mỗi nội dung:</div>
-          <select class="bc-select" id="tour-setup-groups-count" style="width:100px; padding:4px 6px;">
-            <option value="2">2 Bảng</option>
-            <option value="4">4 Bảng</option>
-          </select>
-          <button class="bc-btn" id="tour-start-btn" style="margin-left:auto;">Bắt đầu giải đấu 🚀</button>
-        </div>
-      </div>`);
-      wrap.appendChild(startCard);
-
-      setTimeout(() => {
-        const nameInput = document.getElementById('tour-setup-name');
-        if (nameInput) nameInput.oninput = (e) => { state.tourSetup.name = e.target.value; };
-        
-        const countSelect = document.getElementById('tour-setup-courts-count');
-        if (countSelect) countSelect.onchange = (e) => { state.tourSetup.courtsCount = parseInt(e.target.value, 10); };
-        
-        const updateCats = () => {
-          const checkedCats = Array.from(document.querySelectorAll('.tour-setup-cat-chk:checked')).map(el => el.value);
-          state.tourSetup.categories = checkedCats;
-          const pairCatSelect = document.getElementById('pair-cat');
-          if (pairCatSelect) {
-            pairCatSelect.innerHTML = checkedCats.map(c => `<option>${c}</option>`).join('');
-          }
-        };
-        document.querySelectorAll('.tour-setup-cat-chk').forEach(chk => chk.onchange = updateCats);
-        updateCats();
-        
-        document.querySelectorAll('.tour-setup-court-chk').forEach(chk => {
-          chk.onchange = () => {
-            state.tourSetup.selectedCourts = Array.from(document.querySelectorAll('.tour-setup-court-chk:checked')).map(el => el.value);
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
           };
 
           document.getElementById('ts-start-btn').onclick = async () => {
@@ -8979,7 +8833,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
       if (remindBtn) {
         remindBtn.onclick = () => showRemindVoteDialog(s);
       }
-<<<<<<< HEAD
       if (!s.locked) {
         const editMaxBtn = card.querySelector(`#edit-max-${s.id}`);
         if (editMaxBtn) editMaxBtn.onclick = () => {
@@ -8999,8 +8852,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
            render();
         };
       }
-=======
->>>>>>> 27950f072324f7416240c1f1572ce2891e57eb7a
     }
 
     const voteRow = card.querySelector(`#vote-${s.id}`);
