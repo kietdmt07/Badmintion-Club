@@ -1498,9 +1498,14 @@
     return ok;
   }
   async function mutateTournaments(mutator){
-    const ok = await mutateKey('bc_settings', latestSettings => {
-      const updatedSettings = Object.assign({}, latestSettings || {});
-      let curTours = updatedSettings.tournaments || [];
+    const ok = await mutateKey('bc_tournaments', latestTours => {
+      let curTours = latestTours;
+      // Nếu bc_tournaments trên DB chưa có gì (hoặc mảng rỗng) nhưng bc_settings có tournaments cũ, thì migrate sang
+      if (!curTours || (Array.isArray(curTours) && curTours.length === 0)) {
+         if (state.settings && state.settings.tournaments && state.settings.tournaments.length > 0) {
+            curTours = JSON.parse(JSON.stringify(state.settings.tournaments));
+         }
+      }
       if (!Array.isArray(curTours)) {
         if (curTours && typeof curTours === 'object' && curTours.id) {
           curTours = [curTours];
@@ -1510,13 +1515,11 @@
       }
       const updatedTours = mutator(curTours);
       if (updatedTours === null) return null;
-      updatedSettings.tournaments = updatedTours;
-      return updatedSettings;
-    }, {});
+      return updatedTours;
+    }, []);
     
     if (ok) {
-      state.settings = ok;
-      state.tournaments = state.settings.tournaments || [];
+      state.tournaments = ok;
       if (!Array.isArray(state.tournaments)) {
         state.tournaments = [];
       }
@@ -1573,7 +1576,7 @@
       state.settings.mailServer = Object.assign({
         enabled: false, host: 'smtp.gmail.com', port: 465, username: '', password: '', senderEmail: '', senderName: ''
       }, settingsRaw.mailServer || {});
-      state.tournaments = state.settings.tournaments || [];
+      state.tournaments = dbMap['bc_tournaments'] || state.settings.tournaments || [];
       state.payments = dbMap['bc_payments'] || {};
       state.fund = dbMap['bc_fund'] || {};
       state.donations = dbMap['bc_donations'] || [];
@@ -1596,7 +1599,7 @@
       state.settings.mailServer = Object.assign({
         enabled: false, host: 'smtp.gmail.com', port: 465, username: '', password: '', senderEmail: '', senderName: ''
       }, settingsRaw.mailServer || {});
-      state.tournaments = state.settings.tournaments || [];
+      state.tournaments = dbMap['bc_tournaments'] || state.settings.tournaments || [];
       state.payments = lsGet('bc_payments') || {};
       state.fund = lsGet('bc_fund') || {};
       state.donations = lsGet('bc_donations') || [];
@@ -9772,6 +9775,9 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
         if (modifiedKeys.includes('bc_fund')) state.fund = dbMap['bc_fund'] || {};
         if (modifiedKeys.includes('bc_donations')) state.donations = dbMap['bc_donations'] || [];
         if (modifiedKeys.includes('bc_announcements')) state.announcements = dbMap['bc_announcements'] || [];
+        if (modifiedKeys.includes('bc_tournaments')) {
+           state.tournaments = dbMap['bc_tournaments'] || state.settings.tournaments || [];
+        }
         
         resolveMe();
         render();
