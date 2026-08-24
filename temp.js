@@ -1,354 +1,4 @@
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="format-detection" content="telephone=no">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0A2540">
-<link rel="apple-touch-icon" href="icon-192.jpg">
-<title>CLB ARON Badminton</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<div id="app" style="font-family: 'Outfit', system-ui, sans-serif; max-width: 720px; margin: 0 auto;">
-  <div id="loading" style="padding: 5rem 0; text-align: center; color: #1B4332; font-family: 'Outfit', sans-serif;">
-    <div class="loader" style="margin-bottom: 12px;"></div>
-    <div style="font-weight: 500; font-size: 15px;">Đang tải dữ liệu nhóm...</div>
-  </div>
-  <div id="root" style="display:none;"></div>
-</div>
-
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap');
-  html {
-    width: 100%;
-    overflow-x: hidden;
-    -webkit-text-size-adjust: 100%;
-    touch-action: manipulation;
-  }
-  body {
-    --bg-gradient: linear-gradient(135deg, #FAFBFD 0%, #E3EDF7 100%);
-    --card-bg: rgba(255, 255, 255, 0.9);
-    --card-border: rgba(162, 170, 187, 0.4);
-    --card-hover-border: #F26419;
-    --text-primary: #0D2040;
-    --text-secondary: #4A5568;
-    --text-muted: #718096;
-    --input-bg: #FFFFFF;
-    --input-border: #B0C4DE;
-    --input-color: #0D2040;
-    --tab-bg: rgba(255, 255, 255, 0.6);
-    --tab-hover-bg: rgba(112, 162, 216, 0.15);
-    --card-shadow: 0 6px 20px -4px rgba(13, 32, 64, 0.06), 0 3px 6px -2px rgba(0, 0, 0, 0.02);
-    --card-hover-shadow: 0 12px 30px -4px rgba(13, 32, 64, 0.12), 0 5px 12px -2px rgba(0, 0, 0, 0.04);
-    
-    background: var(--bg-gradient);
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    margin: 0;
-    padding: 1.25rem 0.75rem;
-    padding-top: max(1rem, env(safe-area-inset-top));
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-    padding-left: max(0.5rem, env(safe-area-inset-left));
-    padding-right: max(0.5rem, env(safe-area-inset-right));
-    color: var(--text-primary);
-    transition: background 0.3s ease, color 0.3s ease;
-  }
-
-  
-  body.dark-theme {
-    --bg-gradient: linear-gradient(135deg, #0A192F 0%, #020C1B 100%);
-    --card-bg: rgba(16, 28, 48, 0.88);
-    --card-border: rgba(112, 162, 216, 0.2);
-    --card-hover-border: #F26419;
-    --text-primary: #F4F6F9;
-    --text-secondary: #8892B0;
-    --text-muted: #5A6785;
-    --input-bg: #0E1B30;
-    --input-border: #1E3A60;
-    --input-color: #F4F6F9;
-    --tab-bg: rgba(16, 28, 48, 0.5);
-    --tab-hover-bg: rgba(112, 162, 216, 0.1);
-    --card-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.4), 0 3px 6px -2px rgba(0, 0, 0, 0.3);
-    --card-hover-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.6), 0 5px 12px -2px rgba(0, 0, 0, 0.4);
-  }
-
-  @keyframes pulse {
-    0% { opacity: 0.9; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.04); }
-    100% { opacity: 0.9; transform: scale(1); }
-  }
-
-  @keyframes spotlightPulse {
-    0% { box-shadow: 0 0 0 0 rgba(242, 100, 25, 0.45), 0 4px 20px rgba(242, 100, 25, 0.15); }
-    70% { box-shadow: 0 0 0 10px rgba(242, 100, 25, 0), 0 4px 20px rgba(242, 100, 25, 0.15); }
-    100% { box-shadow: 0 0 0 0 rgba(242, 100, 25, 0), 0 4px 20px rgba(242, 100, 25, 0.15); }
-  }
-
-  @keyframes beaconGlow {
-    0% { transform: scale(0.92); opacity: 0.8; }
-    50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 6px rgba(242, 100, 25, 0.9)); }
-    100% { transform: scale(0.92); opacity: 0.8; }
-  }
-
-  @keyframes shuttleBounce {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-4px) rotate(10deg); }
-  }
-
-  @keyframes titleGlowPulse {
-    0% { opacity: 0.9; filter: drop-shadow(0 0 0 rgba(242,100,25,0)); }
-    50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(242,100,25,0.75)); color: #F26419; }
-    100% { opacity: 0.9; filter: drop-shadow(0 0 0 rgba(242,100,25,0)); }
-  }
-
-  @keyframes xpRankGlow {
-    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.5), 0 2px 8px rgba(0,0,0,0.15); }
-    50% { box-shadow: 0 0 0 5px rgba(255, 215, 0, 0), 0 2px 15px rgba(255, 200, 0, 0.4); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0), 0 2px 8px rgba(0,0,0,0.15); }
-  }
-  @keyframes xpRankShimmer {
-    0% { background-position: -200% center; }
-    100% { background-position: 200% center; }
-  }
-  @keyframes xpBarFill {
-    from { width: 0%; }
-  }
-  @keyframes xpCountUp {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes rankBadgePop {
-    0%   { transform: scale(0.5); opacity: 0; }
-    70%  { transform: scale(1.12); opacity: 1; }
-    100% { transform: scale(1); }
-  }
-  @keyframes lbRowIn {
-    from { opacity: 0; transform: translateX(-12px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes crown-float {
-    0%, 100% { transform: translateY(0) rotate(-5deg); }
-    50%       { transform: translateY(-4px) rotate(5deg); }
-  }
-  .xp-rank-legendary .xp-avatar-ring {
-    animation: xpRankGlow 2s ease-in-out infinite;
-  }
-  .lb-row { animation: lbRowIn 0.35s ease both; }
-  .lb-top1 { background: linear-gradient(135deg, rgba(255,215,0,0.18) 0%, rgba(255,180,0,0.06) 100%) !important; }
-  .lb-top2 { background: linear-gradient(135deg, rgba(192,192,192,0.18) 0%, rgba(150,150,150,0.06) 100%) !important; }
-  .lb-top3 { background: linear-gradient(135deg, rgba(205,127,50,0.18) 0%, rgba(160,90,30,0.06) 100%) !important; }
-
-  #app * { box-sizing: border-box; }
-  #app { font-family: 'Outfit', system-ui, sans-serif !important; color: var(--text-primary); }
-  #app h1, #app h2, #app h3 { font-family: 'Oswald', sans-serif; letter-spacing: 0.01em; margin: 0; color: var(--text-primary); }
-  .bc-card { 
-    background: var(--card-bg); 
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid var(--card-border); 
-    border-radius: 16px; 
-    padding: 1.25rem 1.4rem; 
-    margin-bottom: 1rem; 
-    box-shadow: var(--card-shadow);
-    color: var(--text-primary);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease, background 0.3s ease;
-  }
-  .bc-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--card-hover-shadow);
-    border-color: var(--card-hover-border);
-  }
-  .bc-btn { 
-    font-family: 'Outfit', sans-serif; 
-    border: 1px solid #134074; 
-    background: linear-gradient(135deg, #134074 0%, #0A2540 100%); 
-    color: #FFFFFF; 
-    padding: 10px 20px; 
-    border-radius: 10px; 
-    font-size: 14px; 
-    font-weight: 500; 
-    cursor: pointer; 
-    box-shadow: 0 4px 12px rgba(10, 37, 64, 0.15);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .bc-btn:hover { 
-    background: linear-gradient(135deg, #F26419 0%, #FF7F50 100%); 
-    border-color: #F26419;
-    box-shadow: 0 6px 16px rgba(242, 100, 25, 0.3);
-    transform: translateY(-1px);
-  }
-  .bc-btn:active {
-    transform: translateY(1px) scale(0.98);
-    box-shadow: 0 2px 6px rgba(10, 37, 64, 0.15);
-  }
-  .bc-btn.outline { 
-    background: transparent; 
-    color: var(--text-primary); 
-    border: 1.5px solid var(--text-primary);
-    box-shadow: none;
-  }
-  .bc-btn.outline:hover { 
-    background: rgba(112, 162, 216, 0.12); 
-    border-color: #F26419;
-    color: #F26419;
-    transform: translateY(-1px);
-  }
-  .bc-btn.danger { 
-    background: transparent; 
-    color: #E3A693; 
-    border: 1.5px solid #E3A693; 
-    box-shadow: none;
-  }
-  body:not(.dark-theme) .bc-btn.danger {
-    color: #993C1D;
-    border-color: #993C1D;
-  }
-  .bc-btn.danger:hover { 
-    background: rgba(227, 166, 147, 0.08); 
-    border-color: #E3A693;
-    color: #E3A693;
-    transform: translateY(-1px);
-  }
-  body:not(.dark-theme) .bc-btn.danger:hover {
-    background: rgba(153, 60, 29, 0.08);
-    border-color: #B23A1E;
-    color: #B23A1E;
-  }
-  .bc-btn.small { padding: 6px 12px; font-size: 13px; border-radius: 8px; }
-  .bc-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-  .bc-input, .bc-select { 
-    font-family: 'Outfit', sans-serif; 
-    border: 1.5px solid var(--input-border); 
-    border-radius: 10px; 
-    padding: 9px 12px; 
-    font-size: 14px; 
-    width: 100%; 
-    background: var(--input-bg); 
-    color: var(--input-color); 
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease, color 0.3s ease;
-  }
-  .bc-input:focus, .bc-select:focus { 
-    outline: none; 
-    border-color: #F26419; 
-    box-shadow: 0 0 0 3px rgba(242, 100, 25, 0.15);
-  }
-  .bc-tab { 
-    padding: 8px 16px; 
-    border-radius: 10px; 
-    font-size: 14px; 
-    font-weight: 500; 
-    cursor: pointer; 
-    border: 1.5px solid transparent; 
-    color: var(--text-secondary); 
-    transition: all 0.2s ease;
-    background: var(--tab-bg);
-  }
-  .bc-tab:hover {
-    background: var(--tab-hover-bg);
-    color: var(--text-primary);
-  }
-  .bc-tab.active { 
-    background: #134074; 
-    color: #FFFFFF; 
-    box-shadow: 0 4px 12px rgba(19, 64, 116, 0.15);
-  }
-  body.dark-theme .bc-tab.active {
-    background: #F26419;
-    color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(242, 100, 25, 0.2);
-  }
-  .bc-badge { display:inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; font-weight: 500; }
-  .bc-empty { text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 14px; }
-  .bc-err { font-size: 13px; color: #E3A693; margin-top: 6px; }
-  body:not(.dark-theme) .bc-err { color: #993C1D; }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  .loader {
-    width: 28px;
-    height: 28px;
-    border: 3px solid rgba(19, 64, 116, 0.15);
-    border-top-color: #F26419;
-    border-radius: 50%;
-    animation: spin 0.8s infinite linear;
-    display: inline-block;
-  }
-
-  /* Universal overrides mapping the old green scheme to the new royal navy / orange scheme */
-  [style*="color: #1B4332"], [style*="color:#1B4332"] { color: var(--text-primary) !important; }
-  [style*="background: rgba(27,67,50"], [style*="background:rgba(27,67,50"] { background: rgba(19, 64, 116, 0.08) !important; }
-  [style*="color: #2D6A4F"], [style*="color:#2D6A4F"] { color: var(--card-hover-border) !important; }
-  [style*="background: rgba(45,106,79"], [style*="background:rgba(45,106,79"] { background: rgba(242, 100, 25, 0.08) !important; }
-  [style*="color: #40916C"], [style*="color:#40916C"] { color: var(--card-hover-border) !important; }
-  [style*="background: rgba(64,145,108"], [style*="background:rgba(64,145,108"] { background: rgba(242, 100, 25, 0.08) !important; }
-  [style*="border-left:4px solid #40916C"], [style*="border-left: 4px solid #40916C"] { border-left-color: #F26419 !important; }
-  [style*="border:1px solid rgba(64, 145, 108, 0.2)"], [style*="border: 1px solid rgba(64, 145, 108, 0.2)"] { border-color: var(--card-border) !important; }
-  [style*="border:1px solid rgba(64, 145, 108, 0.25)"], [style*="border: 1px solid rgba(64, 145, 108, 0.25)"] { border-color: var(--card-border) !important; }
-
-  /* Dark mode overrides for common text color formats */
-  body.dark-theme [style*="color: #6b7a73"], body.dark-theme [style*="color:#6b7a73"] { color: var(--text-secondary) !important; }
-  body.dark-theme [style*="color: #8a877d"], body.dark-theme [style*="color:#8a877d"] { color: var(--text-muted) !important; }
-  body.dark-theme [style*="color: #2c2c2a"], body.dark-theme [style*="color:#2c2c2a"], body.dark-theme [style*="color: #2C2C2A"], body.dark-theme [style*="color:#2C2C2A"] { color: var(--text-primary) !important; }
-  body.dark-theme [style*="color: #1B4332"], body.dark-theme [style*="color:#1B4332"], body.dark-theme [style*="color: #27500A"], body.dark-theme [style*="color:#27500A"] { color: #A7F3D0 !important; }
-  body.dark-theme [style*="color: #993C1D"], body.dark-theme [style*="color:#993C1D"] { color: #FCA5A5 !important; }
-  body.dark-theme [style*="color: #854F0B"], body.dark-theme [style*="color:#854F0B"] { color: #FFB703 !important; }
-  body.dark-theme [style*="color: #0C447C"], body.dark-theme [style*="color:#0C447C"], body.dark-theme [style*="color: #134074"], body.dark-theme [style*="color:#134074"] { color: #60A5FA !important; }
-  body.dark-theme [style*="background: #FFF"], body.dark-theme [style*="background:#FFF"], body.dark-theme [style*="background: white"], body.dark-theme [style*="background:white"] { background: var(--input-bg) !important; }
-  body.dark-theme [style*="background: #fff"], body.dark-theme [style*="background:#fff"] { background: var(--input-bg) !important; }
-  body.dark-theme [style*="background: rgba(0,0,0,0.02)"], body.dark-theme [style*="background:rgba(0,0,0,0.02)"] { background: rgba(255, 255, 255, 0.02) !important; }
-  body.dark-theme [style*="background: rgba(0,0,0,0.01)"], body.dark-theme [style*="background:rgba(0,0,0,0.01)"] { background: rgba(255, 255, 255, 0.01) !important; }
-  body.dark-theme [style*="background: #F4F1EA"], body.dark-theme [style*="background:#F4F1EA"] { background: var(--card-bg) !important; }
-  body.dark-theme .bc-card[style*="background"] { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
-  body.dark-theme [style*="background:#EFEDE3"], body.dark-theme [style*="background: #EFEDE3"] { background: rgba(255, 255, 255, 0.1) !important; }
-  body.dark-theme [style*="border-top:1px solid #F1EFE8"], body.dark-theme [style*="border-top: 1px solid #F1EFE8"] { border-top-color: var(--card-border) !important; }
-  body.dark-theme [style*="border:1px solid #E3E0D6"], body.dark-theme [style*="border: 1px solid #E3E0D6"] { border-color: var(--card-border) !important; }
-  body.dark-theme [style*="background: #FFFDF9"], body.dark-theme [style*="background:#FFFDF9"] { background: var(--input-bg) !important; }
-  body.dark-theme td, body.dark-theme th { color: var(--text-primary) !important; }
-  body.dark-theme th { background: rgba(255, 255, 255, 0.02) !important; }
-  body.dark-theme [style*="background:#EAF3DE"], body.dark-theme [style*="background: #EAF3DE"] { background: rgba(19, 64, 116, 0.2) !important; color: #FFF !important; }
-  body.dark-theme [style*="background:#FAECE7"], body.dark-theme [style*="background: #FAECE7"] { background: rgba(242, 100, 25, 0.2) !important; color: #FFF !important; }
-  body.dark-theme [style*="background:#FAEEDA"], body.dark-theme [style*="background: #FAEEDA"] { background: rgba(216, 151, 60, 0.2) !important; color: #FFF !important; }
-  body.dark-theme [style*="background:#F1EFE8"], body.dark-theme [style*="background: #F1EFE8"] { background: rgba(255, 255, 255, 0.05) !important; color: #FFF !important; }
-  body.dark-theme [style*="background:#E6F1FB"], body.dark-theme [style*="background: #E6F1FB"] { background: rgba(96, 165, 250, 0.2) !important; color: #93C5FD !important; }
-  body.dark-theme [style*="background:#FFF2E6"], body.dark-theme [style*="background: #FFF2E6"] { background: rgba(216, 151, 60, 0.2) !important; color: #FCD34D !important; }
-  body.dark-theme [style*="background:#F8EEFC"], body.dark-theme [style*="background: #F8EEFC"] { background: rgba(167, 139, 250, 0.2) !important; color: #C084FC !important; }
-
-  /* Mobile responsive layout optimizations */
-  @media (max-width: 640px) {
-    body {
-      padding: 0.65rem 0.4rem !important;
-      padding-top: max(0.65rem, env(safe-area-inset-top)) !important;
-      padding-bottom: max(1.25rem, env(safe-area-inset-bottom)) !important;
-    }
-    #app {
-      width: 100% !important;
-      max-width: 100% !important;
-    }
-    .bc-card {
-      padding: 0.85rem 0.75rem !important;
-      margin-bottom: 0.65rem !important;
-      border-radius: 14px !important;
-    }
-    .bc-btn {
-      padding: 8px 14px !important;
-      font-size: 13.5px !important;
-      min-height: 38px !important;
-    }
-    .bc-btn.small {
-      padding: 4px 10px !important;
-      font-size: 12px !important;
-      min-height: 28px !important;
-    }
-    .bc-input, .bc-select {
-      font-size: 15px !important; /* Prevents auto-zoom on iOS Safari */
-      padding: 8px 10px !important;
-      min-height: 38px !important;
-    }
-  }
-</style>
-
-
-<script>
 (function(){
   const LEVELS = ["Mới chơi", "Trung bình", "Khá", "Giỏi"];
   const LEVEL_COLOR = { 
@@ -6438,44 +6088,35 @@ function renderTournament(){
         };
 
         const setupCard = el(`<div class="bc-card" style="border: 2px dashed #FF8F00; margin-bottom:20px;">
-          <h3 style="font-size:16px; color:#F26419; margin-bottom:15px; font-family:'Oswald', sans-serif;">🛠️ KHỞI TẠO GIẢI ĐẤU MỚI</h3>
+          <h3 style="font-size:16px; color:#D84315; margin-bottom:15px; font-family:'Oswald', sans-serif;">🛠️ KHỞI TẠO GIẢI ĐẤU MỚI</h3>
           <div style="display:flex; flex-direction:column; gap:12px;">
             <div>
-              <label style="font-size:13px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">Tên giải đấu</label>
+              <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Tên giải đấu</label>
               <input class="bc-input" id="ts-name" value="${escapeHtml(state.tourSetup.name)}" placeholder="VD: Giải Cầu Lông Aron Smash 2026" />
             </div>
             <div style="display:flex; gap:16px; flex-wrap:wrap;">
               <div style="flex:1; min-width:140px;">
-                <label style="font-size:13px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">Banner Giải Đấu (Ảnh bìa)</label>
-                <input type="file" id="ts-banner-input" accept="image/*" class="bc-input" style="width:100%; font-size:12px; padding:6px;" />
+                <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Số lượng sân</label>
+                <select class="bc-select" id="ts-courts-count">
+                  <option value="2" ${state.tourSetup.courtsCount===2?'selected':''}>2 Sân</option>
+                  <option value="3" ${state.tourSetup.courtsCount===3?'selected':''}>3 Sân</option>
+                  <option value="4" ${state.tourSetup.courtsCount===4?'selected':''}>4 Sân</option>
+                </select>
               </div>
-            </div>
-            
-            <div style="display:flex; gap:16px; flex-wrap:wrap;">
-              <div style="flex:1; min-width:140px;">
-                <label style="font-size:13px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">Địa điểm tổ chức (Chọn khu vực sân)</label>
-                <div style="border:1px solid var(--card-border); border-radius:8px; padding:10px; max-height:150px; overflow-y:auto; background:var(--input-bg);">
-                  ${state.courts.map(c => `
-                    <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:13px;">
-                      <input type="checkbox" class="ts-court-chk" value="${c.id}" /> ${escapeHtml(c.name)}
-                    </label>
-                  `).join('') || '<div style="font-size:12px; color:var(--text-secondary);">Chưa có sân nào trong hệ thống. Hãy thêm sân ở mục Duyệt & Cấu hình.</div>'}
+              <div style="flex:2; min-width:200px;">
+                <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Chọn sân thi đấu</label>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+                  ${state.courts.map(c => {
+                    const checked = state.tourSetup.selectedCourts.includes(c.id) ? 'checked' : '';
+                    return `<label style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">
+                      <input type="checkbox" class="ts-court-chk" value="${c.id}" ${checked} /> ${escapeHtml(c.name)}
+                    </label>`;
+                  }).join(' ')}
                 </div>
               </div>
-              <div style="flex:1; min-width:140px;">
-                <label style="font-size:13px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">Số lượng Sân con (VD: Sân 1, Sân 2...)</label>
-                <input type="number" class="bc-input" id="ts-courts-count" value="${state.tourSetup.courtsCount || 4}" min="1" max="20" style="width:100%;" />
-              </div>
             </div>
-
-            <div style="display:flex; gap:16px; flex-wrap:wrap;">
-              <div style="flex:1; min-width:140px;">
-                <label style="font-size:13px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">Thông báo / Mô tả chi tiết (Điều lệ, Lệ phí...)</label>
-                <textarea class="bc-input" id="ts-desc" rows="4" style="width:100%; resize:vertical;" placeholder="VD: Lệ phí thi đấu: 100k/người. Chuyển khoản qua STK..."></textarea>
-              </div>
-            </div>
-            <div style="border-top:1px dashed var(--card-border); padding-top:12px;">
-              <label style="font-size:13px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:4px;">Hạng mục thi đấu</label>
+            <div style="border-top:1px dashed #E3E0D6; padding-top:12px;">
+              <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Hạng mục thi đấu</label>
               <div style="display:flex; gap:16px; flex-wrap:wrap;">
                 ${['Đôi Nam', 'Đôi Nữ', 'Đôi Nam Nữ'].map(cat => {
                   const checked = state.tourSetup.categories.includes(cat) ? 'checked' : '';
@@ -6486,7 +6127,7 @@ function renderTournament(){
               </div>
             </div>
             <div style="text-align:right; margin-top:10px;">
-              <button class="bc-btn" id="ts-start-btn" style="background:#FF3D00; border-color:#F26419; font-size:14px; padding:10px 20px;">
+              <button class="bc-btn" id="ts-start-btn" style="background:#FF3D00; border-color:#FF3D00; font-size:14px; padding:10px 20px;">
                 Mở Cổng Đăng Ký 🚀
               </button>
             </div>
@@ -6495,35 +6136,22 @@ function renderTournament(){
         wrap.appendChild(setupCard);
 
         setTimeout(() => {
-          let bannerB64 = '';
-          const bannerInput = document.getElementById('ts-banner-input');
-          if (bannerInput) bannerInput.onchange = (e) => {
-             const f = e.target.files[0];
-             if(!f) return;
-             compressImage(f, 800, 0.7, (b64) => { bannerB64 = b64; });
-          };
-
           document.getElementById('ts-start-btn').onclick = async () => {
             const name = document.getElementById('ts-name').value.trim();
+            const count = parseInt(document.getElementById('ts-courts-count').value, 10);
             const selCourts = Array.from(document.querySelectorAll('.ts-court-chk:checked')).map(x => x.value);
             const selCats = Array.from(document.querySelectorAll('.ts-cat-chk:checked')).map(x => x.value);
-            const desc = document.getElementById('ts-desc').value.trim();
-            const count = parseInt(document.getElementById('ts-courts-count').value, 10) || 4;
             
             if (!name) return alert('Vui lòng nhập tên giải đấu!');
+            if (selCourts.length === 0) return alert('Vui lòng chọn ít nhất 1 sân!');
             if (selCats.length === 0) return alert('Vui lòng chọn ít nhất 1 hạng mục thi đấu!');
-            if (selCourts.length === 0) return alert('Vui lòng chọn ít nhất 1 khu vực sân làm địa điểm!');
             
-            const courtNames = selCourts.map(cid => state.courts.find(c => c.id === cid)?.name).filter(Boolean);
-
             const newTour = {
               id: uid(),
               name,
-              bannerUrl: bannerB64,
-              description: desc,
-              courtIds: selCourts,
-              courtsCount: count,
               categories: selCats,
+              courtsCount: count,
+              selectedCourts: selCourts,
               status: 'registering',
               registrations: [],
               pairs: [],
@@ -6537,20 +6165,6 @@ function renderTournament(){
                tours.push(newTour);
                return tours;
             });
-            await mutateKey('bc_announcements', anns => {
-               anns.unshift({
-                  id: uid(),
-                  category: 'tournament',
-                  title: `🔥 Giải đấu mới: ${name} đã mở đăng ký!`,
-                  content: `📍 **Địa điểm:** ${courtNames.join(', ')}
-
-${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho giải đấu **${name}**.\nCác VĐV hãy mau chóng vào Tab [Giải Đấu] để ghi danh nhé!\n\nHạng mục: ${selCats.join(', ')}`,
-                  imageUrl: bannerB64,
-                  pinned: true,
-                  createdAt: Date.now()
-               });
-               return anns;
-            });
             state.tourSetup = null;
             render();
           };
@@ -6560,174 +6174,75 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
 
     // ACTIVE TOURNAMENT TABS
     if (activeTour) {
+       // Set default tab based on status if not set
        if (!state.tourActiveTab) {
           if (activeTour.status === 'registering') state.tourActiveTab = 'reg';
-          else if (activeTour.status === 'grouping') state.tourActiveTab = 'grouping';
           else if (activeTour.status === 'playing') state.tourActiveTab = 'group';
           else if (activeTour.status === 'knockout') state.tourActiveTab = 'knockout';
        }
-       if (activeTour.status === 'playing' && state.tourActiveTab === 'grouping') state.tourActiveTab = 'group';
 
        const isRegTab = state.tourActiveTab === 'reg';
-       const isGroupingTab = state.tourActiveTab === 'grouping';
        const isGroupTab = state.tourActiveTab === 'group';
        const isKnockoutTab = state.tourActiveTab === 'knockout';
 
-       const tabsUI = el(`<div style="display:flex; border-bottom:2px solid var(--card-border); margin-bottom:20px; position:sticky; top:0; background:var(--card-bg); z-index:10; overflow-x:auto;">
-         <div class="bc-tab ${isRegTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer;  white-space:nowrap;" id="tt-reg">📝 Ghi Danh</div>
-         ${activeTour.status === 'grouping' ? `<div class="bc-tab ${isGroupingTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer;  white-space:nowrap;" id="tt-grouping">🎲 Gắp Thăm</div>` : ''}
-         ${activeTour.status === 'playing' || activeTour.status === 'knockout' ? `<div class="bc-tab ${isGroupTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer;  white-space:nowrap;" id="tt-group">⚔️ Vòng Bảng</div>` : ''}
-         ${activeTour.status === 'knockout' ? `<div class="bc-tab ${isKnockoutTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer;  white-space:nowrap;" id="tt-knockout">🏆 Nhánh Đấu</div>` : ''}
+       const tabsUI = el(`<div style="display:flex; border-bottom:2px solid #E0E0E0; margin-bottom:20px; position:sticky; top:0; background:#FAFAFA; z-index:10;">
+         <div class="bc-tab ${isRegTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer; color:${isRegTab?'#E65100':'#666'}; border-bottom:${isRegTab?'3px solid #E65100':'none'};" id="tt-reg">📝 Ghi Danh</div>
+         ${activeTour.status === 'playing' || activeTour.status === 'knockout' ? `<div class="bc-tab ${isGroupTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer; color:${isGroupTab?'#2E7D32':'#666'}; border-bottom:${isGroupTab?'3px solid #2E7D32':'none'};" id="tt-group">⚔️ Vòng Bảng</div>` : ''}
+         ${activeTour.status === 'knockout' ? `<div class="bc-tab ${isKnockoutTab ? 'active' : ''}" style="flex:1; text-align:center; padding:12px; font-weight:bold; cursor:pointer; color:${isKnockoutTab?'#3F51B5':'#666'}; border-bottom:${isKnockoutTab?'3px solid #3F51B5':'none'};" id="tt-knockout">🏆 Nhánh Đấu (Knockout)</div>` : ''}
        </div>`);
        wrap.appendChild(tabsUI);
 
        setTimeout(() => {
           document.getElementById('tt-reg').onclick = () => { state.tourActiveTab = 'reg'; render(); };
-          if(document.getElementById('tt-grouping')) document.getElementById('tt-grouping').onclick = () => { state.tourActiveTab = 'grouping'; render(); };
           if(document.getElementById('tt-group')) document.getElementById('tt-group').onclick = () => { state.tourActiveTab = 'group'; render(); };
           if(document.getElementById('tt-knockout')) document.getElementById('tt-knockout').onclick = () => { state.tourActiveTab = 'knockout'; render(); };
        }, 0);
 
        // Active Tour Header
-       wrap.appendChild(el(`<div class="bc-card" style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:var(--card-bg)3E0; border:1px solid var(--card-border); margin-bottom:1rem; position:relative;">
+       wrap.appendChild(el(`<div class="bc-card" style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:#FFF3E0; border:1px solid #FFB74D; margin-bottom:1rem;">
           <div>
-             <h3 style="font-size:20px; color:#F26419; font-family:'Oswald',sans-serif; margin-bottom:5px; display:flex; align-items:center; gap:8px;">
-               ${escapeHtml(activeTour.name)}
-               ${canManage() ? `<button class="bc-btn small" id="edit-tour-btn" style="background:transparent; border:none; padding:0; font-size:14px; margin-left:10px;" title="Sửa thông tin giải">⚙️</button>` : ''}
-             </h3>
-             <div style="font-size:12px; color:#F26419; font-weight:600;">Tình trạng: ${activeTour.status.toUpperCase()} | Sân thi đấu: ${activeTour.courtsCount || 4} sân</div>
+             <h3 style="font-size:20px; color:#E65100; font-family:'Oswald',sans-serif; margin-bottom:5px;">${escapeHtml(activeTour.name)}</h3>
+             <div style="font-size:12px; color:#F57C00; font-weight:600;">Tình trạng: ${activeTour.status.toUpperCase()}</div>
           </div>
-          ${canManage() || isOwner() ? `<div>
+          ${canManage() || state.me?.role === 'owner' ? `<div>
              <button class="bc-btn danger small" id="delete-tour-btn">🗑️ Xóa</button>
           </div>` : ''}
        </div>`));
 
        setTimeout(() => {
-          const editBtn = document.getElementById('edit-tour-btn');
-          if (editBtn) editBtn.onclick = () => {
-             const modal = el(`<div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; display:flex; justify-content:center; align-items:center; padding:20px;">
-               <div class="bc-card" style="width:100%; max-width:500px; max-height:90vh; overflow-y:auto; background:var(--card-bg); padding:20px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                 <h3 style="margin-bottom:15px; color:var(--text-primary); font-family:'Oswald',sans-serif;">⚙️ Chỉnh sửa Giải Đấu</h3>
-                 
-                 <div style="margin-bottom:12px;">
-                   <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Tên giải đấu</label>
-                   <input type="text" class="bc-input" id="ed-name" value="${escapeHtml(activeTour.name)}" style="width:100%;" />
-                 </div>
-
-                 <div style="margin-bottom:12px;">
-                   <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Ảnh Banner Mới (Bỏ trống nếu giữ nguyên)</label>
-                   <input type="file" id="ed-banner-input" accept="image/*" class="bc-input" style="width:100%; font-size:12px; padding:6px;" />
-                 </div>
-
-                 <div style="margin-bottom:12px;">
-                   <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Mô tả / Điều lệ</label>
-                   <textarea class="bc-input" id="ed-desc" rows="4" style="width:100%; resize:vertical;">${escapeHtml(activeTour.description || '')}</textarea>
-                 </div>
-
-                 <div style="margin-bottom:15px;">
-                   <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Hạng mục thi đấu</label>
-                   <div style="display:flex; gap:16px; flex-wrap:wrap; border:1px solid var(--card-border); border-radius:8px; padding:10px; background:var(--input-bg);">
-                     ${['Đôi Nam', 'Đôi Nữ', 'Đôi Nam Nữ'].map(cat => {
-                       const checked = (activeTour.categories || []).includes(cat) ? 'checked' : '';
-                       return `<label style="display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; cursor:pointer;">
-                         <input type="checkbox" class="ed-cat-chk" value="${cat}" ${checked} /> 🏸 ${cat}
-                       </label>`;
-                     }).join(' ')}
-                   </div>
-                 </div>
-
-                 <div style="margin-bottom:15px; display:flex; gap:16px; flex-wrap:wrap;">
-                   <div style="flex:1; min-width:140px;">
-                     <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Địa điểm tổ chức (Khu vực)</label>
-                     <div style="border:1px solid var(--card-border); border-radius:8px; padding:10px; max-height:120px; overflow-y:auto; background:var(--input-bg);">
-                       ${state.courts.map(c => `
-                         <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:13px; cursor:pointer;">
-                           <input type="checkbox" class="ed-court-chk" value="${c.id}" ${(activeTour.courtIds||[]).includes(c.id) ? 'checked' : ''} /> ${escapeHtml(c.name)}
-                         </label>
-                       `).join('') || '<div style="font-size:12px; color:var(--text-secondary);">Chưa có sân nào trong hệ thống.</div>'}
-                     </div>
-                   </div>
-                   <div style="flex:1; min-width:140px;">
-                     <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:4px;">Số lượng Sân con thi đấu</label>
-                     <input type="number" class="bc-input" id="ed-courts-count" value="${activeTour.courtsCount || 4}" min="1" max="20" style="width:100%;" />
-                   </div>
-                 </div>
-
-                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px dashed var(--card-border); padding-top:15px;">
-                   <button class="bc-btn outline" id="ed-cancel">Hủy</button>
-                   <button class="bc-btn" id="ed-save" style="background:#4CAF50; border-color:#4CAF50; color:#FFF;">💾 Lưu Thay Đổi</button>
-                 </div>
-               </div>
-             </div>`);
-             document.body.appendChild(modal);
-
-             let newBannerB64 = activeTour.bannerUrl || '';
-             const bInp = modal.querySelector('#ed-banner-input');
-             bInp.onchange = (e) => {
-                const f = e.target.files[0];
-                if(!f) return;
-                compressImage(f, 800, 0.7, (b64) => { newBannerB64 = b64; });
-             };
-
-             modal.querySelector('#ed-cancel').onclick = () => modal.remove();
-             modal.querySelector('#ed-save').onclick = async () => {
-                const n = modal.querySelector('#ed-name').value.trim();
-                const d = modal.querySelector('#ed-desc').value.trim();
-                const c = Array.from(modal.querySelectorAll('.ed-court-chk:checked')).map(x => x.value);
-                const cats = Array.from(modal.querySelectorAll('.ed-cat-chk:checked')).map(x => x.value);
-                const cnt = parseInt(modal.querySelector('#ed-courts-count').value, 10) || 4;
-                
-                if (!n) return alert('Tên không được để trống!');
-                if (cats.length === 0) return alert('Vui lòng chọn ít nhất 1 hạng mục thi đấu!');
-                
-                await mutateTournaments(tours => {
-                   const t = tours.find(x => x.id === activeTour.id);
-                   if (t) {
-                      t.name = n;
-                      t.description = d;
-                      t.courtIds = c;
-                      t.courtsCount = cnt;
-                      t.categories = cats;
-                      t.bannerUrl = newBannerB64;
-                   }
-                   return tours;
-                });
-                modal.remove();
-                render();
-             };
-          };
-          
           const delBtn = document.getElementById('delete-tour-btn');
           if (delBtn) delBtn.onclick = async () => {
              if(!confirm('Bạn có chắc chắn muốn xóa Giải đấu này? Toàn bộ đăng ký và kết quả sẽ biến mất vĩnh viễn!')) return;
-             await mutateTournaments(tours => tours.filter(t => t.id !== activeTour.id));
+             await mutateTournaments(tours => {
+                return tours.filter(t => t.id !== activeTour.id);
+             });
              state.tourActiveTab = null;
              showToast('Đã xóa giải đấu', 'success');
              render();
           };
        }, 0);
 
-       // ======================== TAB 1: REGISTRATION ========================
+       // TAB 1: REGISTRATION
        if (isRegTab) {
           const activeMembers = state.members.filter(m => m.status === 'active');
           activeTour.registrations = activeTour.registrations || [];
           const myRegs = activeTour.registrations.filter(r => r.m1 === state.me?.id || r.m2 === state.me?.id);
           const isManager = canManage();
 
-          if (true) {
+          if (activeTour.status === 'registering') {
               if (state.me) {
                 if (myRegs.length > 0) {
-                  wrap.appendChild(el(`<div class="bc-card" style="margin-bottom:1rem; text-align:center; padding:15px; color:var(--text-primary); background:var(--tab-bg); font-weight:600; font-size:14px; border:1px solid #27500A;">
+                  wrap.appendChild(el(`<div class="bc-card" style="margin-bottom:1rem; text-align:center; padding:15px; color:#27500A; background:#EAF3DE; font-weight:600; font-size:14px; border:1px solid #27500A;">
                     🎉 Bạn đã ghi danh các hạng mục: ${myRegs.map(r => r.cat).join(', ')}. Chúc bạn thi đấu tốt! 💪
                   </div>`));
                 }
                 const regCard = el(`<div class="bc-card" style="margin-bottom:1rem; border:2px solid #27500A;">
-                  <h4 style="font-size:16px; color:var(--text-primary); margin-bottom:12px; font-family:'Oswald',sans-serif;">TẠO PHIẾU ĐĂNG KÝ THAM GIA</h4>
+                  <h4 style="font-size:16px; color:#27500A; margin-bottom:12px; font-family:'Oswald',sans-serif;">TẠO PHIẾU ĐĂNG KÝ THAM GIA</h4>
                   <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
                     ${isManager ? `
                     <div style="flex:1; min-width:140px;">
-                      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px; color:#F26419;">VĐV Ghi danh (Admin)</label>
-                      <select class="bc-select" id="reg-m1" style="border-color:#F26419;">
+                      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px; color:#E65100;">VĐV Ghi danh (Admin)</label>
+                      <select class="bc-select" id="reg-m1" style="border-color:#E65100;">
                         <option value="${state.me.id}">-- Chính bạn --</option>
                         ${activeMembers.filter(m => m.id !== state.me.id).map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'})</option>`).join('')}
                       </select>
@@ -6737,16 +6252,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                       <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Chọn hạng mục</label>
                       <select class="bc-select" id="reg-cat">
                         ${activeTour.categories.map(c => `<option value="${c}">${c}</option>`).join('')}
-                      </select>
-                    </div>
-                    <div style="flex:1; min-width:160px;">
-                      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Trình độ (Tự đánh giá)</label>
-                      <select class="bc-select" id="reg-skill">
-                        <option value="Chưa xác định">-- Chọn trình độ --</option>
-                        <option value="Newbie">🐣 Newbie (Mới chơi)</option>
-                        <option value="Beginner">🏸 Beginner (Biết đánh cơ bản)</option>
-                        <option value="Intermediate">🔥 Intermediate (Khá tốt)</option>
-                        <option value="Advanced">⚡ Advanced (Kinh nghiệm/Giỏi)</option>
                       </select>
                     </div>
                     <div style="flex:1.5; min-width:180px;">
@@ -6763,7 +6268,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                         ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'})</option>`).join('')}
                       </select>
                     </div>
-                    <button class="bc-btn" id="reg-submit-btn" style="background:#27500A; border-color:var(--text-primary);">Ghi danh ngay!</button>
+                    <button class="bc-btn" id="reg-submit-btn" style="background:#27500A; border-color:#27500A;">Ghi danh ngay!</button>
                   </div>
                 </div>`);
                 wrap.appendChild(regCard);
@@ -6803,11 +6308,10 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                       if (cat === 'Đôi Nữ' && (me.gender||'Nam') === 'Nam') return alert('Bạn là Nam, không thể đăng ký Đôi Nữ!');
                     }
                     
-                    const skill = document.getElementById('reg-skill') ? document.getElementById('reg-skill').value : '';
                     await mutateTournaments(tours => {
                       const tour = tours.find(t => t.id === activeTour.id);
                       if (tour) {
-                         tour.registrations.push({ id: uid(), cat, type, m1: me.id, m2, skill, createdAt: Date.now() });
+                         tour.registrations.push({ id: uid(), cat, type, m1: me.id, m2, createdAt: Date.now() });
                       }
                       return tours;
                     });
@@ -6816,21 +6320,22 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                   };
                 }, 0);
               }
+          } else {
+              wrap.appendChild(el(`<div class="bc-card" style="margin-bottom:1rem; padding:15px; color:#5D4037; background:#EFEBE9; text-align:center;">🔒 Giai đoạn đăng ký đã khép lại. Dưới đây là danh sách VĐV.</div>`));
           }
 
           const listCard = el(`<div class="bc-card" style="margin-bottom:1rem;">
-            <h4 style="font-size:15px; color:var(--text-primary); margin-bottom:10px;">📋 Danh sách VĐV Ghi Danh (${activeTour.registrations.length} lượt)</h4>
+            <h4 style="font-size:15px; color:#1B4332; margin-bottom:10px;">📋 Danh sách VĐV Ghi Danh (${activeTour.registrations.length} lượt)</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
               ${activeTour.registrations.length === 0 ? '<div class="bc-empty" style="padding:10px;">Chưa có ai đăng ký.</div>' : ''}
               ${activeTour.registrations.map(r => {
                 const p1 = state.members.find(m => m.id === r.m1);
                 const p2 = r.m2 ? state.members.find(m => m.id === r.m2) : null;
-                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--card-bg); border:1px solid #E9ECEF; border-radius:6px;">
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#F8F9FA; border:1px solid #E9ECEF; border-radius:6px;">
                   <div>
-                    <span class="bc-badge" style="background:var(--tab-bg); color:var(--text-primary); margin-right:8px;">${r.cat}</span>
-                    <strong style="font-size:13px; color:var(--text-secondary);">${escapeHtml(p1?memberDisplayName(p1):'')}</strong> ${p1?.gender==='Nữ'?'👩':'👨'}
-                    ${r.type === 'pair' && p2 ? `<span style="color:var(--text-secondary); font-size:12px; margin:0 6px;">+</span> <strong style="font-size:13px; color:var(--text-secondary);">${escapeHtml(memberDisplayName(p2))}</strong> ${p2.gender==='Nữ'?'👩':'👨'} ${canManage() ? `<button class="bc-btn small warning" id="split-reg-${r.id}" style="margin-left:8px; padding:2px 6px; font-size:10px;">✂️ Tách cặp</button>` : ''}` : `<span style="font-size:11px; color:#F26419; margin-left:8px; font-style:italic;">(Đang tìm partner 🤝)</span>`}
-                    ${r.skill && r.skill !== 'Chưa xác định' ? `<span style="font-size:11px; margin-left:8px; background:#4CAF50; color:#FFF; padding:2px 6px; border-radius:4px; font-weight:600;">${r.skill}</span>` : ''}
+                    <span class="bc-badge" style="background:#E3F2FD; color:#1565C0; margin-right:8px;">${r.cat}</span>
+                    <strong style="font-size:13px; color:#333;">${escapeHtml(p1?memberDisplayName(p1):'')}</strong> ${p1?.gender==='Nữ'?'👩':'👨'}
+                    ${r.type === 'pair' && p2 ? `<span style="color:#888; font-size:12px; margin:0 6px;">+</span> <strong style="font-size:13px; color:#333;">${escapeHtml(memberDisplayName(p2))}</strong> ${p2.gender==='Nữ'?'👩':'👨'}` : `<span style="font-size:11px; color:#E65100; margin-left:8px; font-style:italic;">(Đang tìm partner 🤝)</span>`}
                   </div>
                   ${canManage() && activeTour.status === 'registering' ? `<button class="bc-btn danger small" id="del-reg-${r.id}">Xóa</button>` : ''}
                 </div>`;
@@ -6841,48 +6346,39 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
           
           if (canManage() && activeTour.status === 'registering') {
             const pairingCard = el(`<div class="bc-card" style="border: 2px solid #1B4332;">
-              ${(() => {
-                const soloRegs = activeTour.registrations.filter(r => r.type === 'solo');
-                return `<h4 style="font-size:15px; color:var(--text-primary); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                  <span>👥 MA TRẬN CÁP KÈO (${soloRegs.length} VĐV)</span>
-                  ${soloRegs.length >= 2 ? `<div style="display:flex; gap:6px; align-items:center;">
-                    <select class="bc-select" id="matrix-target-cat" style="font-size:12px; padding:4px 8px;">
-                      ${activeTour.categories.map(c => `<option value="${c}">${c}</option>`).join('')}
-                    </select>
-                    <button class="bc-btn small" id="pair-merge-selected-btn" style="background:#1B4332; border-color:var(--text-primary); font-size:12px; padding:6px 12px;">🔗 Ghép cặp 2 VĐV đã chọn</button>
-                  </div>` : ''}
-                </h4>
-                
-                <div style="overflow-x:auto;">
-                   <table class="bc-table" style="width:100%; font-size:13px; border-collapse:collapse;">
-                     <thead><tr style="background:var(--tab-bg); text-align:left;">
-                       <th style="padding:8px; width:40px; text-align:center;">Chọn</th>
-                       <th style="padding:8px;">Vận động viên</th>
-                       <th style="padding:8px; text-align:center;">Giới tính</th>
-                       <th style="padding:8px;">Trình độ</th>
-                       <th style="padding:8px;">Hạng mục đăng ký</th>
-                     </tr></thead>
-                     <tbody>
-                       ${soloRegs.length === 0 ? `<tr><td colspan="4" style="text-align:center; padding:15px; color:var(--text-secondary); font-style:italic;">Không có VĐV nào đang đợi ghép cặp.</td></tr>` : ''}
-                       ${soloRegs.map(r => {
-                          const m = state.members.find(x => x.id === r.m1);
-                          return `<tr>
-                            <td style="padding:8px; text-align:center;">
-                               <input type="checkbox" class="matrix-chk" value="${r.id}" style="transform:scale(1.3); cursor:pointer;" />
-                            </td>
-                            <td style="padding:8px; font-weight:600;">${escapeHtml(m?memberDisplayName(m):'')}</td>
-                            <td style="padding:8px; text-align:center;">${m?.gender==='Nữ'?'👩 Nữ':'👨 Nam'}</td>
-                            <td style="padding:8px;"><span class="bc-badge" style="background:var(--tab-bg); color:var(--text-primary);">${r.cat}</span></td>
-                          </tr>`;
-                       }).join('')}
-                     </tbody>
-                   </table>
-                </div>`;
-              })()}
+              <h4 style="font-size:15px; color:#1B4332; margin-bottom:10px;">👥 BTC Cáp Kèo (Cho các VĐV đăng ký Solo)</h4>
+              <div style="font-size:12px; color:#666; margin-bottom:10px;">Chọn 2 VĐV từ danh sách đăng ký lẻ để ghép thành 1 cặp chính thức. Các cặp đã "Đăng ký nguyên cặp" sẽ được gom tự động khi chốt.</div>
+              
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:1; min-width:140px;">
+                  <select class="bc-select" id="pair-m1">
+                    <option value="">- VĐV 1 -</option>
+                    ${activeTour.registrations.filter(r => r.type==='solo').map(r => {
+                      const m = state.members.find(x => x.id === r.m1);
+                      return m ? `<option value="${r.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'} - ${r.cat})</option>` : '';
+                    }).join('')}
+                  </select>
+                </div>
+                <div style="flex:1; min-width:140px;">
+                  <select class="bc-select" id="pair-m2">
+                    <option value="">- VĐV 2 -</option>
+                    ${activeTour.registrations.filter(r => r.type==='solo').map(r => {
+                      const m = state.members.find(x => x.id === r.m1);
+                      return m ? `<option value="${r.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'} - ${r.cat})</option>` : '';
+                    }).join('')}
+                  </select>
+                </div>
+                <div style="flex:1; min-width:120px;">
+                  <select class="bc-select" id="pair-target-cat">
+                    ${activeTour.categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+                  </select>
+                </div>
+                <button class="bc-btn" id="pair-merge-btn">Ghép cặp</button>
+              </div>
 
               <div style="margin-top:20px; text-align:right; border-top:1px dashed #CCC; padding-top:15px;">
-                <button class="bc-btn danger" id="tour-to-grouping-btn" style="font-size:14px; padding:10px 20px;">
-                  🎲 CHỐT DANH SÁCH & CHUYỂN SANG GẮP THĂM
+                <button class="bc-btn danger" id="tour-lock-reg-btn" style="font-size:14px; padding:10px 20px;">
+                  🔒 CHỐT DANH SÁCH & BẮT ĐẦU CHIA BẢNG
                 </button>
               </div>
             </div>`);
@@ -6890,26 +6386,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
             
             setTimeout(() => {
               activeTour.registrations.forEach(r => {
-                const sBtn = document.getElementById(`split-reg-${r.id}`);
-                if (sBtn) sBtn.onclick = async () => {
-                  if (!confirm('Bạn có chắc muốn tách cặp này thành 2 người Solo?')) return;
-                  await mutateTournaments(tours => {
-                     const tour = tours.find(t => t.id === activeTour.id);
-                     if (tour) {
-                        const tr = tour.registrations.find(x => x.id === r.id);
-                        if (tr) {
-                           tr.type = 'solo';
-                           const m2Id = tr.m2;
-                           tr.m2 = null;
-                           if (m2Id) {
-                              tour.registrations.push({ id: uid(), cat: tr.cat, type: 'solo', m1: m2Id, m2: null, createdAt: Date.now() });
-                           }
-                        }
-                     }
-                     return tours;
-                  });
-                  render();
-                };
                 const btn = document.getElementById(`del-reg-${r.id}`);
                 if(btn) btn.onclick = async () => {
                   await mutateTournaments(tours => {
@@ -6921,13 +6397,11 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                 };
               });
 
-              const mergeBtn = document.getElementById('pair-merge-selected-btn');
-              if (mergeBtn) mergeBtn.onclick = async () => {
-                const checked = Array.from(document.querySelectorAll('.matrix-chk:checked')).map(x => x.value);
-                if (checked.length !== 2) return alert('Vui lòng tick chọn chính xác 2 VĐV để ghép cặp!');
-                const r1Id = checked[0];
-                const r2Id = checked[1];
-                const tCat = document.getElementById('matrix-target-cat').value;
+              document.getElementById('pair-merge-btn').onclick = async () => {
+                const r1Id = document.getElementById('pair-m1').value;
+                const r2Id = document.getElementById('pair-m2').value;
+                const tCat = document.getElementById('pair-target-cat').value;
+                if (!r1Id || !r2Id || r1Id === r2Id) return alert('Vui lòng chọn 2 VĐV hợp lệ!');
                 
                 const r1 = activeTour.registrations.find(x => x.id === r1Id);
                 const r2 = activeTour.registrations.find(x => x.id === r2Id);
@@ -6959,255 +6433,77 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                 render();
               };
               
-              document.getElementById('tour-to-grouping-btn').onclick = async () => {
-                if(!confirm('Xác nhận chốt danh sách đăng ký để tiến hành gắp thăm chia bảng?')) return;
+              document.getElementById('tour-lock-reg-btn').onclick = async () => {
+                if(!confirm('Xác nhận chốt danh sách đăng ký? Hệ thống sẽ chuyển sang giai đoạn thi đấu!')) return;
                 
-                // ĐÁNH SỐ ĐỘI (TEAM NUMBERING)
-                let globalTeamNumber = 1;
-                const pairs = activeTour.registrations.filter(r => r.type === 'pair').map(r => {
+                const pairs = activeTour.registrations.filter(r => r.type === 'pair').map((r, i) => {
                   const p1 = state.members.find(x => x.id === r.m1);
                   const p2 = state.members.find(x => x.id === r.m2);
-                  const nameStr = `Đội ${globalTeamNumber}: ${p1.nickname||p1.name} & ${p2.nickname||p2.name}`;
-                  globalTeamNumber++;
                   return {
-                    id: 'P' + Date.now() + Math.random().toString().slice(2,8),
+                    id: 'P' + Date.now() + i,
                     m1: r.m1,
                     m2: r.m2,
                     cat: r.cat,
-                    name: nameStr
+                    name: `${p1.nickname||p1.name} & ${p2.nickname||p2.name}`
                   };
                 });
 
                 const groups = [];
+                const matches = [];
                 for (const cat of activeTour.categories) {
                    const catPairs = pairs.filter(p => p.cat === cat);
                    if (catPairs.length === 0) continue;
                    
-                   const numGroups = Math.max(1, Math.floor(catPairs.length / 4) || (catPairs.length >= 3 ? 1 : 1));
+                   const numGroups = Math.max(1, Math.floor(catPairs.length / 4));
                    const shuffled = [...catPairs].sort(() => Math.random() - 0.5);
                    for (let i = 0; i < numGroups; i++) {
                        const gId = 'G' + Date.now() + i + cat.replace(/\s/g,'');
-                       const groupName = `Bảng ${String.fromCharCode(65 + i)}`;
+                       const groupName = `Bảng ${String.fromCharCode(65 + i)} - ${cat}`;
                        const groupPairs = shuffled.filter((_, idx) => idx % numGroups === i);
                        groups.push({ id: gId, cat, name: groupName, pairs: groupPairs.map(p => p.id) });
+                       
+                       for (let a = 0; a < groupPairs.length; a++) {
+                          for (let b = a + 1; b < groupPairs.length; b++) {
+                             matches.push({
+                                id: 'M' + Date.now() + a + b + gId,
+                                groupId: gId,
+                                cat: cat,
+                                p1: groupPairs[a].id,
+                                p2: groupPairs[b].id,
+                                score1: null,
+                                score2: null,
+                                status: 'pending'
+                             });
+                          }
+                       }
                    }
                 }
 
+                const remainingSolo = activeTour.registrations.filter(r => r.type === 'solo').length;
+                if (remainingSolo > 0) alert(`Lưu ý: Có ${remainingSolo} VĐV đăng ký lẻ chưa được ghép cặp và sẽ KHÔNG được đưa vào danh sách thi đấu.`);
+                
                 await mutateTournaments(tours => {
                    const tour = tours.find(t => t.id === activeTour.id);
                    if (tour) {
                       tour.pairs = pairs;
                       tour.groups = groups;
-                      tour.matches = []; // matches will be generated after grouping
-                      tour.status = 'grouping';
+                      tour.matches = matches;
+                      tour.status = 'playing';
                    }
                    return tours;
                 });
-                state.tourActiveTab = 'grouping';
-                showToast('Chuyển sang bước Gắp thăm chia bảng!', 'success');
+                state.tourActiveTab = 'group';
+                showToast('Đã chốt danh sách thi đấu và chia bảng!', 'success');
                 render();
               };
             }, 0);
           }
        }
 
-       // ======================== TAB 2: GROUPING ========================
-       if (isGroupingTab) {
-          const groupingContainer = el(`<div style="display:flex; flex-direction:column; gap:20px;"></div>`);
-          
-          groupingContainer.appendChild(el(`<div class="bc-card" style="background:var(--tab-bg); border:1px solid #CE93D8;">
-             <h4 style="color:var(--text-primary); margin-bottom:5px;">🎲 BƯỚC 2: GẮP THĂM & ĐIỀU CHỈNH BẢNG ĐẤU</h4>
-             <div style="font-size:13px; color:var(--text-primary);">BTC có thể thay đổi bảng đấu cho từng Đội trước khi chốt. Hệ thống đã gợi ý chia đều ngẫu nhiên bên dưới.</div>
-          </div>`));
-
-          activeTour.categories.forEach(cat => {
-             const catGroups = activeTour.groups.filter(g => g.cat === cat);
-             if (catGroups.length === 0) return;
-
-             const catCard = el(`<div class="bc-card" style="border-left:4px solid #9C27B0;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                   <h4 style="color:var(--text-primary); margin:0; font-size:16px;">🏸 Hạng mục: ${cat}</h4>
-                   ${canManage() ? `<button class="bc-btn small add-group-btn" data-cat="${cat}" style="background:#4CAF50; border-color:#4CAF50; color:#FFF; padding:4px 8px; font-size:12px;">+ Thêm Bảng</button>` : ''}
-                </div>
-                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
-                   ${catGroups.map(g => {
-                      return `<div style="border:1px solid #E1BEE7; border-radius:8px; background:var(--card-bg); padding:10px;">
-                         <div style="font-weight:bold; color:var(--text-primary); margin-bottom:10px; border-bottom:1px solid #E1BEE7; padding-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
-                            <span>${escapeHtml(g.name)} (${g.pairs.length} Đội)</span>
-                            ${canManage() ? `<div style="display:flex; gap:4px;">
-                               <button class="bc-btn small edit-group-btn" data-gid="${g.id}" style="padding:2px 6px; font-size:10px; background:transparent; border:1px solid #9C27B0; color:#9C27B0;">✏️</button>
-                               <button class="bc-btn small danger del-group-btn" data-gid="${g.id}" style="padding:2px 6px; font-size:10px; background:transparent; border:1px solid #D32F2F; color:#D32F2F;">🗑️</button>
-                            </div>` : ''}
-                         </div>
-                         <div style="display:flex; flex-direction:column; gap:8px;">
-                            ${g.pairs.map(pId => {
-                               const p = activeTour.pairs.find(x => x.id === pId);
-                               return `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); border: 1px solid var(--card-border); padding:6px 8px; border-radius:4px; font-size:13px;">
-                                  <span style="font-weight:600;">${escapeHtml(p?.name)}</span>
-                                  <select class="bc-select change-group-sel" data-pid="${pId}" data-cat="${cat}" style="padding:2px 4px; font-size:12px;">
-                                     ${catGroups.map(cg => `<option value="${cg.id}" ${cg.id===g.id?'selected':''}>${cg.name}</option>`).join('')}
-                                  </select>
-                               </div>`;
-                            }).join('')}
-                            ${g.pairs.length === 0 ? '<div style="color:var(--text-secondary); font-size:12px; font-style:italic;">Bảng trống</div>' : ''}
-                         </div>
-                      </div>`;
-                   }).join('')}
-                </div>
-             </div>`);
-             groupingContainer.appendChild(catCard);
-          });
-
-          if (canManage()) {
-             groupingContainer.appendChild(el(`<div style="text-align:center; margin-top:20px; padding-top:20px; border-top:1px dashed var(--card-border); display:flex; flex-direction:column; gap:10px; align-items:center;">
-                <button class="bc-btn" id="tour-start-playing-btn" style="background:#7B1FA2; border-color:var(--text-primary); font-size:16px; padding:12px 25px; box-shadow:0 4px 10px rgba(123,31,162,0.3);">⚡ PHÁT SINH LỊCH THI ĐẤU VÀ BẮT ĐẦU!</button>
-                <button class="bc-btn danger" id="tour-rollback-btn" style="background:transparent; color:#F26419; border:none; font-size:13px; text-decoration:underline;">↩️ Quay xe: Hủy gắp thăm, trở về bước Ghi danh</button>
-             </div>`));
-
-             setTimeout(() => {
-                document.querySelectorAll('.add-group-btn').forEach(btn => {
-                   btn.onclick = async (e) => {
-                      const cat = e.target.dataset.cat;
-                      const gName = prompt(`Nhập tên Bảng mới cho ${cat}:`, `Bảng Mới`);
-                      if (!gName) return;
-                      await mutateTournaments(tours => {
-                         const tour = tours.find(t => t.id === activeTour.id);
-                         if (tour) {
-                            tour.groups.push({ id: 'G' + Date.now() + cat.replace(/\s/g,''), cat, name: gName, pairs: [] });
-                         }
-                         return tours;
-                      });
-                      render();
-                   };
-                });
-                
-                document.querySelectorAll('.edit-group-btn').forEach(btn => {
-                   btn.onclick = async (e) => {
-                      const gId = e.currentTarget.dataset.gid;
-                      const tour = state.tournaments.find(t => t.id === activeTour.id);
-                      const g = tour.groups.find(x => x.id === gId);
-                      if(!g) return;
-                      const newName = prompt('Đổi tên bảng:', g.name);
-                      if(!newName) return;
-                      await mutateTournaments(tours => {
-                         const t = tours.find(x => x.id === activeTour.id);
-                         if (t) {
-                            const group = t.groups.find(x => x.id === gId);
-                            if (group) group.name = newName;
-                         }
-                         return tours;
-                      });
-                      render();
-                   };
-                });
-                
-                document.querySelectorAll('.del-group-btn').forEach(btn => {
-                   btn.onclick = async (e) => {
-                      const gId = e.currentTarget.dataset.gid;
-                      const tour = state.tournaments.find(t => t.id === activeTour.id);
-                      const g = tour.groups.find(x => x.id === gId);
-                      if(!g) return;
-                      if(g.pairs.length > 0) return alert('Bảng này đang chứa Đội, vui lòng chuyển các Đội sang bảng khác trước khi xóa!');
-                      if(!confirm(`Xóa ${g.name}?`)) return;
-                      await mutateTournaments(tours => {
-                         const t = tours.find(x => x.id === activeTour.id);
-                         if (t) t.groups = t.groups.filter(x => x.id !== gId);
-                         return tours;
-                      });
-                      render();
-                   };
-                });
-
-                document.querySelectorAll('.change-group-sel').forEach(sel => {
-                   sel.onchange = async (e) => {
-                      const pId = e.target.dataset.pid;
-                      const targetGId = e.target.value;
-                      await mutateTournaments(tours => {
-                         const tour = tours.find(t => t.id === activeTour.id);
-                         if (tour) {
-                            // Xóa khỏi bảng cũ
-                            tour.groups.forEach(g => {
-                               g.pairs = g.pairs.filter(x => x !== pId);
-                            });
-                            // Thêm vào bảng mới
-                            const newGroup = tour.groups.find(g => g.id === targetGId);
-                            if (newGroup) newGroup.pairs.push(pId);
-                         }
-                         return tours;
-                      });
-                      render();
-                   };
-                });
-
-                const rollbackBtn = document.getElementById('tour-rollback-btn');
-                if (rollbackBtn) rollbackBtn.onclick = async () => {
-                   if (!confirm('Bạn có chắc muốn hủy kết quả chia bảng hiện tại và quay lại màn hình Ghi danh (thêm/sửa VĐV)?')) return;
-                   await mutateTournaments(tours => {
-                      const t = tours.find(x => x.id === activeTour.id);
-                      if (t) {
-                         t.status = 'registering';
-                         t.groups = [];
-                         t.matches = [];
-                         t.bracket = null;
-                      }
-                      return tours;
-                   });
-                   state.tourActiveTab = 'reg';
-                   showToast('Đã quay lại bước Ghi danh!', 'success');
-                   render();
-                };
-                
-                document.getElementById('tour-start-playing-btn').onclick = async () => {
-                   if (!confirm('Xác nhận chốt bảng và sinh lịch thi đấu? Không thể quay lại bước này.')) return;
-                   
-                   const matches = [];
-                   activeTour.groups.forEach(g => {
-                      const gPairs = g.pairs;
-                      for (let a = 0; a < gPairs.length; a++) {
-                         for (let b = a + 1; b < gPairs.length; b++) {
-                            matches.push({
-                               id: uid(),
-                               groupId: g.id,
-                               cat: g.cat,
-                               p1: gPairs[a],
-                               p2: gPairs[b],
-                               score1: null,
-                               score2: null,
-                               status: 'pending',
-                               courtId: null,
-                               startTime: null,
-                               endTime: null
-                            });
-                         }
-                      }
-                   });
-
-                   await mutateTournaments(tours => {
-                      const t = tours.find(x => x.id === activeTour.id);
-                      if (t) {
-                         t.matches = matches;
-                         t.status = 'playing';
-                      }
-                      return tours;
-                   });
-                   state.tourActiveTab = 'group';
-                   showToast('Đã phát sinh lịch thi đấu thành công!', 'success');
-                   render();
-                };
-             }, 0);
-          }
-
-          wrap.appendChild(groupingContainer);
-       }
-
-       // ======================== TAB 3: GROUP STAGE ========================
+       // TAB 2: GROUP STAGE
        if (isGroupTab) {
           const groupsContainer = el(`<div style="display:flex; flex-direction:column; gap:20px;"></div>`);
           
-          const courtOptions = Array.from({length: activeTour.courtsCount || 4}, (_, i) => {
-             return `<option value="Sân ${i+1}">Sân ${i+1}</option>`;
-          }).join('');
-
           (activeTour.groups || []).forEach(g => {
              const gMatches = (activeTour.matches || []).filter(m => m.groupId === g.id);
              
@@ -7228,18 +6524,18 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
              }).sort((a, b) => b.points - a.points || b.diff - a.diff);
 
              const groupCard = el(`<div class="bc-card" style="border-left: 4px solid #FF8F00;">
-               <h4 style="color:#F26419; font-size:16px; margin-bottom:10px;">🏆 ${escapeHtml(g.name)} (${g.cat})</h4>
+               <h4 style="color:#FF6F00; font-size:16px; margin-bottom:10px;">🏆 ${escapeHtml(g.name)}</h4>
                <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
                  
                  <div style="flex:1; min-width:300px;">
                    <table class="bc-table" style="font-size:12px; width:100%; border-collapse:collapse;">
-                     <thead><tr style="background:var(--card-bg); text-align:left;">
-                       <th style="padding:8px;">VT</th><th style="padding:8px;">Đội</th><th style="padding:8px;">Trận</th><th style="padding:8px;">T/B</th><th style="padding:8px;">HS</th><th style="padding:8px;">Điểm</th>
+                     <thead><tr style="background:#F5F5F5; text-align:left;">
+                       <th style="padding:8px;">VT</th><th style="padding:8px;">Cặp đấu</th><th style="padding:8px;">Trận</th><th style="padding:8px;">T/B</th><th style="padding:8px;">HS</th><th style="padding:8px;">Điểm</th>
                      </tr></thead>
                      <tbody>
                        ${standings.map((s, i) => `<tr style="border-bottom:1px solid #EEE;">
                          <td style="padding:8px; font-weight:bold; color:${i<2?'#2E7D32':'#666'}">${i+1}</td>
-                         <td style="padding:8px; font-weight:600;">${escapeHtml(s.name)}</td>
+                         <td style="padding:8px;">${escapeHtml(s.name)}</td>
                          <td style="padding:8px;">${s.played}</td>
                          <td style="padding:8px;">${s.won}/${s.lost}</td>
                          <td style="padding:8px;">${s.diff > 0 ? '+'+s.diff : s.diff}</td>
@@ -7249,54 +6545,26 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                    </table>
                  </div>
 
-                 <div style="flex:1.5; min-width:320px; display:flex; flex-direction:column; gap:12px;">
+                 <div style="flex:1.5; min-width:320px; display:flex; flex-direction:column; gap:10px;">
                    ${gMatches.map(m => {
                      const p1 = activeTour.pairs.find(x => x.id === m.p1);
                      const p2 = activeTour.pairs.find(x => x.id === m.p2);
-                     let durationText = '';
-                     if (m.startTime && m.endTime) {
-                        const mins = Math.round((m.endTime - m.startTime) / 60000);
-                        durationText = `<span style="font-size:10px; color:var(--text-secondary);">⏱️ ${mins} phút</span>`;
-                     } else if (m.startTime && m.status === 'live') {
-                        const mins = Math.floor((Date.now() - m.startTime) / 60000);
-                        durationText = `<span style="font-size:10px; color:#F26419; animation: pulse 1s infinite;">⏱️ Đang đánh (${mins}p)</span>`;
-                     }
-
-                     const isP1Win = m.status === 'finished' && m.score1 > m.score2;
-                     const isP2Win = m.status === 'finished' && m.score2 > m.score1;
-
-                     return `<div style="border:1px solid ${m.status==='live'?'#D32F2F':'var(--card-border)'}; border-radius:8px; padding:10px; background:${m.status==='finished'?'var(--tab-bg)':(m.status==='live'?'rgba(211, 47, 47, 0.1)':'var(--card-bg)')}; position:relative;">
-                       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px dashed #CCC; padding-bottom:4px;">
-                          ${canManage() ? `
-                            <input type="text" class="small-turn-inp" data-mid="${m.id}" value="${escapeHtml(m.turn||'')}" placeholder="Lượt (VD: 1)" style="width:70px; font-size:11px; padding:2px; border:1px solid var(--card-border); border-radius:4px; text-align:center; background:var(--card-bg)9C4; margin-right:4px;" />
-                            <select class="bc-select small-court-sel" data-mid="${m.id}" style="font-size:11px; padding:2px; background:var(--card-bg)9C4; border:1px solid var(--card-border);">
-                              <option value="">-- Chọn Sân --</option>
-                              ${courtOptions.replace(`value="${m.courtId}"`, `value="${m.courtId}" selected`)}
-                            </select>
-                          ` : `<span style="font-size:11px; font-weight:bold; color:#F26419; background:var(--card-bg)DE7; padding:2px 6px; border-radius:4px;">${m.turn ? `Lượt ${escapeHtml(m.turn)} - ` : ''}${m.courtId ? escapeHtml(m.courtId) : 'Chưa xếp sân'}</span>`}
-                          ${durationText}
-                       </div>
-                       
+                     return `<div style="border:1px solid #E0E0E0; border-radius:8px; padding:10px; background:${m.status==='finished'?'#F5F5F5':'#FFF'}; position:relative;">
+                       ${m.status === 'live' ? `<span style="position:absolute; top:-8px; left:10px; background:#D32F2F; color:#FFF; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; animation: pulse 1.5s infinite;">LIVE</span>` : ''}
                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                         <div style="flex:1; font-size:13px; font-weight:${isP1Win ? 'bold':'600'}; color:${isP1Win?'#4CAF50':'var(--text-primary)'}">
-                            ${isP1Win ? '🏆 ' : ''}${escapeHtml(p1?.name)}
-                         </div>
+                         <div style="flex:1; font-size:13px; font-weight:${m.score1 > m.score2 ? 'bold':'normal'};">${escapeHtml(p1?.name)}</div>
                          <div style="padding:0 10px; white-space:nowrap;">
                             ${canManage() ? 
-                              (m.status === 'pending' ? `<span style="font-size:12px; color:var(--text-secondary); font-style:italic;">(Chưa diễn ra)</span>` :
-                              `<input type="number" id="s1-${m.id}" value="${m.score1!==null?m.score1:''}" style="width:40px; text-align:center; border: 1px solid var(--card-border); border-radius:4px; padding:4px;" /> - 
-                               <input type="number" id="s2-${m.id}" value="${m.score2!==null?m.score2:''}" style="width:40px; text-align:center; border: 1px solid var(--card-border); border-radius:4px; padding:4px;" />`)
-                              : `<span style="font-size:16px; font-weight:bold; color:var(--text-primary);">${m.score1!==null?m.score1:'-'} : ${m.score2!==null?m.score2:'-'}</span>`
+                              `<input type="number" id="s1-${m.id}" value="${m.score1!==null?m.score1:''}" style="width:40px; text-align:center; border:1px solid #CCC; border-radius:4px; padding:4px;" /> - 
+                               <input type="number" id="s2-${m.id}" value="${m.score2!==null?m.score2:''}" style="width:40px; text-align:center; border:1px solid #CCC; border-radius:4px; padding:4px;" />` 
+                              : `<span style="font-size:16px; font-weight:bold; color:#1565C0;">${m.score1!==null?m.score1:'-'} : ${m.score2!==null?m.score2:'-'}</span>`
                             }
                          </div>
-                         <div style="flex:1; font-size:13px; text-align:right; font-weight:${isP2Win ? 'bold':'600'}; color:${isP2Win?'#4CAF50':'var(--text-primary)'}">
-                            ${escapeHtml(p2?.name)}${isP2Win ? ' 🏆' : ''}
-                         </div>
+                         <div style="flex:1; font-size:13px; text-align:right; font-weight:${m.score2 > m.score1 ? 'bold':'normal'};">${escapeHtml(p2?.name)}</div>
                        </div>
                        ${canManage() ? `
-                         <div style="text-align:center; margin-top:8px; display:flex; gap:6px; justify-content:center;">
-                           ${m.status === 'pending' ? `<button class="bc-btn small" id="start-match-${m.id}" style="background:#4CAF50; border-color:#4CAF50; color:#FFF; font-size:11px; padding:4px 10px; width:100%;">▶️ Bắt đầu</button>` : 
-                           `<button class="bc-btn small" id="update-match-${m.id}" style="background:#0288D1; border-color:var(--text-primary); color:#FFF; font-size:11px; padding:4px 10px;">💾 Lưu Tỷ số</button>`}
+                         <div style="text-align:center; margin-top:8px;">
+                           <button class="bc-btn small" id="update-match-${m.id}" style="background:#0288D1; border-color:#0288D1; color:#FFF; font-size:11px; padding:4px 10px;">Lưu Tỷ số</button>
                          </div>
                        ` : ''}
                      </div>`;
@@ -7309,19 +6577,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
 
              setTimeout(() => {
                 gMatches.forEach(m => {
-                   const startBtn = document.getElementById(`start-match-${m.id}`);
-                   if (startBtn) {
-                      startBtn.onclick = async () => {
-                         await mutateTournaments(tours => {
-                            const match = tours.find(t=>t.id===activeTour.id).matches.find(x=>x.id===m.id);
-                            match.status = 'live';
-                            match.startTime = Date.now();
-                            return tours;
-                         });
-                         render();
-                      };
-                   }
-
                    const btn = document.getElementById(`update-match-${m.id}`);
                    if (btn) {
                       btn.onclick = async () => {
@@ -7331,71 +6586,39 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                          let s2 = s2Str === '' ? null : parseInt(s2Str, 10);
                          
                          let status = m.status;
-                         let eTime = m.endTime;
-                         let sTime = m.startTime;
-                         
-                         if (s1 !== null && s2 !== null) {
-                            status = 'finished';
-                            if (!eTime) eTime = Date.now();
-                            if (!sTime) sTime = Date.now() - 15*60000; // fake 15 mins if not started
-                         }
-                         else if (s1 !== null || s2 !== null) {
-                            status = 'live';
-                            if (!sTime) sTime = Date.now();
-                         }
-                         else {
-                            status = m.status; // Keep existing status if no score is entered
-                         }
+                         if (s1 !== null && s2 !== null) status = 'finished';
+                         else if (s1 !== null || s2 !== null) status = 'live';
+                         else status = 'pending';
 
                          await mutateTournaments(tours => {
-                            const match = tours.find(t=>t.id===activeTour.id).matches.find(x=>x.id===m.id);
-                            match.score1 = s1;
-                            match.score2 = s2;
-                            match.status = status;
-                            match.startTime = sTime;
-                            match.endTime = eTime;
+                            const t = tours.find(x => x.id === activeTour.id);
+                            if (t) {
+                               const match = t.matches.find(x => x.id === m.id);
+                               if (match) {
+                                  match.score1 = s1;
+                                  match.score2 = s2;
+                                  match.status = status;
+                               }
+                            }
                             return tours;
                          });
                          render();
                       };
                    }
                 });
-
-                document.querySelectorAll('.small-turn-inp').forEach(inp => {
-                   inp.onchange = async (e) => {
-                      const mId = e.target.dataset.mid;
-                      const turnVal = e.target.value.trim();
-                      await mutateTournaments(tours => {
-                         const match = tours.find(t=>t.id===activeTour.id).matches.find(x=>x.id===mId);
-                         if (match) match.turn = turnVal;
-                         return tours;
-                      });
-                   };
-                });
-                document.querySelectorAll('.small-court-sel').forEach(sel => {
-                   sel.onchange = async (e) => {
-                      const mId = e.target.dataset.mid;
-                      const cId = e.target.value;
-                      await mutateTournaments(tours => {
-                         const match = tours.find(t=>t.id===activeTour.id).matches.find(x=>x.id===mId);
-                         if (match) match.courtId = cId;
-                         return tours;
-                      });
-                   };
-                });
              }, 0);
           });
           wrap.appendChild(groupsContainer);
 
-          if (canManage() && (activeTour.status === 'playing' || activeTour.status === 'knockout')) {
-             wrap.appendChild(el(`<div style="text-align:center; margin-top:30px; padding-top:20px; border-top:2px dashed var(--card-border);">
-                <button class="bc-btn" id="tour-to-knockout-btn" style="padding:12px 25px; font-size:16px; background:linear-gradient(135deg, #F26419 0%, #D8973C 100%); border:none; color:#FFF; box-shadow:0 4px 15px rgba(242,100,25,0.4); text-transform:uppercase; font-weight:bold;">${activeTour.status === 'knockout' ? '🔄 Tái tính toán & Tạo lại Nhánh đấu' : '🏆 Chốt vòng bảng & Tạo Nhánh đấu Knockout'}</button>
+          if (canManage() && activeTour.status === 'playing') {
+             wrap.appendChild(el(`<div style="text-align:center; margin-top:30px; padding-top:20px; border-top:2px dashed #4CAF50;">
+                <button class="bc-btn danger" id="tour-to-knockout-btn" style="padding:12px 25px; font-size:16px; background:#D32F2F; border-color:#D32F2F; box-shadow:0 4px 10px rgba(211,47,47,0.3);">🏆 CHỐT VÒNG BẢNG & TẠO NHÁNH ĐẤU KNOCKOUT</button>
              </div>`));
 
              setTimeout(() => {
                 const btn = document.getElementById('tour-to-knockout-btn');
                 if (btn) btn.onclick = async () => {
-                   if (!confirm('Chốt vòng bảng? Hệ thống sẽ tự động tạo sơ đồ thi đấu loại trực tiếp dựa trên số lượng đội đi tiếp.')) return;
+                   if (!confirm('Chốt vòng bảng? Hệ thống sẽ tạo sơ đồ thi đấu loại trực tiếp.')) return;
                    
                    const bracket = {}; 
                    for (const cat of activeTour.categories) {
@@ -7419,91 +6642,48 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                             return { pId, points: won * 3, diff };
                          }).sort((a, b) => b.points - a.points || b.diff - a.diff);
                          
-                         // Lấy 2 đội đứng đầu mỗi bảng
                          advancingPairs.push(...standings.slice(0, 2).map((s, idx) => ({ pId: s.pId, groupRank: idx + 1, gId: g.id })));
                       });
                       
-                      // DYNAMIC BRACKET GENERATOR
-                      // Sắp xếp theo hạng (Nhất bảng, rồi tới Nhì bảng)
+                      if (catGroups.length === 1) {
+                         const g = catGroups[0];
+                         const gMatches = activeTour.matches.filter(m => m.groupId === g.id);
+                         const standings = g.pairs.map(pId => {
+                            let won = 0, diff = 0;
+                            gMatches.forEach(m => {
+                               if (m.status === 'finished' && (m.p1 === pId || m.p2 === pId)) {
+                                  const isP1 = m.p1 === pId;
+                                  const myScore = isP1 ? m.score1 : m.score2;
+                                  const oppScore = isP1 ? m.score2 : m.score1;
+                                  if (myScore > oppScore) won++;
+                                  diff += (myScore - oppScore);
+                               }
+                            });
+                            return { pId, points: won * 3, diff };
+                         }).sort((a, b) => b.points - a.points || b.diff - a.diff);
+                         advancingPairs = standings.slice(0, 4).map((s, idx) => ({ pId: s.pId, groupRank: idx + 1, gId: g.id }));
+                      }
+                      
                       advancingPairs.sort((a, b) => a.groupRank - b.groupRank);
-                      const teams = advancingPairs.map(x => x.pId);
+                      let final4 = advancingPairs.slice(0, 4).map(x => x.pId);
+                      if (final4.length === 3) final4.push(null); 
                       
-                      // Xác định số slot (power of 2)
-                      let size = 2;
-                      if (teams.length > 2 && teams.length <= 4) size = 4;
-                      if (teams.length > 4) size = 8;
-                      
-                      // Bổ sung null (Bye) cho đủ slot
-                      while (teams.length < size) {
-                         teams.push(null);
-                      }
-
-                      // Seed mapping (cơ bản để đội mạnh không gặp nhau sớm)
-                      const seedMap = {
-                         2: [0, 1],
-                         4: [0, 3, 1, 2],
-                         8: [0, 7, 3, 4, 1, 6, 2, 5]
-                      };
-                      const layout = seedMap[size];
-                      const bracketMatches = [];
-                      
-                      // Tạo các trận đấu vòng đầu tiên (Quarter-finals hoặc Semi-finals)
-                      let firstRoundName = size === 8 ? 'Tứ kết' : (size === 4 ? 'Bán kết' : 'Chung kết');
-                      let nextRoundName = size === 8 ? 'Bán kết' : 'Chung kết';
-                      
-                      let prevRoundMatches = [];
-                      const rSuffix = cat.replace(/\s/g,'');
-                      
-                      for (let i = 0; i < size/2; i++) {
-                         const p1 = teams[layout[i*2]];
-                         const p2 = teams[layout[i*2 + 1]];
-                         const mId = 'M_' + firstRoundName.replace(/\s/g,'') + '_' + i + '_' + rSuffix;
-                         let status = 'pending';
-                         let s1 = null, s2 = null;
-                         if (!p2 && p1) { status = 'finished'; s1 = 21; s2 = 0; } // Bye win
-                         if (!p1 && p2) { status = 'finished'; s1 = 0; s2 = 21; } // Bye win
-                         
-                         const matchObj = {
-                            id: mId, round: firstRoundName, name: `${firstRoundName} ${i+1}`,
-                            p1, p2, score1: s1, score2: s2, status, winnerTo: null,
-                            courtId: null, startTime: null, endTime: null
-                         };
-                         bracketMatches.push(matchObj);
-                         prevRoundMatches.push(matchObj);
-                      }
-
-                      // Tạo các vòng tiếp theo cho đến Chung kết
-                      while (prevRoundMatches.length > 1) {
-                         const curRoundMatches = [];
-                         const isFinal = prevRoundMatches.length === 2;
-                         const cRoundName = isFinal ? 'Chung kết' : nextRoundName;
-                         
-                         for (let i = 0; i < prevRoundMatches.length / 2; i++) {
-                            const pMatch1 = prevRoundMatches[i*2];
-                            const pMatch2 = prevRoundMatches[i*2 + 1];
-                            const mId = 'M_' + cRoundName.replace(/\s/g,'') + '_' + i + '_' + rSuffix;
-                            
-                            // Auto forward if prev match was a Bye win
-                            let p1 = null, p2 = null;
-                            if (pMatch1.status === 'finished') p1 = pMatch1.score1 > pMatch1.score2 ? pMatch1.p1 : pMatch1.p2;
-                            if (pMatch2.status === 'finished') p2 = pMatch2.score1 > pMatch2.score2 ? pMatch2.p1 : pMatch2.p2;
-                            
-                            const matchObj = {
-                               id: mId, round: cRoundName, name: isFinal ? 'Chung kết' : `${cRoundName} ${i+1}`,
-                               p1, p2, score1: null, score2: null, status: 'pending', winnerTo: null,
-                               courtId: null, startTime: null, endTime: null
-                            };
-                            bracketMatches.push(matchObj);
-                            curRoundMatches.push(matchObj);
-                            
-                            pMatch1.winnerTo = mId;
-                            pMatch2.winnerTo = mId;
+                      if (final4.length >= 2) {
+                         bracket[cat] = [
+                            { id: 'K1'+cat.replace(/\s/g,''), round: 'Bán kết', name: 'Bán kết 1', p1: final4[0], p2: final4[3] || null, score1: null, score2: null, status: 'pending', winnerTo: 'KF'+cat.replace(/\s/g,'') },
+                            { id: 'K2'+cat.replace(/\s/g,''), round: 'Bán kết', name: 'Bán kết 2', p1: final4[1], p2: final4[2] || null, score1: null, score2: null, status: 'pending', winnerTo: 'KF'+cat.replace(/\s/g,'') },
+                            { id: 'KF'+cat.replace(/\s/g,''), round: 'Chung kết', name: 'Chung kết', p1: null, p2: null, score1: null, score2: null, status: 'pending', winnerTo: null }
+                         ];
+                         if (!final4[3]) {
+                            bracket[cat][0].status = 'finished';
+                            bracket[cat][0].score1 = 21; bracket[cat][0].score2 = 0;
+                            bracket[cat][2].p1 = final4[0];
                          }
-                         prevRoundMatches = curRoundMatches;
-                         nextRoundName = 'Chung kết';
+                      } else if (final4.length === 1) {
+                         bracket[cat] = [
+                            { id: 'KF'+cat.replace(/\s/g,''), round: 'Chung kết', name: 'Chung kết', p1: final4[0], p2: null, score1: null, score2: null, status: 'pending', winnerTo: null }
+                         ];
                       }
-
-                      bracket[cat] = bracketMatches;
                    }
 
                    await mutateTournaments(tours => {
@@ -7522,89 +6702,55 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
           }
        }
 
-       // ======================== TAB 4: KNOCKOUT ========================
+       // TAB 3: KNOCKOUT
        if (isKnockoutTab) {
           const bracketContainer = el(`<div style="display:flex; flex-direction:column; gap:30px;"></div>`);
-          
-          const courtOptions = Array.from({length: activeTour.courtsCount || 4}, (_, i) => {
-             return `<option value="Sân ${i+1}">Sân ${i+1}</option>`;
-          }).join('');
-
           Object.keys(activeTour.bracket || {}).forEach(cat => {
              const matches = activeTour.bracket[cat];
-             // Group by round
-             const rounds = [...new Set(matches.map(m => m.round))];
-             // Giả sử có Tứ kết -> Bán kết -> Chung kết
-             const order = ['Tứ kết', 'Bán kết', 'Chung kết'];
-             rounds.sort((a,b) => order.indexOf(a) - order.indexOf(b));
-
+             const semis = matches.filter(m => m.round === 'Bán kết');
+             const finals = matches.filter(m => m.round === 'Chung kết');
+             
              const catCard = el(`<div class="bc-card" style="border: 2px solid #3F51B5; border-radius:12px; overflow:hidden; padding:0;">
-                <div style="background:#3F51B5; color:#FFF; padding:10px 15px; font-weight:bold; font-size:16px;">🏸 Hạng mục: ${cat}</div>
-                <div style="padding:20px; display:flex; justify-content:space-around; align-items:flex-start; flex-wrap:wrap; gap:30px; background:var(--card-bg); overflow-x:auto;">
+                <div style="background:#3F51B5; color:#FFF; padding:10px 15px; font-weight:bold; font-size:16px;">🏸 ${cat}</div>
+                <div style="padding:20px; display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:30px; background:linear-gradient(to right, #FAFAFA, #FFF);">
                    
-                   ${rounds.map(roundName => {
-                      const rMatches = matches.filter(m => m.round === roundName);
-                      const isFinal = roundName === 'Chung kết';
-                      return `<div style="display:flex; flex-direction:column; gap:40px; flex:1; min-width:280px; position:relative;">
-                        ${rMatches.map(m => {
-                           const p1 = activeTour.pairs.find(x => x.id === m.p1);
-                           const p2 = activeTour.pairs.find(x => x.id === m.p2);
-                           
-                           const isP1Win = m.status === 'finished' && m.score1 > m.score2;
-                           const isP2Win = m.status === 'finished' && m.score2 > m.score1;
-                           
-                           let durationText = '';
-                           if (m.startTime && m.endTime) {
-                              const mins = Math.round((m.endTime - m.startTime) / 60000);
-                              durationText = `<span style="font-size:10px; color:var(--text-secondary);">⏱️ ${mins} phút</span>`;
-                           } else if (m.startTime && m.status === 'live') {
-                              const mins = Math.floor((Date.now() - m.startTime) / 60000);
-                              durationText = `<span style="font-size:10px; color:#F26419; animation: pulse 1s infinite;">⏱️ Đang đánh (${mins}p)</span>`;
-                           }
+                   ${semis.length > 0 ? `<div style="display:flex; flex-direction:column; gap:40px; flex:1; min-width:280px;">
+                     ${semis.map(m => {
+                        const p1 = activeTour.pairs.find(x => x.id === m.p1);
+                        const p2 = activeTour.pairs.find(x => x.id === m.p2);
+                        return `<div style="border:1px solid #CCC; border-radius:8px; padding:12px; background:${m.status==='finished'?'#F5F5F5':'#FFF'}; box-shadow:0 2px 5px rgba(0,0,0,0.1); position:relative;">
+                          <div style="font-size:12px; color:#666; margin-bottom:8px; text-transform:uppercase; font-weight:bold; border-bottom:1px solid #EEE; padding-bottom:5px;">${m.name}</div>
+                          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                             <span style="font-size:14px; font-weight:${m.score1>m.score2?'bold':'normal'}; color:${m.score1>m.score2?'#2E7D32':'#333'}">${p1 ? escapeHtml(p1.name) : '---'}</span>
+                             ${canManage() && p1 && p2 ? `<input type="number" id="k-s1-${m.id}" value="${m.score1!==null?m.score1:''}" style="width:45px;text-align:center;border:1px solid #999;border-radius:4px;padding:4px;"/>` : `<strong style="font-size:16px;">${m.score1!==null?m.score1:'-'}</strong>`}
+                          </div>
+                          <div style="display:flex; justify-content:space-between; align-items:center;">
+                             <span style="font-size:14px; font-weight:${m.score2>m.score1?'bold':'normal'}; color:${m.score2>m.score1?'#2E7D32':'#333'}">${p2 ? escapeHtml(p2.name) : '---'}</span>
+                             ${canManage() && p1 && p2 ? `<input type="number" id="k-s2-${m.id}" value="${m.score2!==null?m.score2:''}" style="width:45px;text-align:center;border:1px solid #999;border-radius:4px;padding:4px;"/>` : `<strong style="font-size:16px;">${m.score2!==null?m.score2:'-'}</strong>`}
+                          </div>
+                          ${canManage() && p1 && p2 ? `<div style="text-align:center; margin-top:12px;"><button class="bc-btn small" id="k-update-${m.id}" style="background:#3F51B5; border-color:#3F51B5;">Lưu</button></div>` : ''}
+                        </div>`;
+                     }).join('')}
+                   </div>` : ''}
 
-                           let nextMatchInfo = '';
-                           if (m.winnerTo) {
-                              const nm = matches.find(x => x.id === m.winnerTo);
-                              if (nm) nextMatchInfo = `<div style="font-size:11px; color:var(--text-primary); margin-top:5px; text-align:center; font-style:italic;">👉 Thắng vào: ${nm.name}</div>`;
-                           }
-
-                           return `<div style="border:${isFinal?'2px solid #FFD700':'1px solid #CCC'}; border-radius:10px; padding:15px; background:${isFinal?'#FFFDE7':(m.status==='finished'?'#F5F5F5':(m.status==='live'?'#E8EAF6':'#FFF'))}; box-shadow:${isFinal?'0 6px 15px rgba(255,215,0,0.3)':'0 2px 5px rgba(0,0,0,0.1)'}; position:relative; transform: ${isFinal?'scale(1.05)':'scale(1)'};">
-                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px dashed ${isFinal?'var(--card-border)':'#EEE'}; padding-bottom:6px;">
-                                <div style="font-size:13px; color:${isFinal?'#F57F17':'#666'}; text-transform:uppercase; font-weight:bold;">${isFinal?'🏆 ':''}${m.name}</div>
-                                ${canManage() ? `
-                                  <input type="text" class="k-turn-inp" data-mid="${m.id}" data-cat="${cat}" value="${escapeHtml(m.turn||'')}" placeholder="Lượt" style="width:40px; font-size:10px; padding:2px; border:1px solid var(--card-border); border-radius:4px; text-align:center; background:var(--tab-bg); margin-right:4px;" />
-                                  <select class="bc-select k-court-sel" data-mid="${m.id}" data-cat="${cat}" style="font-size:10px; padding:2px; background:var(--input-bg); border:1px solid var(--input-border); color:var(--input-color); width:90px;">
-                                    <option value="">-- Chọn Sân --</option>
-                                    ${courtOptions.replace(`value="${m.courtId}"`, `value="${m.courtId}" selected`)}
-                                  </select>
-                                ` : `<span style="font-size:10px; font-weight:bold; color:var(--text-primary); background:var(--tab-bg); padding:2px 6px; border-radius:4px;">${m.turn ? `Lượt ${escapeHtml(m.turn)} - ` : ''}${m.courtId ? escapeHtml(m.courtId) : 'Chưa xếp sân'}</span>`}
-                                ${durationText}
-                             </div>
-                             
-                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                <span style="font-size:14px; font-weight:${isP1Win?'bold':'600'}; color:${isP1Win?'#4CAF50':'var(--text-primary)'}">${isP1Win?'🏆 ':''}${p1 ? escapeHtml(p1.name) : '<span style="color:var(--text-secondary);font-style:italic;">Đang chờ nhánh dưới...</span>'}</span>
-                                ${canManage() && p1 && p2 ? `<input type="number" id="k-s1-${m.id}" value="${m.score1!==null?m.score1:''}" style="width:45px;text-align:center;border:1px solid ${isFinal?'var(--card-border)':'#999'};border-radius:4px;padding:4px; font-weight:bold;"/>` : `<strong style="font-size:18px; color:${isFinal?'#D84315':'#000'};">${m.score1!==null?m.score1:'-'}</strong>`}
-                             </div>
-                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:14px; font-weight:${isP2Win?'bold':'600'}; color:${isP2Win?'#4CAF50':'var(--text-primary)'}">${p2 ? escapeHtml(p2.name) : '<span style="color:var(--text-secondary);font-style:italic;">Đang chờ nhánh dưới...</span>'}${isP2Win?' 🏆':''}</span>
-                                ${canManage() && p1 && p2 ? `<input type="number" id="k-s2-${m.id}" value="${m.score2!==null?m.score2:''}" style="width:45px;text-align:center;border:1px solid ${isFinal?'var(--card-border)':'#999'};border-radius:4px;padding:4px; font-weight:bold;"/>` : `<strong style="font-size:18px; color:${isFinal?'#D84315':'#000'};">${m.score2!==null?m.score2:'-'}</strong>`}
-                             </div>
-                             
-                             ${canManage() && p1 && p2 ? `
-                             <div style="text-align:center; margin-top:12px; display:flex; gap:6px; justify-content:center;">
-                               ${m.status === 'pending' ? `<button class="bc-btn small" id="k-start-${m.id}" style="background:#4CAF50; border-color:#4CAF50; color:#FFF; font-size:11px; padding:4px 10px;">▶️ Bắt Đầu</button>` : ''}
-                               <button class="bc-btn small" id="k-update-${m.id}" style="background:#3F51B5; border-color:var(--text-primary); color:#FFF; font-size:11px; padding:4px 10px;">Lưu Tỷ số</button>
-                             </div>` : ''}
-
-                             ${nextMatchInfo}
-                           </div>`;
-                        }).join('')}
-                      </div>`;
-                   }).join(`
-                      <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; margin:0 -10px; color:#CCC;">
-                         <div style="width:30px; height:2px; background:#CCC;"></div>
-                      </div>
-                   `)}
+                   <div style="display:flex; flex-direction:column; gap:40px; flex:1.2; min-width:300px;">
+                     ${finals.map(m => {
+                        const p1 = activeTour.pairs.find(x => x.id === m.p1);
+                        const p2 = activeTour.pairs.find(x => x.id === m.p2);
+                        return `<div style="border:2px solid #FFD700; border-radius:10px; padding:20px; background:#FFFDE7; box-shadow:0 6px 15px rgba(255,215,0,0.3); transform: scale(1.05);">
+                          <div style="font-size:16px; color:#F57F17; margin-bottom:12px; text-transform:uppercase; font-weight:bold; text-align:center; border-bottom:1px dashed #FBC02D; padding-bottom:8px;">🏆 ${m.name}</div>
+                          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                             <span style="font-size:15px; font-weight:${m.score1>m.score2?'bold':'normal'}; color:${m.score1>m.score2?'#D84315':'#333'}">${p1 ? escapeHtml(p1.name) : '<span style="color:#999;font-style:italic;">Đang chờ nhánh dưới...</span>'}</span>
+                             ${canManage() && p1 && p2 ? `<input type="number" id="k-s1-${m.id}" value="${m.score1!==null?m.score1:''}" style="width:50px;text-align:center;border:1px solid #FBC02D;border-radius:4px;padding:6px;font-size:16px;"/>` : `<strong style="font-size:20px; color:#D84315;">${m.score1!==null?m.score1:'-'}</strong>`}
+                          </div>
+                          <div style="display:flex; justify-content:space-between; align-items:center;">
+                             <span style="font-size:15px; font-weight:${m.score2>m.score1?'bold':'normal'}; color:${m.score2>m.score1?'#D84315':'#333'}">${p2 ? escapeHtml(p2.name) : '<span style="color:#999;font-style:italic;">Đang chờ nhánh dưới...</span>'}</span>
+                             ${canManage() && p1 && p2 ? `<input type="number" id="k-s2-${m.id}" value="${m.score2!==null?m.score2:''}" style="width:50px;text-align:center;border:1px solid #FBC02D;border-radius:4px;padding:6px;font-size:16px;"/>` : `<strong style="font-size:20px; color:#D84315;">${m.score2!==null?m.score2:'-'}</strong>`}
+                          </div>
+                          ${canManage() && p1 && p2 ? `<div style="text-align:center; margin-top:15px;"><button class="bc-btn" id="k-update-${m.id}" style="background:#F57F17; border-color:#F57F17; padding:8px 20px; font-size:14px;">Lưu Chung Kết</button></div>` : ''}
+                        </div>`;
+                     }).join('')}
+                   </div>
 
                 </div>
              </div>`);
@@ -7612,19 +6758,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
 
              setTimeout(() => {
                 matches.forEach(m => {
-                   const startBtn = document.getElementById(`k-start-${m.id}`);
-                   if (startBtn) {
-                      startBtn.onclick = async () => {
-                         await mutateTournaments(tours => {
-                            const match = tours.find(t=>t.id===activeTour.id).bracket[cat].find(x=>x.id===m.id);
-                            match.status = 'live';
-                            match.startTime = Date.now();
-                            return tours;
-                         });
-                         render();
-                      };
-                   }
-
                    const btn = document.getElementById(`k-update-${m.id}`);
                    if (btn) {
                       btn.onclick = async () => {
@@ -7632,18 +6765,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                          const s2Str = document.getElementById(`k-s2-${m.id}`).value;
                          let s1 = s1Str === '' ? null : parseInt(s1Str, 10);
                          let s2 = s2Str === '' ? null : parseInt(s2Str, 10);
-                         
-                         let status = m.status;
-                         let eTime = m.endTime;
-                         let sTime = m.startTime;
-                         
-                         if (s1 !== null && s2 !== null) {
-                            status = 'finished';
-                            if (!eTime) eTime = Date.now();
-                            if (!sTime) sTime = Date.now() - 20*60000;
-                         }
-                         else if (s1 !== null || s2 !== null) status = 'live';
-                         else status = 'pending';
+                         let status = (s1 !== null && s2 !== null) ? 'finished' : 'pending';
 
                          await mutateTournaments(tours => {
                             const t = tours.find(x => x.id === activeTour.id);
@@ -7653,12 +6775,11 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                                tMatch.score1 = s1;
                                tMatch.score2 = s2;
                                tMatch.status = status;
-                               tMatch.startTime = sTime;
-                               tMatch.endTime = eTime;
                                
                                if (tMatch.winnerTo) {
                                   const nextMatch = tCatMatches.find(x => x.id === tMatch.winnerTo);
                                   if (nextMatch) {
+                                     // if changed score, recalculate winner
                                      if (s1 !== null && s2 !== null && s1 !== s2) {
                                         const winnerId = s1 > s2 ? tMatch.p1 : tMatch.p2;
                                         if (nextMatch.p1 === tMatch.p1 || nextMatch.p1 === tMatch.p2) nextMatch.p1 = winnerId;
@@ -7675,38 +6796,13 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                       };
                    }
                 });
-
-                document.querySelectorAll('.k-turn-inp').forEach(inp => {
-                   inp.onchange = async (e) => {
-                      const mId = e.target.dataset.mid;
-                      const turnVal = e.target.value.trim();
-                      const cCat = e.target.dataset.cat;
-                      await mutateTournaments(tours => {
-                         const match = tours.find(t=>t.id===activeTour.id).bracket[cCat].find(x=>x.id===mId);
-                         if (match) match.turn = turnVal;
-                         return tours;
-                      });
-                   };
-                });
-                document.querySelectorAll('.k-court-sel').forEach(sel => {
-                   sel.onchange = async (e) => {
-                      const mId = e.target.dataset.mid;
-                      const cId = e.target.value;
-                      const cCat = e.target.dataset.cat;
-                      await mutateTournaments(tours => {
-                         const match = tours.find(t=>t.id===activeTour.id).bracket[cCat].find(x=>x.id===mId);
-                         if (match) match.courtId = cId;
-                         return tours;
-                      });
-                   };
-                });
              }, 0);
           });
           wrap.appendChild(bracketContainer);
 
           if (canManage() && activeTour.status !== 'finished') {
              wrap.appendChild(el(`<div style="text-align:center; margin-top:30px; padding-top:20px; border-top:2px dashed #3F51B5;">
-                <button class="bc-btn" id="tour-finish-btn" style="background:#FFD700; border:2px solid #F57F17; color:#F26419; font-size:18px; padding:15px 30px; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.2);">🎉 BẾ MẠC & TRAO THƯỞNG XP</button>
+                <button class="bc-btn" id="tour-finish-btn" style="background:#FFD700; border:2px solid #F57F17; color:#D84315; font-size:18px; padding:15px 30px; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.2);">🎉 BẾ MẠC & TRAO THƯỞNG XP</button>
              </div>`));
 
              setTimeout(() => {
@@ -7766,28 +6862,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                          return mems;
                       });
                    }
-                   
-                   await mutateKey('bc_announcements', anns => {
-                      let champs = [];
-                      Object.keys(activeTour.bracket || {}).forEach(cat => {
-                         const matches = activeTour.bracket[cat];
-                         const finalMatch = matches.find(m => m.round === 'Chung kết');
-                         if (finalMatch && finalMatch.status === 'finished') {
-                            const winnerPairId = finalMatch.score1 > finalMatch.score2 ? finalMatch.p1 : finalMatch.p2;
-                            const wPair = activeTour.pairs.find(p => p.id === winnerPairId);
-                            if (wPair) champs.push(`${cat}: ${wPair.name}`);
-                         }
-                      });
-                      anns.unshift({
-                         id: uid(),
-                         category: 'tournament',
-                         title: `🏆 TÂN VƯƠNG XUẤT HIỆN: Giải ${activeTour.name}`,
-                         content: `Giải đấu **${activeTour.name}** đã chính thức khép lại!\nXin chúc mừng các nhà vô địch:\n**${champs.join('\n')}** 🎉\n\nPhần thưởng XP đã được phân phát. Mọi người có thể xem lại kết quả tại Lịch sử Giải đấu.`,
-                         pinned: true,
-                         createdAt: Date.now()
-                      });
-                      return anns;
-                   });
                    showToast('Đã bế mạc và cộng thưởng XP thành công!', 'success');
                    render();
                 };
@@ -7798,12 +6872,13 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
 
     // TOURNAMENT HISTORY
     if (finishedTours.length > 0) {
-      wrap.appendChild(el(`<div class="bc-card" style="margin-top:2rem; background:var(--tab-bg); border:2px solid var(--card-border); padding:20px;">
-        <h3 style="font-size:18px; color:var(--text-primary); margin-bottom:15px; font-family:'Oswald',sans-serif; text-transform:uppercase;">📚 Lịch sử Giải đấu (Hall of Fame)</h3>
+      wrap.appendChild(el(`<div class="bc-card" style="margin-top:2rem; background:#E3F2FD; border:2px solid #90CAF9; padding:20px;">
+        <h3 style="font-size:18px; color:#1565C0; margin-bottom:15px; font-family:'Oswald',sans-serif; text-transform:uppercase;">📚 Lịch sử Giải đấu (Hall of Fame)</h3>
         <div style="display:flex; flex-direction:column; gap:15px;">
            ${finishedTours.map(t => {
               const isViewing = state.viewingTourId === t.id;
               
+              // Generate Podium for this tour
               let podiumHtml = '';
               if (isViewing) {
                  let catPodiums = [];
@@ -7818,26 +6893,26 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                     const rPair = t.pairs.find(p => p.id === runnerId);
 
                     catPodiums.push(`<div style="margin-bottom:15px; text-align:center;">
-                       <strong style="color:#F26419; font-size:14px;">${cat}</strong>
+                       <strong style="color:#D84315; font-size:14px;">${cat}</strong>
                        <div style="font-size:13px; margin-top:5px;">🥇 Vô địch: <strong>${escapeHtml(wPair?.name||'')}</strong></div>
                        <div style="font-size:13px;">🥈 Á quân: <strong>${escapeHtml(rPair?.name||'')}</strong></div>
                     </div>`);
                  });
-                 podiumHtml = `<div style="margin-top:15px; padding-top:15px; border-top:1px dashed var(--card-border);">
-                    <h4 style="text-align:center; margin-bottom:10px; color:var(--text-primary);">🎉 BẢNG VÀNG THÀNH TÍCH</h4>
+                 podiumHtml = `<div style="margin-top:15px; padding-top:15px; border-top:1px dashed #90CAF9;">
+                    <h4 style="text-align:center; margin-bottom:10px; color:#1565C0;">🎉 BẢNG VÀNG THÀNH TÍCH</h4>
                     ${catPodiums.join('')}
                  </div>`;
               }
 
-              return `<div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+              return `<div style="background:#FFF; border:1px solid #BBDEFB; border-radius:8px; padding:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
                  <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                       <strong style="font-size:15px; color:var(--text-primary);">${escapeHtml(t.name)}</strong>
-                       <div style="font-size:11px; color:var(--text-secondary);">Bế mạc: ${new Date(t.createdAt).toLocaleDateString()} | ${t.pairs?.length||0} cặp VĐV</div>
+                       <strong style="font-size:15px; color:#0D47A1;">${escapeHtml(t.name)}</strong>
+                       <div style="font-size:11px; color:#666;">Bế mạc: ${new Date(t.createdAt).toLocaleDateString()} | ${t.pairs?.length||0} cặp VĐV</div>
                     </div>
                     <div style="display:flex; gap:10px;">
-                       <button class="bc-btn small" id="view-tour-${t.id}" style="background:#1976D2; border-color:var(--text-primary);">${isViewing ? 'Đóng' : 'Xem kết quả'}</button>
-                       ${isOwner() ? `<button class="bc-btn small danger" id="del-tour-${t.id}">Xóa</button>` : ''}
+                       <button class="bc-btn small" id="view-tour-${t.id}" style="background:#1976D2; border-color:#1976D2;">${isViewing ? 'Đóng' : 'Xem kết quả'}</button>
+                       ${state.me?.role === 'owner' ? `<button class="bc-btn small danger" id="del-tour-${t.id}">Xóa</button>` : ''}
                     </div>
                  </div>
                  ${podiumHtml}
@@ -7866,6 +6941,767 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
 
     return wrap;
 }
+
+
+      state.tourSetup = state.tourSetup || {
+        name: 'Giải Cầu Lông Mùa Hè',
+        categories: ['Đôi Nam'],
+        courtsCount: 4,
+        selectedCourts: state.courts.slice(0, 4).map(c => c.id)
+      };
+
+      const setupCard = el(`<div class="bc-card" style="border: 2px dashed #FF8F00;">
+        <h3 style="font-size:16px; color:#D84315; margin-bottom:15px; font-family:'Oswald', sans-serif;">🛠️ KHỞI TẠO GIẢI ĐẤU MỚI</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Tên giải đấu</label>
+            <input class="bc-input" id="ts-name" value="${escapeHtml(state.tourSetup.name)}" placeholder="VD: Giải Cầu Lông Aron Smash 2026" />
+          </div>
+          <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:140px;">
+              <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Số lượng sân</label>
+              <select class="bc-select" id="ts-courts-count">
+                <option value="2" ${state.tourSetup.courtsCount===2?'selected':''}>2 Sân</option>
+                <option value="3" ${state.tourSetup.courtsCount===3?'selected':''}>3 Sân</option>
+                <option value="4" ${state.tourSetup.courtsCount===4?'selected':''}>4 Sân</option>
+              </select>
+            </div>
+            <div style="flex:2; min-width:200px;">
+              <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Chọn sân thi đấu</label>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+                ${state.courts.map(c => {
+                  const checked = state.tourSetup.selectedCourts.includes(c.id) ? 'checked' : '';
+                  return `<label style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">
+                    <input type="checkbox" class="ts-court-chk" value="${c.id}" ${checked} /> ${escapeHtml(c.name)}
+                  </label>`;
+                }).join(' ')}
+              </div>
+            </div>
+          </div>
+          <div style="border-top:1px dashed #E3E0D6; padding-top:12px;">
+            <label style="font-size:13px; font-weight:600; color:#4E342E; display:block; margin-bottom:4px;">Hạng mục thi đấu</label>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              ${['Đôi Nam', 'Đôi Nữ', 'Đôi Nam Nữ'].map(cat => {
+                const checked = state.tourSetup.categories.includes(cat) ? 'checked' : '';
+                return `<label style="display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600;">
+                  <input type="checkbox" class="ts-cat-chk" value="${cat}" ${checked} /> 🏸 ${cat}
+                </label>`;
+              }).join(' ')}
+            </div>
+          </div>
+          <div style="text-align:right; margin-top:10px;">
+            <button class="bc-btn" id="ts-start-btn" style="background:#FF3D00; border-color:#FF3D00; font-size:14px; padding:10px 20px;">
+              Mở Cổng Đăng Ký 🚀
+            </button>
+          </div>
+        </div>
+      </div>`);
+      
+      wrap.appendChild(setupCard);
+      setTimeout(() => {
+        document.getElementById('ts-start-btn').onclick = async () => {
+          const name = document.getElementById('ts-name').value.trim();
+          const count = parseInt(document.getElementById('ts-courts-count').value, 10);
+          const selCourts = Array.from(document.querySelectorAll('.ts-court-chk:checked')).map(x => x.value);
+          const selCats = Array.from(document.querySelectorAll('.ts-cat-chk:checked')).map(x => x.value);
+          
+          if (!name) return alert('Vui lòng nhập tên giải đấu!');
+          if (selCourts.length === 0) return alert('Vui lòng chọn ít nhất 1 sân!');
+          if (selCats.length === 0) return alert('Vui lòng chọn ít nhất 1 hạng mục thi đấu!');
+          
+          const newTour = {
+            id: uid(),
+            name,
+            categories: selCats,
+            courtsCount: count,
+            selectedCourts: selCourts,
+            status: 'registering',
+            registrations: [],
+            pairs: [],
+            groups: [],
+            matches: [],
+            bracket: null,
+            createdAt: new Date().toISOString()
+          };
+          
+          await mutateTournaments(tours => {
+             tours.push(newTour);
+             return tours;
+          });
+          state.tourSetup = null;
+          render();
+        };
+      }, 0);
+      return wrap;
+    }
+
+    if (activeTour.status === 'registering') {
+      wrap.appendChild(el(`<div class="bc-card" style="text-align:center; padding:20px; background:#FFF3E0; border:1px solid #FFB74D; margin-bottom:1rem;">
+        <h3 style="font-size:20px; color:#E65100; font-family:'Oswald',sans-serif; margin-bottom:5px;">${escapeHtml(activeTour.name)}</h3>
+        <div style="font-size:14px; color:#F57C00; font-weight:600;">CỔNG ĐĂNG KÝ ĐANG MỞ! Nhanh tay ghi danh nào các chiến thủ!</div>
+      </div>`));
+
+      const activeMembers = state.members.filter(m => m.status === 'active');
+      activeTour.registrations = activeTour.registrations || [];
+      const myRegs = activeTour.registrations.filter(r => r.m1 === state.me?.id || r.m2 === state.me?.id);
+
+      const isManager = canManage();
+      if (state.me) {
+        if (myRegs.length > 0) {
+          wrap.appendChild(el(`<div class="bc-card" style="margin-bottom:1rem; text-align:center; padding:15px; color:#27500A; background:#EAF3DE; font-weight:600; font-size:14px; border:1px solid #27500A;">
+            🎉 Bạn đã ghi danh các hạng mục: ${myRegs.map(r => r.cat).join(', ')}. Chúc bạn thi đấu tốt! 💪
+          </div>`));
+        }
+
+        const regCard = el(`<div class="bc-card" style="margin-bottom:1rem; border:2px solid #27500A;">
+          <h4 style="font-size:16px; color:#27500A; margin-bottom:12px; font-family:'Oswald',sans-serif;">TẠO PHIẾU ĐĂNG KÝ THAM GIA</h4>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            ${isManager ? `
+            <div style="flex:1; min-width:140px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px; color:#E65100;">VĐV Ghi danh (Admin)</label>
+              <select class="bc-select" id="reg-m1" style="border-color:#E65100;">
+                <option value="${state.me.id}">-- Chính bạn --</option>
+                ${activeMembers.filter(m => m.id !== state.me.id).map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'})</option>`).join('')}
+              </select>
+            </div>
+            ` : ''}
+            <div style="flex:1; min-width:140px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Chọn hạng mục</label>
+              <select class="bc-select" id="reg-cat">
+                ${activeTour.categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+              </select>
+            </div>
+            <div style="flex:1.5; min-width:180px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Hình thức đăng ký</label>
+              <select class="bc-select" id="reg-type">
+                <option value="solo">Cá nhân (Tìm đồng đội)</option>
+                <option value="pair">Nguyên cặp (Đã có partner)</option>
+              </select>
+            </div>
+            <div style="flex:1.5; min-width:180px; display:none;" id="reg-partner-box">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Chọn Partner</label>
+              <select class="bc-select" id="reg-partner">
+                <option value="">-- Chọn thành viên --</option>
+                ${activeMembers.map(m => `<option value="${m.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'})</option>`).join('')}
+              </select>
+            </div>
+            <button class="bc-btn" id="reg-submit-btn" style="background:#27500A; border-color:#27500A;">Ghi danh ngay!</button>
+          </div>
+        </div>`);
+        wrap.appendChild(regCard);
+        
+        setTimeout(() => {
+          const typeSel = document.getElementById('reg-type');
+          const pBox = document.getElementById('reg-partner-box');
+          if(typeSel) typeSel.onchange = () => { pBox.style.display = typeSel.value==='pair'?'block':'none'; };
+          
+          document.getElementById('reg-submit-btn').onclick = async () => {
+            const cat = document.getElementById('reg-cat').value;
+            const type = document.getElementById('reg-type').value;
+            let m2 = null;
+            const m1_id = isManager ? (document.getElementById('reg-m1') ? document.getElementById('reg-m1').value : state.me.id) : state.me.id;
+            if (!m1_id) return alert('Vui lòng chọn VĐV cần đăng ký hộ!');
+            const me = state.members.find(m => m.id === m1_id);
+            if (!me) return;
+            if (activeTour.registrations.some(r => r.cat === cat && (r.m1 === m1_id || r.m2 === m1_id))) return alert(`VĐV này đã đăng ký hạng mục ${cat} rồi!`);
+            
+            if (type === 'pair') {
+              m2 = document.getElementById('reg-partner').value;
+              if (!m2) return alert('Vui lòng chọn Partner!');
+              if (m2 === m1_id) return alert('Không thể chọn chính mình làm Partner!');
+              const p2 = state.members.find(m => m.id === m2);
+              if (!p2) return;
+              if (activeTour.registrations.some(r => r.cat === cat && (r.m1 === p2.id || r.m2 === p2.id))) return alert(`Partner này đã đăng ký hạng mục ${cat} rồi!`);
+              
+              if (cat === 'Đôi Nam' && (me.gender === 'Nữ' || p2.gender === 'Nữ')) return alert('Đôi Nam yêu cầu 2 VĐV Nam!');
+              if (cat === 'Đôi Nữ' && ((me.gender||'Nam') === 'Nam' || (p2.gender||'Nam') === 'Nam')) return alert('Đôi Nữ yêu cầu 2 VĐV Nữ!');
+              if (cat === 'Đôi Nam Nữ') {
+                const g1 = me.gender || 'Nam';
+                const g2 = p2.gender || 'Nam';
+                if (g1 === g2) return alert('Đôi Nam Nữ yêu cầu 1 Nam và 1 Nữ!');
+              }
+            } else {
+              if (cat === 'Đôi Nam' && me.gender === 'Nữ') return alert('Bạn là Nữ, không thể đăng ký Đôi Nam!');
+              if (cat === 'Đôi Nữ' && (me.gender||'Nam') === 'Nam') return alert('Bạn là Nam, không thể đăng ký Đôi Nữ!');
+            }
+            
+            await mutateTournaments(tours => {
+              const tour = tours.find(t => t.id === activeTour.id);
+              if (tour) {
+                 tour.registrations.push({ id: uid(), cat, type, m1: me.id, m2, createdAt: Date.now() });
+              }
+              return tours;
+            });
+            showToast('Đăng ký thành công!', 'success');
+            render();
+          };
+        }, 0);
+      }
+
+      const listCard = el(`<div class="bc-card" style="margin-bottom:1rem;">
+        <h4 style="font-size:15px; color:#1B4332; margin-bottom:10px;">📋 Danh sách VĐV Ghi Danh (${activeTour.registrations.length} lượt)</h4>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${activeTour.registrations.length === 0 ? '<div class="bc-empty" style="padding:10px;">Chưa có ai đăng ký.</div>' : ''}
+          ${activeTour.registrations.map(r => {
+            const p1 = state.members.find(m => m.id === r.m1);
+            const p2 = r.m2 ? state.members.find(m => m.id === r.m2) : null;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#F8F9FA; border:1px solid #E9ECEF; border-radius:6px;">
+              <div>
+                <span class="bc-badge" style="background:#E3F2FD; color:#1565C0; margin-right:8px;">${r.cat}</span>
+                <strong style="font-size:13px; color:#333;">${escapeHtml(p1?memberDisplayName(p1):'')}</strong> ${p1?.gender==='Nữ'?'👩':'👨'}
+                ${r.type === 'pair' && p2 ? `<span style="color:#888; font-size:12px; margin:0 6px;">+</span> <strong style="font-size:13px; color:#333;">${escapeHtml(memberDisplayName(p2))}</strong> ${p2.gender==='Nữ'?'👩':'👨'}` : `<span style="font-size:11px; color:#E65100; margin-left:8px; font-style:italic;">(Đang tìm partner 🤝)</span>`}
+              </div>
+              ${canManage() ? `<button class="bc-btn danger small" id="del-reg-${r.id}">Xóa</button>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`);
+      wrap.appendChild(listCard);
+      
+      if (canManage()) {
+        const pairingCard = el(`<div class="bc-card" style="border: 2px solid #1B4332;">
+          <h4 style="font-size:15px; color:#1B4332; margin-bottom:10px;">👥 BTC Cáp Kèo (Cho các VĐV đăng ký Solo)</h4>
+          <div style="font-size:12px; color:#666; margin-bottom:10px;">Chọn 2 VĐV từ danh sách đăng ký lẻ để ghép thành 1 cặp chính thức. Các cặp đã "Đăng ký nguyên cặp" sẽ được gom tự động khi chốt.</div>
+          
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="flex:1; min-width:140px;">
+              <select class="bc-select" id="pair-m1">
+                <option value="">- VĐV 1 -</option>
+                ${activeTour.registrations.filter(r => r.type==='solo').map(r => {
+                  const m = state.members.find(x => x.id === r.m1);
+                  return m ? `<option value="${r.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'} - ${r.cat})</option>` : '';
+                }).join('')}
+              </select>
+            </div>
+            <div style="flex:1; min-width:140px;">
+              <select class="bc-select" id="pair-m2">
+                <option value="">- VĐV 2 -</option>
+                ${activeTour.registrations.filter(r => r.type==='solo').map(r => {
+                  const m = state.members.find(x => x.id === r.m1);
+                  return m ? `<option value="${r.id}">${escapeHtml(memberDisplayName(m))} (${m.gender||'Nam'} - ${r.cat})</option>` : '';
+                }).join('')}
+              </select>
+            </div>
+            <div style="flex:1; min-width:120px;">
+              <select class="bc-select" id="pair-target-cat">
+                ${activeTour.categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+              </select>
+            </div>
+            <button class="bc-btn" id="pair-merge-btn">Ghép cặp</button>
+          </div>
+
+          <div style="margin-top:20px; text-align:right; border-top:1px dashed #CCC; padding-top:15px;">
+            <button class="bc-btn danger" id="tour-lock-reg-btn" style="font-size:14px; padding:10px 20px;">
+              🔒 CHỐT DANH SÁCH & BẮT ĐẦU CHIA BẢNG
+            </button>
+          </div>
+        </div>`);
+        wrap.appendChild(pairingCard);
+        
+        setTimeout(() => {
+          activeTour.registrations.forEach(r => {
+            const btn = document.getElementById(`del-reg-${r.id}`);
+            if(btn) btn.onclick = async () => {
+              await mutateTournaments(tours => {
+                 const tour = tours.find(t => t.id === activeTour.id);
+                 if (tour) tour.registrations = tour.registrations.filter(x => x.id !== r.id);
+                 return tours;
+              });
+              render();
+            };
+          });
+
+          document.getElementById('pair-merge-btn').onclick = async () => {
+            const r1Id = document.getElementById('pair-m1').value;
+            const r2Id = document.getElementById('pair-m2').value;
+            const tCat = document.getElementById('pair-target-cat').value;
+            if (!r1Id || !r2Id || r1Id === r2Id) return alert('Vui lòng chọn 2 VĐV hợp lệ!');
+            
+            const r1 = activeTour.registrations.find(x => x.id === r1Id);
+            const r2 = activeTour.registrations.find(x => x.id === r2Id);
+            const m1 = state.members.find(x => x.id === r1.m1);
+            const m2 = state.members.find(x => x.id === r2.m1);
+            
+            if (tCat === 'Đôi Nam' && (m1.gender === 'Nữ' || m2.gender === 'Nữ')) return alert('Đôi Nam yêu cầu 2 VĐV Nam!');
+            if (tCat === 'Đôi Nữ' && ((m1.gender||'Nam') === 'Nam' || (m2.gender||'Nam') === 'Nam')) return alert('Đôi Nữ yêu cầu 2 VĐV Nữ!');
+            if (tCat === 'Đôi Nam Nữ') {
+              const g1 = m1.gender || 'Nam';
+              const g2 = m2.gender || 'Nam';
+              if (g1 === g2) return alert('Đôi Nam Nữ yêu cầu 1 Nam và 1 Nữ!');
+            }
+            
+            await mutateTournaments(tours => {
+                const tour = tours.find(t => t.id === activeTour.id);
+                if (tour) {
+                   const tr1 = tour.registrations.find(x => x.id === r1Id);
+                   if (tr1) {
+                      tr1.type = 'pair';
+                      tr1.m2 = m2.id;
+                      tr1.cat = tCat;
+                   }
+                   tour.registrations = tour.registrations.filter(x => x.id !== r2Id);
+                }
+                return tours;
+            });
+            showToast('Ghép cặp thành công!', 'success');
+            render();
+          };
+          
+          document.getElementById('tour-lock-reg-btn').onclick = async () => {
+            if(!confirm('Xác nhận chốt danh sách đăng ký? Hệ thống sẽ chuyển sang giai đoạn thi đấu!')) return;
+            
+            const pairs = activeTour.registrations.filter(r => r.type === 'pair').map((r, i) => {
+              const p1 = state.members.find(x => x.id === r.m1);
+              const p2 = state.members.find(x => x.id === r.m2);
+              return {
+                id: 'P' + Date.now() + i,
+                m1: r.m1,
+                m2: r.m2,
+                cat: r.cat,
+                name: `${p1.nickname||p1.name} & ${p2.nickname||p2.name}`
+              };
+            });
+
+            // Randomize and divide into groups
+            const groups = [];
+            const matches = [];
+            for (const cat of activeTour.categories) {
+               const catPairs = pairs.filter(p => p.cat === cat);
+               if (catPairs.length === 0) continue;
+               
+               const numGroups = Math.max(1, Math.floor(catPairs.length / 4)); // ~4 pairs per group
+               const shuffled = [...catPairs].sort(() => Math.random() - 0.5);
+               for (let i = 0; i < numGroups; i++) {
+                   const gId = 'G' + Date.now() + i + cat.replace(/\s/g,'');
+                   const groupName = `Bảng ${String.fromCharCode(65 + i)} - ${cat}`;
+                   const groupPairs = shuffled.filter((_, idx) => idx % numGroups === i);
+                   groups.push({ id: gId, cat, name: groupName, pairs: groupPairs.map(p => p.id) });
+                   
+                   // Generate Round Robin Matches
+                   for (let a = 0; a < groupPairs.length; a++) {
+                      for (let b = a + 1; b < groupPairs.length; b++) {
+                         matches.push({
+                            id: 'M' + Date.now() + a + b + gId,
+                            groupId: gId,
+                            cat: cat,
+                            p1: groupPairs[a].id,
+                            p2: groupPairs[b].id,
+                            score1: null,
+                            score2: null,
+                            status: 'pending' // pending, live, finished
+                         });
+                      }
+                   }
+               }
+            }
+
+            const remainingSolo = activeTour.registrations.filter(r => r.type === 'solo').length;
+            if (remainingSolo > 0) alert(`Lưu ý: Có ${remainingSolo} VĐV đăng ký lẻ chưa được ghép cặp và sẽ KHÔNG được đưa vào danh sách thi đấu.`);
+            
+            await mutateTournaments(tours => {
+               const tour = tours.find(t => t.id === activeTour.id);
+               if (tour) {
+                  tour.pairs = pairs;
+                  tour.groups = groups;
+                  tour.matches = matches;
+                  tour.status = 'playing';
+               }
+               return tours;
+            });
+            showToast('Đã chốt danh sách thi đấu và tự động chia bảng!', 'success');
+            render();
+          };
+        }, 0);
+      }
+      return wrap;
+    }
+
+    if (activeTour.status === 'playing') {
+      wrap.appendChild(el(`<div class="bc-card" style="text-align:center; padding:15px; background:#E8F5E9; border:1px solid #4CAF50; margin-bottom:1rem;">
+        <h3 style="font-size:20px; color:#2E7D32; font-family:'Oswald',sans-serif; margin-bottom:5px;">VÒNG BẢNG - ${escapeHtml(activeTour.name)}</h3>
+      </div>`));
+
+      const groupsContainer = el(`<div style="display:flex; flex-direction:column; gap:20px;"></div>`);
+      
+      (activeTour.groups || []).forEach(g => {
+         const gMatches = (activeTour.matches || []).filter(m => m.groupId === g.id);
+         
+         const standings = (g.pairs || []).map(pId => {
+            const pair = activeTour.pairs.find(p => p.id === pId);
+            let played = 0, won = 0, lost = 0, diff = 0;
+            gMatches.forEach(m => {
+               if (m.status === 'finished' && (m.p1 === pId || m.p2 === pId)) {
+                  played++;
+                  const isP1 = m.p1 === pId;
+                  const myScore = isP1 ? m.score1 : m.score2;
+                  const oppScore = isP1 ? m.score2 : m.score1;
+                  if (myScore > oppScore) won++; else if (myScore < oppScore) lost++;
+                  diff += (myScore - oppScore);
+               }
+            });
+            return { pId, name: pair?.name, played, won, lost, diff, points: won * 3 };
+         }).sort((a, b) => b.points - a.points || b.diff - a.diff);
+
+         const groupCard = el(`<div class="bc-card" style="border-left: 4px solid #FF8F00;">
+           <h4 style="color:#FF6F00; font-size:16px; margin-bottom:10px;">🏆 ${escapeHtml(g.name)}</h4>
+           <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
+             
+             <!-- Bảng Xếp Hạng -->
+             <div style="flex:1; min-width:300px;">
+               <table class="bc-table" style="font-size:12px; width:100%; border-collapse:collapse;">
+                 <thead><tr style="background:#F5F5F5; text-align:left;">
+                   <th style="padding:8px;">VT</th><th style="padding:8px;">Cặp đấu</th><th style="padding:8px;">Trận</th><th style="padding:8px;">T/B</th><th style="padding:8px;">HS</th><th style="padding:8px;">Điểm</th>
+                 </tr></thead>
+                 <tbody>
+                   ${standings.map((s, i) => `<tr style="border-bottom:1px solid #EEE;">
+                     <td style="padding:8px; font-weight:bold; color:${i<2?'#2E7D32':'#666'}">${i+1}</td>
+                     <td style="padding:8px;">${escapeHtml(s.name)}</td>
+                     <td style="padding:8px;">${s.played}</td>
+                     <td style="padding:8px;">${s.won}/${s.lost}</td>
+                     <td style="padding:8px;">${s.diff > 0 ? '+'+s.diff : s.diff}</td>
+                     <td style="padding:8px; font-weight:bold;">${s.points}</td>
+                   </tr>`).join('')}
+                 </tbody>
+               </table>
+             </div>
+
+             <!-- Trận Đấu -->
+             <div style="flex:1.5; min-width:320px; display:flex; flex-direction:column; gap:10px;">
+               ${gMatches.map(m => {
+                 const p1 = activeTour.pairs.find(x => x.id === m.p1);
+                 const p2 = activeTour.pairs.find(x => x.id === m.p2);
+                 const isFinished = m.status === 'finished';
+                 return `<div style="border:1px solid #E0E0E0; border-radius:8px; padding:10px; background:${isFinished?'#F5F5F5':'#FFF'}; position:relative;">
+                   ${m.status === 'live' ? `<span style="position:absolute; top:-8px; left:10px; background:#D32F2F; color:#FFF; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; animation: pulse 1.5s infinite;">LIVE</span>` : ''}
+                   <div style="display:flex; justify-content:space-between; align-items:center;">
+                     <div style="flex:1; font-size:13px; font-weight:${m.score1 > m.score2 ? 'bold':'normal'};">${escapeHtml(p1?.name)}</div>
+                     <div style="padding:0 10px; white-space:nowrap;">
+                        ${canManage() && !isFinished ? 
+                          `<input type="number" id="s1-${m.id}" value="${m.score1!==null?m.score1:''}" style="width:40px; text-align:center; border:1px solid #CCC; border-radius:4px; padding:4px;" /> - 
+                           <input type="number" id="s2-${m.id}" value="${m.score2!==null?m.score2:''}" style="width:40px; text-align:center; border:1px solid #CCC; border-radius:4px; padding:4px;" />` 
+                          : `<span style="font-size:16px; font-weight:bold; color:#1565C0;">${m.score1!==null?m.score1:'-'} : ${m.score2!==null?m.score2:'-'}</span>`
+                        }
+                     </div>
+                     <div style="flex:1; font-size:13px; text-align:right; font-weight:${m.score2 > m.score1 ? 'bold':'normal'};">${escapeHtml(p2?.name)}</div>
+                   </div>
+                   ${canManage() && !isFinished ? `
+                     <div style="text-align:center; margin-top:8px;">
+                       <button class="bc-btn small" id="update-match-${m.id}" style="background:#0288D1; border-color:#0288D1; color:#FFF; font-size:11px; padding:4px 10px;">Cập nhật Tỷ số</button>
+                     </div>
+                   ` : ''}
+                 </div>`;
+               }).join('')}
+             </div>
+
+           </div>
+         </div>`);
+         groupsContainer.appendChild(groupCard);
+
+         setTimeout(() => {
+            gMatches.forEach(m => {
+               const btn = document.getElementById(`update-match-${m.id}`);
+               if (btn) {
+                  btn.onclick = async () => {
+                     const s1 = document.getElementById(`s1-${m.id}`).value;
+                     const s2 = document.getElementById(`s2-${m.id}`).value;
+                     if (s1 === '' || s2 === '') return alert('Vui lòng nhập tỷ số!');
+                     
+                     const isDone = confirm(`Chốt tỷ số trận đấu: ${s1} - ${s2}? Nhấn OK để chốt kết quả.`);
+                     await mutateTournaments(tours => {
+                        const t = tours.find(x => x.id === activeTour.id);
+                        if (t) {
+                           const match = t.matches.find(x => x.id === m.id);
+                           if (match) {
+                              match.score1 = parseInt(s1, 10);
+                              match.score2 = parseInt(s2, 10);
+                              match.status = isDone ? 'finished' : 'live';
+                           }
+                        }
+                        return tours;
+                     });
+                     render();
+                  };
+               }
+            });
+         }, 0);
+      });
+      wrap.appendChild(groupsContainer);
+
+      if (canManage()) {
+         wrap.appendChild(el(`<div style="text-align:center; margin-top:30px; padding-top:20px; border-top:2px dashed #4CAF50;">
+            <button class="bc-btn danger" id="tour-to-knockout-btn" style="padding:12px 25px; font-size:16px; background:#D32F2F; border-color:#D32F2F; box-shadow:0 4px 10px rgba(211,47,47,0.3);">🏆 CHỐT VÒNG BẢNG & TẠO NHÁNH ĐẤU KNOCKOUT</button>
+         </div>`));
+
+         setTimeout(() => {
+            const btn = document.getElementById('tour-to-knockout-btn');
+            if (btn) btn.onclick = async () => {
+               if (!confirm('Bạn có chắc chắn muốn chốt vòng bảng? Hệ thống sẽ chọn ra các đội đứng đầu mỗi bảng để bốc thăm thi đấu loại trực tiếp.')) return;
+               
+               const bracket = {}; 
+               for (const cat of activeTour.categories) {
+                  const catGroups = activeTour.groups.filter(g => g.cat === cat);
+                  if (catGroups.length === 0) continue;
+                  
+                  let advancingPairs = [];
+                  catGroups.forEach(g => {
+                     const gMatches = activeTour.matches.filter(m => m.groupId === g.id);
+                     const standings = g.pairs.map(pId => {
+                        let won = 0, diff = 0;
+                        gMatches.forEach(m => {
+                           if (m.status === 'finished' && (m.p1 === pId || m.p2 === pId)) {
+                              const isP1 = m.p1 === pId;
+                              const myScore = isP1 ? m.score1 : m.score2;
+                              const oppScore = isP1 ? m.score2 : m.score1;
+                              if (myScore > oppScore) won++;
+                              diff += (myScore - oppScore);
+                           }
+                        });
+                        return { pId, points: won * 3, diff };
+                     }).sort((a, b) => b.points - a.points || b.diff - a.diff);
+                     
+                     advancingPairs.push(...standings.slice(0, 2).map((s, idx) => ({ pId: s.pId, groupRank: idx + 1, gId: g.id })));
+                  });
+                  
+                  if (catGroups.length === 1) {
+                     const g = catGroups[0];
+                     const gMatches = activeTour.matches.filter(m => m.groupId === g.id);
+                     const standings = g.pairs.map(pId => {
+                        let won = 0, diff = 0;
+                        gMatches.forEach(m => {
+                           if (m.status === 'finished' && (m.p1 === pId || m.p2 === pId)) {
+                              const isP1 = m.p1 === pId;
+                              const myScore = isP1 ? m.score1 : m.score2;
+                              const oppScore = isP1 ? m.score2 : m.score1;
+                              if (myScore > oppScore) won++;
+                              diff += (myScore - oppScore);
+                           }
+                        });
+                        return { pId, points: won * 3, diff };
+                     }).sort((a, b) => b.points - a.points || b.diff - a.diff);
+                     advancingPairs = standings.slice(0, 4).map((s, idx) => ({ pId: s.pId, groupRank: idx + 1, gId: g.id }));
+                  }
+                  
+                  advancingPairs.sort((a, b) => a.groupRank - b.groupRank);
+                  let final4 = advancingPairs.slice(0, 4).map(x => x.pId);
+                  if (final4.length === 3) final4.push(null); 
+                  
+                  if (final4.length >= 2) {
+                     bracket[cat] = [
+                        { id: 'K1'+cat.replace(/\s/g,''), round: 'Bán kết', name: 'Bán kết 1', p1: final4[0], p2: final4[3] || null, score1: null, score2: null, status: 'pending', winnerTo: 'KF'+cat.replace(/\s/g,'') },
+                        { id: 'K2'+cat.replace(/\s/g,''), round: 'Bán kết', name: 'Bán kết 2', p1: final4[1], p2: final4[2] || null, score1: null, score2: null, status: 'pending', winnerTo: 'KF'+cat.replace(/\s/g,'') },
+                        { id: 'KF'+cat.replace(/\s/g,''), round: 'Chung kết', name: 'Chung kết', p1: null, p2: null, score1: null, score2: null, status: 'pending', winnerTo: null }
+                     ];
+                     if (!final4[3]) {
+                        bracket[cat][0].status = 'finished';
+                        bracket[cat][0].score1 = 21; bracket[cat][0].score2 = 0;
+                        bracket[cat][2].p1 = final4[0];
+                     }
+                  } else if (final4.length === 1) {
+                     // Not enough teams, dummy final
+                     bracket[cat] = [
+                        { id: 'KF'+cat.replace(/\s/g,''), round: 'Chung kết', name: 'Chung kết', p1: final4[0], p2: null, score1: null, score2: null, status: 'pending', winnerTo: null }
+                     ];
+                  }
+               }
+
+               await mutateTournaments(tours => {
+                  const t = tours.find(x => x.id === activeTour.id);
+                  if (t) {
+                     t.bracket = bracket;
+                     t.status = 'knockout';
+                  }
+                  return tours;
+               });
+               showToast('Tạo nhánh đấu thành công!', 'success');
+               render();
+            };
+         }, 0);
+      }
+    }
+
+    if (activeTour.status === 'knockout') {
+      wrap.appendChild(el(`<div class="bc-card" style="text-align:center; padding:15px; background:#E8EAF6; border:1px solid #3F51B5; margin-bottom:1rem;">
+        <h3 style="font-size:20px; color:#1A237E; font-family:'Oswald',sans-serif; margin-bottom:5px;">VÒNG LOẠI TRỰC TIẾP - ${escapeHtml(activeTour.name)}</h3>
+      </div>`));
+
+      const bracketContainer = el(`<div style="display:flex; flex-direction:column; gap:30px;"></div>`);
+      
+      Object.keys(activeTour.bracket || {}).forEach(cat => {
+         const matches = activeTour.bracket[cat];
+         const semis = matches.filter(m => m.round === 'Bán kết');
+         const finals = matches.filter(m => m.round === 'Chung kết');
+         
+         const catCard = el(`<div class="bc-card" style="border: 2px solid #3F51B5; border-radius:12px; overflow:hidden; padding:0;">
+            <div style="background:#3F51B5; color:#FFF; padding:10px 15px; font-weight:bold; font-size:16px;">🏸 ${cat}</div>
+            <div style="padding:20px; display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:30px; background:linear-gradient(to right, #FAFAFA, #FFF);">
+               
+               ${semis.length > 0 ? `<div style="display:flex; flex-direction:column; gap:40px; flex:1; min-width:280px;">
+                 ${semis.map(m => {
+                    const p1 = activeTour.pairs.find(x => x.id === m.p1);
+                    const p2 = activeTour.pairs.find(x => x.id === m.p2);
+                    const isFinished = m.status === 'finished';
+                    return `<div style="border:1px solid #CCC; border-radius:8px; padding:12px; background:${isFinished?'#F5F5F5':'#FFF'}; box-shadow:0 2px 5px rgba(0,0,0,0.1); position:relative;">
+                      <div style="font-size:12px; color:#666; margin-bottom:8px; text-transform:uppercase; font-weight:bold; border-bottom:1px solid #EEE; padding-bottom:5px;">${m.name}</div>
+                      
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                         <span style="font-size:14px; font-weight:${m.score1>m.score2?'bold':'normal'}; color:${m.score1>m.score2?'#2E7D32':'#333'}">${p1 ? escapeHtml(p1.name) : '---'}</span>
+                         ${canManage() && !isFinished && p1 && p2 ? `<input type="number" id="k-s1-${m.id}" value="${m.score1||''}" style="width:45px;text-align:center;border:1px solid #999;border-radius:4px;padding:4px;"/>` : `<strong style="font-size:16px;">${m.score1!==null?m.score1:'-'}</strong>`}
+                      </div>
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                         <span style="font-size:14px; font-weight:${m.score2>m.score1?'bold':'normal'}; color:${m.score2>m.score1?'#2E7D32':'#333'}">${p2 ? escapeHtml(p2.name) : '---'}</span>
+                         ${canManage() && !isFinished && p1 && p2 ? `<input type="number" id="k-s2-${m.id}" value="${m.score2||''}" style="width:45px;text-align:center;border:1px solid #999;border-radius:4px;padding:4px;"/>` : `<strong style="font-size:16px;">${m.score2!==null?m.score2:'-'}</strong>`}
+                      </div>
+                      ${canManage() && !isFinished && p1 && p2 ? `<div style="text-align:center; margin-top:12px;"><button class="bc-btn small" id="k-update-${m.id}" style="background:#3F51B5; border-color:#3F51B5;">Chốt Tỷ số</button></div>` : ''}
+                    </div>`;
+                 }).join('')}
+               </div>
+               
+               <div style="flex:0.1; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:40px;">
+                  <div style="width:40px; height:3px; background:#3F51B5;"></div>
+               </div>` : ''}
+
+               <div style="display:flex; flex-direction:column; gap:40px; flex:1.2; min-width:300px;">
+                 ${finals.map(m => {
+                    const p1 = activeTour.pairs.find(x => x.id === m.p1);
+                    const p2 = activeTour.pairs.find(x => x.id === m.p2);
+                    const isFinished = m.status === 'finished';
+                    return `<div style="border:2px solid #FFD700; border-radius:10px; padding:20px; background:#FFFDE7; box-shadow:0 6px 15px rgba(255,215,0,0.3); transform: scale(1.05);">
+                      <div style="font-size:16px; color:#F57F17; margin-bottom:12px; text-transform:uppercase; font-weight:bold; text-align:center; border-bottom:1px dashed #FBC02D; padding-bottom:8px;">🏆 ${m.name}</div>
+                      
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                         <span style="font-size:15px; font-weight:${m.score1>m.score2?'bold':'normal'}; color:${m.score1>m.score2?'#D84315':'#333'}">${p1 ? escapeHtml(p1.name) : '<span style="color:#999;font-style:italic;">Đang chờ nhánh dưới...</span>'}</span>
+                         ${canManage() && !isFinished && p1 && p2 ? `<input type="number" id="k-s1-${m.id}" value="${m.score1||''}" style="width:50px;text-align:center;border:1px solid #FBC02D;border-radius:4px;padding:6px;font-size:16px;"/>` : `<strong style="font-size:20px; color:#D84315;">${m.score1!==null?m.score1:'-'}</strong>`}
+                      </div>
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                         <span style="font-size:15px; font-weight:${m.score2>m.score1?'bold':'normal'}; color:${m.score2>m.score1?'#D84315':'#333'}">${p2 ? escapeHtml(p2.name) : '<span style="color:#999;font-style:italic;">Đang chờ nhánh dưới...</span>'}</span>
+                         ${canManage() && !isFinished && p1 && p2 ? `<input type="number" id="k-s2-${m.id}" value="${m.score2||''}" style="width:50px;text-align:center;border:1px solid #FBC02D;border-radius:4px;padding:6px;font-size:16px;"/>` : `<strong style="font-size:20px; color:#D84315;">${m.score2!==null?m.score2:'-'}</strong>`}
+                      </div>
+                      ${canManage() && !isFinished && p1 && p2 ? `<div style="text-align:center; margin-top:15px;"><button class="bc-btn" id="k-update-${m.id}" style="background:#F57F17; border-color:#F57F17; padding:8px 20px; font-size:14px; box-shadow:0 2px 5px rgba(245,127,23,0.3);">Chốt Vô Địch</button></div>` : ''}
+                      ${isFinished ? `<div style="text-align:center; margin-top:15px; font-weight:bold; color:#2E7D32; font-size:16px; animation:crown-float 2s infinite;">👑 ĐỘI VÔ ĐỊCH: ${m.score1>m.score2?escapeHtml(p1.name):escapeHtml(p2.name)}</div>` : ''}
+                    </div>`;
+                 }).join('')}
+               </div>
+
+            </div>
+         </div>`);
+         bracketContainer.appendChild(catCard);
+
+         setTimeout(() => {
+            matches.forEach(m => {
+               const btn = document.getElementById(`k-update-${m.id}`);
+               if (btn) {
+                  btn.onclick = async () => {
+                     const s1 = parseInt(document.getElementById(`k-s1-${m.id}`).value, 10);
+                     const s2 = parseInt(document.getElementById(`k-s2-${m.id}`).value, 10);
+                     if (isNaN(s1) || isNaN(s2) || s1 === s2) return alert('Vui lòng nhập tỷ số hợp lệ (không hòa)!');
+                     
+                     if (!confirm(`Xác nhận tỷ số ${s1} - ${s2}?`)) return;
+
+                     await mutateTournaments(tours => {
+                        const t = tours.find(x => x.id === activeTour.id);
+                        if (t) {
+                           const tCatMatches = t.bracket[cat];
+                           const tMatch = tCatMatches.find(x => x.id === m.id);
+                           tMatch.score1 = s1;
+                           tMatch.score2 = s2;
+                           tMatch.status = 'finished';
+                           
+                           if (tMatch.winnerTo) {
+                              const nextMatch = tCatMatches.find(x => x.id === tMatch.winnerTo);
+                              if (nextMatch) {
+                                 const winnerId = s1 > s2 ? tMatch.p1 : tMatch.p2;
+                                 if (!nextMatch.p1) nextMatch.p1 = winnerId;
+                                 else if (!nextMatch.p2) nextMatch.p2 = winnerId;
+                              }
+                           }
+                        }
+                        return tours;
+                     });
+                     render();
+                  };
+               }
+            });
+         }, 0);
+
+      });
+      wrap.appendChild(bracketContainer);
+
+      if (canManage()) {
+         wrap.appendChild(el(`<div style="text-align:center; margin-top:30px; padding-top:20px; border-top:2px dashed #3F51B5;">
+            <button class="bc-btn" id="tour-finish-btn" style="background:#FFD700; border:2px solid #F57F17; color:#D84315; font-size:18px; padding:15px 30px; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.2);">🎉 BẾ MẠC & TRAO THƯỞNG XP</button>
+         </div>`));
+
+         setTimeout(() => {
+            const fbtn = document.getElementById('tour-finish-btn');
+            if(fbtn) fbtn.onclick = async () => {
+               let allDone = true;
+               Object.keys(activeTour.bracket || {}).forEach(cat => {
+                  const m = activeTour.bracket[cat].find(x => x.round === 'Chung kết');
+                  if (!m || m.status !== 'finished') allDone = false;
+               });
+               if (!allDone) {
+                  if(!confirm('Cảnh báo: Có hạng mục chưa đấu xong Chung kết. Bạn vẫn muốn Bế mạc sớm?')) return;
+               } else {
+                  if(!confirm('Xác nhận bế mạc giải đấu? Hệ thống sẽ cộng XP thưởng cho các VĐV chiến thắng!')) return;
+               }
+               
+               const updates = {}; 
+               Object.keys(activeTour.bracket || {}).forEach(cat => {
+                  const matches = activeTour.bracket[cat];
+                  const finalMatch = matches.find(m => m.round === 'Chung kết');
+                  if (finalMatch && finalMatch.status === 'finished') {
+                     const winnerPairId = finalMatch.score1 > finalMatch.score2 ? finalMatch.p1 : finalMatch.p2;
+                     const runnerUpPairId = finalMatch.score1 > finalMatch.score2 ? finalMatch.p2 : finalMatch.p1;
+                     
+                     const wPair = activeTour.pairs.find(p => p.id === winnerPairId);
+                     const rPair = activeTour.pairs.find(p => p.id === runnerUpPairId);
+                     
+                     if (wPair) {
+                        updates[wPair.m1] = (updates[wPair.m1] || 0) + 500;
+                        if (wPair.m2) updates[wPair.m2] = (updates[wPair.m2] || 0) + 500;
+                     }
+                     if (rPair) {
+                        updates[rPair.m1] = (updates[rPair.m1] || 0) + 300;
+                        if (rPair.m2) updates[rPair.m2] = (updates[rPair.m2] || 0) + 300;
+                     }
+                  }
+               });
+
+               await mutateTournaments(tours => {
+                  const t = tours.find(x => x.id === activeTour.id);
+                  if (t) t.status = 'finished';
+                  return tours;
+               });
+
+               for (const mId in updates) {
+                  const bonus = updates[mId];
+                  await mutateKey('bc_members', mems => {
+                     const idx = mems.findIndex(m => m.id === mId);
+                     if (idx > -1) {
+                        mems[idx].xp = (mems[idx].xp || 0) + bonus;
+                        mems[idx].xpHistory = mems[idx].xpHistory || [];
+                        mems[idx].xpHistory.push({
+                           date: new Date().toISOString(),
+                           amount: bonus,
+                           reason: 'Thưởng Thành tích Giải đấu: ' + activeTour.name,
+                           by: state.me.username
+                        });
+                     }
+                     return mems;
+                  });
+               }
+
+               showToast('Đã bế mạc và cộng thưởng XP thành công!', 'success');
+               render();
+            };
+         }, 0);
+      }
+    }
+    
+    return wrap;
+}
+
+
 
   // ---------- SESSIONS ----------
   function renderSessions(){
@@ -8032,8 +7868,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
             ${escapeHtml(a.title)}
           </div>
           
-          ${a.imageUrl ? `<img src="${a.imageUrl}" style="width:100%; border-radius:8px; margin-top:4px; max-height:200px; object-fit:cover;" />` : ''}
-
           <div style="font-size:13px; color:#2C2C2A; line-height:1.45; white-space:pre-line;">
             ${escapeHtml(a.content)}
           </div>
@@ -8797,9 +8631,9 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
         </div>
       </div>
       <div style="display:flex; gap:14px; margin-top:10px; font-size:13px; color:#6b7a73; flex-wrap:wrap;">
-        <span ${canManage() && !s.locked ? `style="cursor:pointer;" id="edit-max-${s.id}" title="Click để sửa số lượng tham gia tối đa"` : ''}><span class="bc-badge" style="background:#EAF3DE; color:#27500A;">${yes.length}${s.max ? '/'+s.max : ''} tham gia ${canManage() && !s.locked ? '✏️' : ''}</span></span>
+        <span><span class="bc-badge" style="background:#EAF3DE; color:#27500A;">${yes.length}${s.max ? '/'+s.max : ''} tham gia</span></span>
         <span><span class="bc-badge" style="background:#E6F1FB; color:#0C447C;">${s.locked ? 'Cố định thực tế: ' + fixedPlaying : 'Cố định hiện có: ' + totalFixed}</span></span>
-        <span ${canManage() && !s.locked ? `style="cursor:pointer;" id="edit-maxCasual-${s.id}" title="Click để sửa số vãng lai tối đa"` : ''}><span class="bc-badge" style="background:#FFF2E6; color:#B25E00;">${s.locked ? 'Vãng lai thực tế: ' + casualPlaying : 'Vãng lai hiện có: ' + totalCasual}${!s.locked && s.maxCasual ? ' (Nhận tối đa ' + s.maxCasual + ')' : ''} ${canManage() && !s.locked ? '✏️' : ''}</span></span>
+        <span><span class="bc-badge" style="background:#FFF2E6; color:#B25E00;">${s.locked ? 'Vãng lai thực tế: ' + casualPlaying : 'Vãng lai hiện có: ' + totalCasual}${!s.locked && s.maxCasual ? ' (Nhận tối đa ' + s.maxCasual + ')' : ''}</span></span>
         <span><span class="bc-badge" style="background:#FAECE7; color:#993C1D;">${no.length} vắng</span></span>
         ${full ? `<span class="bc-badge" style="background:#FAEEDA; color:#854F0B;">Đủ người</span>` : ''}
         ${!s.locked && s.maxCasual && casualPlaying >= s.maxCasual ? `<span class="bc-badge" style="background:#FAECE7; color:#993C1D;">Hết chỗ vãng lai</span>` : ''}
@@ -8832,25 +8666,6 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
       const remindBtn = card.querySelector(`#remind-vote-${s.id}`);
       if (remindBtn) {
         remindBtn.onclick = () => showRemindVoteDialog(s);
-      }
-      if (!s.locked) {
-        const editMaxBtn = card.querySelector(`#edit-max-${s.id}`);
-        if (editMaxBtn) editMaxBtn.onclick = () => {
-           const newVal = prompt('Nhập số lượng TỔNG tham gia tối đa (để trống nếu không giới hạn):', s.max || '');
-           if (newVal === null) return;
-           s.max = newVal ? parseInt(newVal, 10) : null;
-           saveSessions();
-           render();
-        };
-
-        const editMaxCasualBtn = card.querySelector(`#edit-maxCasual-${s.id}`);
-        if (editMaxCasualBtn) editMaxCasualBtn.onclick = () => {
-           const newVal = prompt('Nhập số VÃNG LAI tối đa (để trống nếu không giới hạn):', s.maxCasual || '');
-           if (newVal === null) return;
-           s.maxCasual = newVal ? parseInt(newVal, 10) : null;
-           saveSessions();
-           render();
-        };
       }
     }
 
@@ -10062,4 +9877,3 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
   initApp();
 })();
 
-</script>
