@@ -4248,23 +4248,18 @@
         
         const submitBtn = document.getElementById('r2-submit-request-btn');
         if (submitBtn) submitBtn.onclick = async () => {
-          const r2Paid = parseFloat(document.getElementById('r2-paid').value) || 0;
-          const r2Prepaid = parseFloat(document.getElementById('r2-prepaid').value) || 0;
+          const r2Transfer = parseFloat(document.getElementById('r2-paid').value) || 0;
+          const r2PrepaidTransfer = parseFloat(document.getElementById('r2-prepaid').value) || 0;
           const note = document.getElementById('r2-note').value.trim();
           const msg = document.getElementById('r2-submit-msg');
           
-          if (r2Paid < (p.paid || 0)) {
+          if (r2Transfer < 0 || r2PrepaidTransfer < 0) {
             msg.style.color = '#993C1D';
-            msg.textContent = `Số tiền nộp không được nhỏ hơn số tiền đã xác nhận hiện tại (${formatVND(p.paid)}).`;
-            return;
-          }
-          if (r2Prepaid < (p.prepaid || 0)) {
-            msg.style.color = '#993C1D';
-            msg.textContent = `Số tiền nộp trước không được nhỏ hơn số tiền đã xác nhận hiện tại (${formatVND(p.prepaid)}).`;
+            msg.textContent = 'Số tiền nộp không được nhỏ hơn 0đ.';
             return;
           }
           
-          const transferAmount = Math.max(0, (r2Paid - (p.paid || 0)) + (r2Prepaid - (p.prepaid || 0)));
+          const transferAmount = r2Transfer + r2PrepaidTransfer;
           if (transferAmount === 0) {
             msg.style.color = '#993C1D';
             msg.textContent = 'Số tiền cần chuyển khoản là 0đ.';
@@ -4285,8 +4280,8 @@
                   memberId: myMember.id,
                   memberName: myMember.name,
                   month,
-                  paid: r2Paid,
-                  prepaid: r2Prepaid,
+                  paid: (p.paid || 0) + r2Transfer,
+                  prepaid: (p.prepaid || 0) + r2PrepaidTransfer,
                   status: 'pending',
                   note,
                   date: today
