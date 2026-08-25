@@ -6623,6 +6623,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
           </div>
           ${canManage() || isOwner() ? `<div>
              ${activeTour.status === 'playing' ? `<button class="bc-btn warning small" id="revert-tour-btn" style="margin-right:8px; background:#F26419; color:white;" title="Quay lại bước Chia bảng đấu">🔙 Chỉnh sửa bảng đấu</button>` : ''}
+             ${activeTour.status === 'knockout' ? `<button class="bc-btn warning small" id="revert-to-playing-btn" style="margin-right:8px; background:#F26419; color:white;" title="Quay lại bước Vòng bảng">🔙 Chỉnh sửa vòng bảng</button>` : ''}
              <button class="bc-btn danger small" id="delete-tour-btn">🗑️ Xóa</button>
           </div>` : ''}
        </div>`));
@@ -6642,6 +6643,24 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                     return updated;
                  });
                  state.tourActiveTab = 'grouping';
+                 render();
+             }
+          };
+
+          const revertToPlayingBtn = document.getElementById('revert-to-playing-btn');
+          if (revertToPlayingBtn) revertToPlayingBtn.onclick = async () => {
+             if (confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN CHỈNH SỬA VÒNG BẢNG?\n\nToàn bộ dữ liệu của vòng Knockout hiện tại sẽ bị xóa sạch để bạn có thể quay lại điều chỉnh Vòng bảng. Hành động này không thể hoàn tác!')) {
+                 await mutateTournaments(latest => {
+                    const idx = latest.findIndex(t => t.id === activeTour.id);
+                    if (idx < 0) return latest;
+                    const updated = [...latest];
+                    updated[idx] = Object.assign({}, updated[idx], {
+                        status: 'playing',
+                        bracket: null
+                    });
+                    return updated;
+                 });
+                 state.tourActiveTab = 'group';
                  render();
              }
           };
@@ -7072,7 +7091,15 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
              <div style="font-size:13px; color:var(--text-primary);">BTC có thể thay đổi bảng đấu cho từng Đội trước khi chốt. Hệ thống đã gợi ý chia đều ngẫu nhiên bên dưới.</div>
           </div>`));
 
-          activeTour.categories.forEach(cat => {
+          const sortedCats = [...(activeTour.categories || [])].sort((a,b) => {
+              const catOrder = { 'Đôi Nam': 1, 'Đôi Nam Nữ': 2, 'Đôi Nữ': 3 };
+              const orderA = catOrder[a] || 99;
+              const orderB = catOrder[b] || 99;
+              if (orderA !== orderB) return orderA - orderB;
+              return a.localeCompare(b);
+          });
+          
+          sortedCats.forEach(cat => {
              const catGroups = activeTour.groups.filter(g => g.cat === cat);
              if (catGroups.length === 0) return;
 
@@ -7260,7 +7287,15 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
              return `<option value="Sân ${i+1}">Sân ${i+1}</option>`;
           }).join('');
 
-          (activeTour.groups || []).forEach(g => {
+          const sortedGroups = [...(activeTour.groups || [])].sort((a,b) => {
+              const catOrder = { 'Đôi Nam': 1, 'Đôi Nam Nữ': 2, 'Đôi Nữ': 3 };
+              const orderA = catOrder[a.cat] || 99;
+              const orderB = catOrder[b.cat] || 99;
+              if (orderA !== orderB) return orderA - orderB;
+              return a.name.localeCompare(b.name);
+          });
+
+          sortedGroups.forEach(g => {
              const gMatches = (activeTour.matches || []).filter(m => m.groupId === g.id);
              
              const standings = (g.pairs || []).map(pId => {
