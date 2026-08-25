@@ -4466,16 +4466,32 @@
     const ledgerEntries = [];
     state.members.forEach(m => {
       const p = (state.payments[m.id] || {})[month] || {};
-      let payDate = p.date;
-      if (!payDate) {
-        const approvedReq = (state.paymentRequests || []).find(r => r.memberId === m.id && r.month === month && r.status === 'approved');
-        payDate = approvedReq ? approvedReq.date : (month + '-01');
-      }
+      const approvedReqs = (state.paymentRequests || []).filter(r => r.memberId === m.id && r.month === month && r.status === 'approved');
       
-      if (p.paid) ledgerEntries.push({ date: payDate, type: 'income', label: 'Thu tiền nộp: ' + m.name, amount: p.paid });
-      if (p.prepaid) {
-        const label = p.prepaid > 0 ? ('Điều chỉnh tăng: ' + m.name) : ('Điều chỉnh giảm: ' + m.name);
-        ledgerEntries.push({ date: payDate, type: 'income', label: label, amount: p.prepaid });
+      let qrPaidTotal = 0;
+      let qrPrepaidTotal = 0;
+
+      approvedReqs.forEach(req => {
+        if (req.paid) {
+          ledgerEntries.push({ date: req.date, type: 'income', label: 'Thu tiền nộp: ' + m.name, amount: req.paid });
+          qrPaidTotal += req.paid;
+        }
+        if (req.prepaid) {
+          const lbl = req.prepaid > 0 ? ('Điều chỉnh tăng: ' + m.name) : ('Điều chỉnh giảm: ' + m.name);
+          ledgerEntries.push({ date: req.date, type: 'income', label: lbl, amount: req.prepaid });
+          qrPrepaidTotal += req.prepaid;
+        }
+      });
+
+      const manualPaid = (p.paid || 0) - qrPaidTotal;
+      if (manualPaid !== 0) {
+        ledgerEntries.push({ date: p.date || (month + '-01'), type: 'income', label: 'Thu tiền nộp: ' + m.name, amount: manualPaid });
+      }
+
+      const manualPrepaid = (p.prepaid || 0) - qrPrepaidTotal;
+      if (manualPrepaid !== 0) {
+        const lbl = manualPrepaid > 0 ? ('Điều chỉnh tăng: ' + m.name) : ('Điều chỉnh giảm: ' + m.name);
+        ledgerEntries.push({ date: p.date || (month + '-01'), type: 'income', label: lbl, amount: manualPrepaid });
       }
     });
     monthDonations.forEach(d => ledgerEntries.push({ date: d.date||month+'-01', type: 'income', label: 'Donate: ' + d.memberName + (d.note?' ('+d.note+')':''), amount: d.amount }));
