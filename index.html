@@ -6865,7 +6865,11 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
             <h4 style="font-size:15px; color:var(--text-primary); margin-bottom:10px;">📋 Danh sách VĐV Ghi Danh (${activeTour.registrations.length} lượt)</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
               ${activeTour.registrations.length === 0 ? '<div class="bc-empty" style="padding:10px;">Chưa có ai đăng ký.</div>' : ''}
-              ${activeTour.registrations.map(r => {
+              ${[...activeTour.registrations].sort((a,b) => {
+                 if (a.cat !== b.cat) return (a.cat || '').localeCompare(b.cat || '');
+                 const sW = s => s === 'Advanced' ? 3 : (s === 'Intermediate' ? 2 : (s === 'Beginner' ? 1 : 0));
+                 return sW(b.skill) - sW(a.skill);
+              }).map(r => {
                 const p1 = state.members.find(m => m.id === r.m1);
                 const p2 = r.m2 ? state.members.find(m => m.id === r.m2) : null;
                 return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--card-bg); border:1px solid #E9ECEF; border-radius:6px;">
@@ -6885,7 +6889,11 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
           if (canManage() && activeTour.status === 'registering') {
             const pairingCard = el(`<div class="bc-card" style="border: 2px solid #1B4332;">
               ${(() => {
-                const soloRegs = activeTour.registrations.filter(r => r.type === 'solo');
+                const soloRegs = activeTour.registrations.filter(r => r.type === 'solo').sort((a,b) => {
+                   if (a.cat !== b.cat) return (a.cat || '').localeCompare(b.cat || '');
+                   const sW = s => s === 'Advanced' ? 3 : (s === 'Intermediate' ? 2 : (s === 'Beginner' ? 1 : 0));
+                   return sW(b.skill) - sW(a.skill);
+                });
                 return `<h4 style="font-size:15px; color:var(--text-primary); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                   <span>👥 MA TRẬN CÁP KÈO (${soloRegs.length} VĐV)</span>
                   ${soloRegs.length >= 2 ? `<div style="display:flex; gap:6px; align-items:center;">
