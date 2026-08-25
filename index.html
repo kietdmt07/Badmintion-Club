@@ -4158,8 +4158,8 @@
           <div id="r2-qr-panel" style="display:none; border-top:1px dashed #E3E0D6; padding-top:10px; margin-top:10px;">
             <div style="display:flex; flex-direction:column; gap:8px;">
               <div>
-                <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">Tổng tiền đã chuyển khoản (đóng cho tháng này):</label>
-                <input class="bc-input" type="number" id="r2-paid" value="${p.paid||0}" min="${p.paid||0}" placeholder="Số tiền đã nộp" />
+                <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">Số tiền nộp (đóng cho tháng này):</label>
+                <input class="bc-input" type="number" id="r2-paid" value="${Math.max(0, remaining)}" min="0" placeholder="Số tiền nộp đợt này" />
               </div>
               <div>
                 <label style="font-size:12px; color:#8a877d; display:block; margin-bottom:4px;">Số tiền nộp trước (quỹ dự phòng/tháng sau):</label>
@@ -4218,7 +4218,7 @@
             btnQr.textContent = 'Ẩn thông tin nộp tiền';
             const r2PaidInput = document.getElementById('r2-paid');
             if (r2PaidInput) {
-              r2PaidInput.value = (p.paid || 0) + Math.max(0, remaining);
+              r2PaidInput.value = Math.max(0, remaining);
             }
             const r2NoteInput = document.getElementById('r2-note');
             if (r2NoteInput) {
@@ -4237,7 +4237,7 @@
           if (isHidden) {
             const r2PaidInput = document.getElementById('r2-paid');
             if (r2PaidInput) {
-              r2PaidInput.value = (p.paid || 0) + Math.max(0, remaining);
+              r2PaidInput.value = Math.max(0, remaining);
             }
             const r2NoteInput = document.getElementById('r2-note');
             if (r2NoteInput) {
