@@ -6622,11 +6622,30 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
              <div style="font-size:12px; color:#F26419; font-weight:600;">Tình trạng: ${activeTour.status.toUpperCase()} | Sân thi đấu: ${activeTour.courtsCount || 4} sân</div>
           </div>
           ${canManage() || isOwner() ? `<div>
+             ${activeTour.status === 'playing' ? `<button class="bc-btn warning small" id="revert-tour-btn" style="margin-right:8px; background:#F26419; color:white;" title="Quay lại bước Chia bảng đấu">🔙 Chỉnh sửa bảng đấu</button>` : ''}
              <button class="bc-btn danger small" id="delete-tour-btn">🗑️ Xóa</button>
           </div>` : ''}
        </div>`));
 
        setTimeout(() => {
+          const revertBtn = document.getElementById('revert-tour-btn');
+          if (revertBtn) revertBtn.onclick = async () => {
+             if (confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN CHỈNH SỬA BẢNG ĐẤU?\n\nToàn bộ lịch thi đấu và kết quả vòng bảng hiện tại sẽ bị xóa sạch để bạn có thể chia lại bảng đấu. Hành động này không thể hoàn tác!')) {
+                 await mutateTournaments(latest => {
+                    const idx = latest.findIndex(t => t.id === activeTour.id);
+                    if (idx < 0) return latest;
+                    const updated = [...latest];
+                    updated[idx] = Object.assign({}, updated[idx], {
+                        status: 'grouping',
+                        matches: []
+                    });
+                    return updated;
+                 });
+                 state.tourActiveTab = 'grouping';
+                 render();
+             }
+          };
+
           const editBtn = document.getElementById('edit-tour-btn');
           if (editBtn) editBtn.onclick = () => {
              const modal = el(`<div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; display:flex; justify-content:center; align-items:center; padding:20px;">
