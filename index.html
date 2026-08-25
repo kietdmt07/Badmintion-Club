@@ -6875,8 +6875,8 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                 return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--card-bg); border:1px solid #E9ECEF; border-radius:6px;">
                   <div>
                     <span class="bc-badge" style="background:var(--tab-bg); color:var(--text-primary); margin-right:8px;">${r.cat}</span>
-                    <strong style="font-size:13px; color:var(--text-secondary);">${escapeHtml(p1?memberDisplayName(p1):'')}</strong> ${p1?.gender==='Nữ'?'👩':'👨'}
-                    ${r.type === 'pair' && p2 ? `<span style="color:var(--text-secondary); font-size:12px; margin:0 6px;">+</span> <strong style="font-size:13px; color:var(--text-secondary);">${escapeHtml(memberDisplayName(p2))}</strong> ${p2.gender==='Nữ'?'👩':'👨'} ${canManage() ? `<button class="bc-btn small warning" id="split-reg-${r.id}" style="margin-left:8px; padding:2px 6px; font-size:10px;">✂️ Tách cặp</button>` : ''}` : `<span style="font-size:11px; color:#F26419; margin-left:8px; font-style:italic;">(Đang tìm partner 🤝)</span>`}
+                    <strong style="font-size:13px; color:var(--text-secondary);">${escapeHtml(p1?p1.name:'')}</strong> ${p1?.gender==='Nữ'?'👩':'👨'}
+                    ${r.type === 'pair' && p2 ? `<span style="color:var(--text-secondary); font-size:12px; margin:0 6px;">+</span> <strong style="font-size:13px; color:var(--text-secondary);">${escapeHtml(p2.name)}</strong> ${p2.gender==='Nữ'?'👩':'👨'} ${canManage() ? `<button class="bc-btn small warning" id="split-reg-${r.id}" style="margin-left:8px; padding:2px 6px; font-size:10px;">✂️ Tách cặp</button>` : ''}` : `<span style="font-size:11px; color:#F26419; margin-left:8px; font-style:italic;">(Đang tìm partner 🤝)</span>`}
                     ${r.skill && r.skill !== 'Chưa xác định' ? `<span style="font-size:11px; margin-left:8px; background:#4CAF50; color:#FFF; padding:2px 6px; border-radius:4px; font-weight:600;">${r.skill}</span>` : ''}
                   </div>
                   ${canManage() && activeTour.status === 'registering' ? `<button class="bc-btn danger small" id="del-reg-${r.id}">Xóa</button>` : ''}
@@ -6921,7 +6921,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                             <td style="padding:8px; text-align:center;">
                                <input type="checkbox" class="matrix-chk" value="${r.id}" style="transform:scale(1.3); cursor:pointer;" />
                             </td>
-                            <td style="padding:8px; font-weight:600;">${escapeHtml(m?memberDisplayName(m):'')}</td>
+                            <td style="padding:8px; font-weight:600;">${escapeHtml(m?m.name:'')}</td>
                             <td style="padding:8px; text-align:center;">${m?.gender==='Nữ'?'👩 Nữ':'👨 Nam'}</td>
                             <td style="padding:8px;">${r.skill && r.skill !== 'Chưa xác định' ? `<span style="font-size:11px; background:#4CAF50; color:#FFF; padding:2px 6px; border-radius:4px;">${r.skill}</span>` : '-'}</td>
                             <td style="padding:8px;"><span class="bc-badge" style="background:var(--tab-bg); color:var(--text-primary); font-size:12px;">${r.cat}</span></td>
@@ -7019,7 +7019,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
                 const pairs = activeTour.registrations.filter(r => r.type === 'pair').map(r => {
                   const p1 = state.members.find(x => x.id === r.m1);
                   const p2 = state.members.find(x => x.id === r.m2);
-                  const nameStr = `Đội ${globalTeamNumber}: ${p1.nickname||p1.name} & ${p2.nickname||p2.name}`;
+                  const nameStr = `Đội ${globalTeamNumber}: ${p1.name} & ${p2.name}`;
                   globalTeamNumber++;
                   return {
                     id: 'P' + Date.now() + Math.random().toString().slice(2,8),
