@@ -3125,7 +3125,12 @@
         await mutatePayments(latest => {
           const updated = Object.assign({}, latest);
           updated[req.memberId] = Object.assign({}, updated[req.memberId] || {});
-          updated[req.memberId][req.month] = { paid: req.paid + req.prepaid, prepaid: 0, date: req.date };
+          const current = updated[req.memberId][req.month] || { paid: 0, prepaid: 0 };
+          updated[req.memberId][req.month] = { 
+            paid: (current.paid || 0) + (req.paid || 0) + (req.prepaid || 0), 
+            prepaid: 0, 
+            date: req.date 
+          };
           return updated;
         });
         
@@ -4280,8 +4285,8 @@
                   memberId: myMember.id,
                   memberName: myMember.name,
                   month,
-                  paid: (p.paid || 0) + r2Transfer,
-                  prepaid: (p.prepaid || 0) + r2PrepaidTransfer,
+                  paid: r2Transfer,
+                  prepaid: r2PrepaidTransfer,
                   status: 'pending',
                   note,
                   date: today
@@ -5127,7 +5132,12 @@
               await mutatePayments(latest => {
                 const updated = Object.assign({}, latest);
                 updated[r.memberId] = Object.assign({}, updated[r.memberId] || {});
-                updated[r.memberId][r.month] = { paid: r.paid + r.prepaid, prepaid: 0, date: r.date };
+                const current = updated[r.memberId][r.month] || { paid: 0, prepaid: 0 };
+                updated[r.memberId][r.month] = { 
+                  paid: (current.paid || 0) + (r.paid || 0) + (r.prepaid || 0), 
+                  prepaid: 0, 
+                  date: r.date 
+                };
                 return updated;
               });
               
