@@ -3499,6 +3499,8 @@
     const mRank = getXPRank(mXP);
     const mBadges = getMemberBadges(m.id, state.sessions);
 
+    const canEditPrivileged = canManage(); // Chỉ R1, Admin, Owner được sửa Họ tên, Username, Giới tính
+
     const row = el(`<div class="bc-card" style="padding:0.7rem 1rem;">
       <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:6px;">
         <div style="display:flex; gap:10px; align-items:flex-start;">
@@ -3506,9 +3508,9 @@
           <div>
             ${isEditing 
               ? `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px;">
-                  <input class="bc-input" id="edit-name-${m.id}" value="${escapeHtml(m.name)}" placeholder="Họ tên (bắt buộc)" style="width:140px; padding:4px 6px; font-size:13px; font-weight:500; height: 28px;" />
+                  <input class="bc-input" id="edit-name-${m.id}" value="${escapeHtml(m.name)}" placeholder="Họ tên (bắt buộc)" style="width:140px; padding:4px 6px; font-size:13px; font-weight:500; height: 28px; ${!canEditPrivileged ? 'background:#f5f5f5; color:#777; cursor:not-allowed;' : ''}" ${!canEditPrivileged ? 'disabled title="Chỉ R1, Admin, Owner mới có quyền đổi họ tên"' : ''} />
                   <input class="bc-input" id="edit-nickname-${m.id}" value="${escapeHtml(m.nickname || '')}" placeholder="Biệt danh (tối đa 35 ký tự)" maxlength="35" style="width:150px; padding:4px 6px; font-size:13px; height: 28px;" />
-                  <select class="bc-select" id="edit-gender-${m.id}" style="width:80px; padding:4px 6px; font-size:12px; height: 28px;">
+                  <select class="bc-select" id="edit-gender-${m.id}" style="width:80px; padding:4px 6px; font-size:12px; height: 28px; ${!canEditPrivileged ? 'background:#f5f5f5; color:#777; cursor:not-allowed;' : ''}" ${!canEditPrivileged ? 'disabled title="Chỉ R1, Admin, Owner mới có quyền đổi giới tính"' : ''}>
                     <option value="Nam" ${m.gender !== 'Nữ' ? 'selected' : ''}>Nam</option>
                     <option value="Nữ" ${m.gender === 'Nữ' ? 'selected' : ''}>Nữ</option>
                   </select>
@@ -3530,7 +3532,7 @@
 
             ${isEditing
               ? `<div style="font-size:12px; color:#8a877d; margin-top:3px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                  <input class="bc-input" id="edit-username-${m.id}" value="${escapeHtml(m.username || '')}" placeholder="Username" style="width:110px; padding:2px 6px; font-size:12px; height: 24px;" ${isOwner(m)?'disabled title="Không thể đổi username của Owner"':''} /> · 
+                  <input class="bc-input" id="edit-username-${m.id}" value="${escapeHtml(m.username || '')}" placeholder="Username" style="width:110px; padding:2px 6px; font-size:12px; height: 24px; ${(!canEditPrivileged || isOwner(m)) ? 'background:#f5f5f5; color:#777; cursor:not-allowed;' : ''}" ${!canEditPrivileged ? 'disabled title="Chỉ R1, Admin, Owner mới có quyền đổi username"' : (isOwner(m) ? 'disabled title="Không thể đổi username của Owner"' : '')} /> · 
                   <input class="bc-input" id="edit-email-${m.id}" type="email" value="${escapeHtml(m.email)}" placeholder="Email" style="width:170px; padding:2px 6px; font-size:12px; height: 24px;" /> · 
                   <input class="bc-input" id="edit-phone-${m.id}" value="${escapeHtml(m.phone || '')}" placeholder="SĐT" style="width:100px; padding:2px 6px; font-size:12px; height: 24px;" />
                  </div>`
@@ -3564,16 +3566,18 @@
     if (isEditing) {
       const saveEditBtn = el(`<button class="bc-btn small" style="background:#27500A; border-color:#27500A; color:#FFF; font-weight:500;">Xác nhận</button>`);
       saveEditBtn.onclick = async () => {
-        const newName = document.getElementById(`edit-name-${m.id}`).value.trim();
+        const allowPrivileged = canManage();
+        const nameEl = document.getElementById(`edit-name-${m.id}`);
+        const newName = (allowPrivileged && nameEl) ? nameEl.value.trim() : m.name;
         const newNickname = (document.getElementById(`edit-nickname-${m.id}`).value || '').trim().slice(0, 35);
         const newUsernameInput = document.getElementById(`edit-username-${m.id}`);
-        const newUsername = newUsernameInput ? normUsername(newUsernameInput.value) : m.username;
+        const newUsername = (allowPrivileged && newUsernameInput) ? normUsername(newUsernameInput.value) : m.username;
         const newEmail = normEmail(document.getElementById(`edit-email-${m.id}`).value);
         const newPhone = document.getElementById(`edit-phone-${m.id}`).value.trim();
         const levelEl = document.getElementById(`edit-level-${m.id}`);
         const newLevel = levelEl ? levelEl.value : m.level;
         const genderEl = document.getElementById(`edit-gender-${m.id}`);
-        const newGender = genderEl ? genderEl.value : (m.gender || 'Nam');
+        const newGender = (allowPrivileged && genderEl) ? genderEl.value : (m.gender || 'Nam');
         
         if (!newName || !newEmail || !newUsername) { alert('Họ tên, username và email không được bỏ trống.'); return; }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { alert('Địa chỉ email không đúng định dạng.'); return; }
