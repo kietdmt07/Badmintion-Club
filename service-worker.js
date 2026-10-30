@@ -1,10 +1,11 @@
-const CACHE_NAME = 'aron-badminton-cache-v2';
+const CACHE_NAME = 'aron-badminton-cache-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icon-192.jpg',
-  './icon-512.jpg'
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  './assets/logo.svg'
 ];
 
 // Install Event
