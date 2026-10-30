@@ -748,6 +748,126 @@ body.dark-theme .bc-err { color: var(--a-bad); }
 }
 
 </style>
+<style id="aron-ui2">
+/* =====================================================================
+   ARON UI · đợt 4: bảng vote gọn, hiệu ứng chuyển động, cờ 3D
+   ===================================================================== */
+
+/* ---- Bảng vote: mỗi thành viên đúng MỘT dòng trên máy tính, hai dòng gọn trên điện thoại ---- */
+.a-vlist tr { grid-template-columns: 34px auto minmax(0, 1fr) auto !important;
+  grid-template-areas: "av nm nm st" "av ty pa st" !important; row-gap: 3px; padding: 7px 6px; }
+.a-vlist td:nth-child(3) { white-space: nowrap; }
+.a-vlist td:nth-child(4) { margin-top: 0 !important; justify-self: stretch; min-width: 0; max-width: 148px; }
+.a-vlist td:nth-child(4) select { max-width: 148px; height: 28px !important; min-height: 0 !important;
+  padding: 0 26px 0 10px !important; width: 100% !important; font-size: 11.5px !important; line-height: 1 !important; border-radius: 9px !important; }
+.a-vlist td:nth-child(5) select { height: 30px !important; min-height: 0 !important; font-size: 12px !important; }
+.a-vlist td:nth-child(5) { align-self: center; }
+@media (min-width: 760px) {
+  .a-vlist tr { grid-template-columns: 36px minmax(150px, 1.5fr) 84px 156px minmax(104px, auto) !important;
+    grid-template-areas: "av nm ty pa st" !important; align-items: center; column-gap: 12px; padding: 6px 10px; }
+  .a-vlist td:nth-child(4) { justify-self: start; }
+  .a-vlist td:nth-child(5) { justify-self: end; }
+  .a-vlist tr { transition: background .18s ease; }
+  .a-vlist tr:hover { background: color-mix(in srgb, var(--a-primary, #074659) 6%, transparent); }
+}
+
+/* ---- Hiệu ứng chuyển động ---- */
+@keyframes a-rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes a-grow { from { width: 0 !important; } }
+@keyframes a-sheen { from { transform: translateX(-120%); } to { transform: translateX(260%); } }
+@keyframes a-float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(14px, -10px); } }
+@keyframes a-pop { 0% { transform: scale(.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+.a-enter .a-hero, .a-enter .a-card, .a-enter .a-srow, .a-enter .a-fold-card, .a-enter .a-mrow, .a-enter .a-pagehead, .a-enter .a-bulletin, .a-enter .a-todo, .a-enter .a-seg {
+  animation: a-rise .5s cubic-bezier(.2, .7, .2, 1) both; }
+.a-enter > * > *:nth-child(2), .a-enter .a-hero ~ *:nth-child(2) { animation-delay: .05s; }
+.a-enter > * > *:nth-child(3) { animation-delay: .1s; } .a-enter > * > *:nth-child(4) { animation-delay: .15s; }
+.a-enter > * > *:nth-child(5) { animation-delay: .2s; } .a-enter > * > *:nth-child(6) { animation-delay: .25s; }
+.a-enter > * > *:nth-child(n+7) { animation-delay: .3s; }
+.a-enter .a-xp-bar i, .a-enter .a-xp-bar-dark i { animation: a-grow .9s .2s cubic-bezier(.2, .7, .2, 1) both; }
+.a-xp-bar i { position: relative; overflow: hidden; }
+.a-xp-bar i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  animation: a-sheen 2.8s ease-in-out infinite; }
+.a-hero::after { animation: a-float 10s ease-in-out infinite; }
+.a-card, .a-srow, .a-fold-card { transition: box-shadow .22s ease, border-color .22s ease; }
+.a-btn, .a-nav-i, .a-iconbtn, .a-chip, .a-row, .a-vote { transition: transform .15s ease, filter .15s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease; }
+.a-btn:active, .a-iconbtn:active, .a-row:active, .a-vote:active { transform: scale(.97); }
+.a-sheet { animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+@media (hover: hover) {
+  .a-card:hover, .a-fold-card:hover { box-shadow: 0 16px 30px -18px rgba(7, 70, 89, .45); }
+  .a-srow:hover { border-color: color-mix(in srgb, var(--a-primary, #074659) 35%, transparent); }
+  .a-btn:hover { filter: brightness(1.07); }
+  .a-nav-i:hover { transform: translateX(3px); }
+  .a-chip:hover { transform: translateY(-1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  
+}
+
+/* =====================================================================
+   Đợt 5: nút "Tham gia" màu cam + hiệu ứng sinh động
+   ===================================================================== */
+.a-btn[data-v="yes"].ok, .a-btn.join, .a-btn[data-v="yes"]:not(.off):not(.bad) {
+  background: linear-gradient(135deg, #FF9A3C, #FF831C 55%, #F26B00); color: #2b1300; border-color: transparent;
+  box-shadow: 0 10px 20px -10px rgba(255, 131, 28, .85); }
+.a-btn[data-v="yes"].off { background: #FFF0E0; color: #B25100; border-color: #FFC48A; }
+.a-btn[data-v="yes"].off:hover { background: #FFE3C4; filter: none; }
+body.dark-theme .a-btn[data-v="yes"].off { background: rgba(255, 131, 28, .16); color: #FFB066; border-color: rgba(255, 131, 28, .45); }
+body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
+.a-btn[data-v="yes"].off svg { stroke: currentColor; }
+
+/* gợn sóng khi bấm */
+.a-btn { position: relative; overflow: hidden; }
+.a-ripple { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, .5); transform: scale(0); pointer-events: none; animation: a-ripple .6s ease-out forwards; }
+@keyframes a-ripple { to { transform: scale(1); opacity: 0; } }
+
+/* pháo giấy khi bấm Tham gia */
+.a-confetti { position: fixed; z-index: 100000; width: 8px; height: 12px; border-radius: 2px; pointer-events: none;
+  animation: a-confetti 900ms cubic-bezier(.2, .7, .3, 1) forwards; }
+@keyframes a-confetti { 0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+
+/* ánh sáng quét ngang banner chào */
+.a-hero.sheen::before { display: block; content: ''; position: absolute; inset: 0; width: auto; height: auto;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .13) 50%, transparent 62%);
+  transform: translateX(-110%); animation: a-hero-sheen 8s ease-in-out 1.2s infinite; pointer-events: none; z-index: 0; }
+@keyframes a-hero-sheen { 0%, 62% { transform: translateX(-110%); } 100% { transform: translateX(110%); } }
+
+/* điểm nhấn nhịp thở */
+@keyframes a-ping { 0% { box-shadow: 0 0 0 0 rgba(255, 131, 28, .55); } 70%, 100% { box-shadow: 0 0 0 10px rgba(255, 131, 28, 0); } }
+@keyframes a-ping-red { 0% { box-shadow: 0 0 0 0 rgba(192, 64, 48, .55); } 70%, 100% { box-shadow: 0 0 0 8px rgba(192, 64, 48, 0); } }
+.a-date.hot { animation: a-ping 2.6s ease-out infinite; }
+.a-nav-i .a-badge, .a-nav-i [class*="badge"] { animation: a-ping-red 2.2s ease-out infinite; }
+.a-enter .a-nav-i.on .a-nav-ic { animation: a-pop .45s ease both; }
+.a-av { transition: transform .2s ease; }
+@media (hover: hover) { .a-av:hover { transform: scale(1.12); z-index: 3; } .a-mrow:hover, .a-news:hover { transform: translateX(2px); } }
+.a-mrow, .a-news { transition: transform .18s ease, background-color .18s ease; }
+/* thanh tiến độ & chip xuất hiện nảy nhẹ */
+.a-enter .a-chip { animation: a-pop .5s .25s ease both; }
+@media (prefers-reduced-motion: reduce) { .a-confetti, .a-ripple { display: none !important; } .a-hero.sheen::before { animation: none; display: none; } }
+
+/* Banner Trang chủ: hình quả cầu + sân kẻ vạch nằm bên phải, mờ dần sang trái để chữ luôn rõ */
+.a-hero.art.sheen { background-image: linear-gradient(140deg, #074659 0%, #0A5870 55%, #0D6B87 100%); }
+.a-hero > .a-hero-art { position: absolute; top: 0; right: 0; height: 100%; aspect-ratio: 8 / 3; z-index: 0; pointer-events: none;
+  background: var(--a-banner) right center / 100% 100% no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 36%); mask-image: linear-gradient(90deg, transparent 0, #000 36%); }
+
+/* Trang nhận link biểu quyết từ email */
+.a-tv { max-width: 480px; margin: 0 auto; padding: 28px 16px 40px; }
+.a-tv-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.a-tv-card { text-align: center; padding: 28px 22px 24px; }
+.a-tv-ic { width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 14px; display: grid; place-items: center; font-size: 40px; font-weight: 800; color: #fff; animation: a-pop .5s ease both; }
+.a-tv-ic.yes { background: linear-gradient(135deg, #FF9A3C, #F26B00); box-shadow: 0 12px 24px -10px rgba(255, 131, 28, .8); }
+.a-tv-ic.no { background: linear-gradient(135deg, #FC7D60, #C04030); box-shadow: 0 12px 24px -10px rgba(192, 64, 48, .7); }
+.a-tv-ic.bad { background: #C6D2D3; color: #074659; }
+.a-tv-ic.wait { background: transparent; border: 5px solid var(--a-line, #dde6e7); border-top-color: var(--a-accent, #FF831C); animation: spin 1s linear infinite; }
+.a-tv-t { font-size: 21px; font-weight: 800; margin: 0 0 8px; }
+.a-tv-s { margin: 0 0 8px; color: var(--a-ink-2, #3b5560); font-size: 14.5px; line-height: 1.5; }
+.a-tv-h { margin: 0 0 16px; color: var(--a-ink-3, #6b8189); font-size: 12.5px; }
+.a-tv-vote { margin-top: 10px; }
+
+</style>
 
 
 <script>
@@ -759,7 +879,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     "Khá": ["#FFF9DB", "#F59F00", "🥇 Khá", "1px solid #FFE066"], 
     "Giỏi": ["#E3FAF2", "#0CA678", "💎 Giỏi", "1px solid #96F2D7"] 
   };
-  const MAX_MEMBERS = 50;
+  const MAX_MEMBERS = 100;
   const MONTH_NAMES = ["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
   const ROLE_LABEL = { admin: "Admin", r1: "R1", r2: "R2" };
   const ROLE_COLOR = { admin: ["#FAECE7","#993C1D"], r1: ["#FAEEDA","#854F0B"], r2: ["#F1EFE8","#444441"] };
@@ -1378,6 +1498,23 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     if (error) throw error;
     return Array.isArray(data) ? data : [];
   }
+  // ---- Bộ nhớ đệm: chỉ tải lại những khoá đã thay đổi (tiết kiệm băng thông Supabase) ----
+  function serverStamp(r){ return (r && r.ok === true && typeof r.updated_at === 'string') ? r.updated_at : new Date().toISOString(); }
+  function cacheName(){ return 'bc_cache_v2:' + (state.myUsername || ''); }
+  function cacheLoad(){ try { return JSON.parse(localStorage.getItem(cacheName()) || '{}') || {}; } catch(e){ return {}; } }
+  function cacheStore(map){ try { localStorage.setItem(cacheName(), JSON.stringify(map)); } catch(e){ try { localStorage.removeItem(cacheName()); } catch(_){} } }
+  function cacheDrop(key){ const c = cacheLoad(); if (c[key]) { delete c[key]; cacheStore(c); } }
+  function cachePut(rows){ if (!rows || !rows.length) return; const c = cacheLoad(); rows.forEach(r => { c[r.key] = { u: r.updated_at, v: r.value }; }); cacheStore(c); }
+  async function readAllCached(){
+    const meta = await readMeta();
+    const cache = cacheLoad();
+    const changed = meta.filter(m => !cache[m.key] || cache[m.key].u !== m.updated_at).map(m => m.key);
+    if (changed.length) { const rows = await readData(changed); rows.forEach(r => { cache[r.key] = { u: r.updated_at, v: r.value }; }); }
+    const next = {}; const out = [];
+    meta.forEach(m => { const c = cache[m.key]; if (c) { next[m.key] = c; out.push({ key: m.key, value: c.v, updated_at: c.u }); } });
+    cacheStore(next);
+    return out;
+  }
   async function readMeta(){
     const { data, error } = await sb.rpc('bc_read_meta', authArgs());
     if (error) throw error;
@@ -1451,16 +1588,16 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     try {
       const authUser = state.me ? state.me.username : '';
       const pwHash = state.myPasswordHash || (state.rememberData ? state.rememberData.password : '');
-      const { error } = await sb.rpc('bc_save_data', {
+      const { data: saved, error } = await sb.rpc('bc_save_data', {
         p_key: key,
         p_value: finalVal,
         p_auth_username: authUser,
         p_auth_password_hash: pwHash
       });
       if (error) throw error;
-      const nowStr = new Date().toISOString();
       state.saveError = null;
-      state.lastUpdated[key] = nowStr;
+      state.lastUpdated[key] = serverStamp(saved);
+      cacheDrop(key);
       hideLoading();
       return true;
     } catch(e) {
@@ -1524,14 +1661,14 @@ body.dark-theme .bc-err { color: var(--a-bad); }
       return fallback;
     } catch(e) { console.error('Đọc thất bại', key, e); return fallback; }
   }
-  const saveMembers = () => { save('bc_members', state.members); if (typeof sb !== 'undefined' && sb) mutateKey('bc_members', () => state.members, []).catch(() => {}); };
-  const saveCourts = () => { save('bc_courts', state.courts); if (typeof sb !== 'undefined' && sb) mutateKey('bc_courts', () => state.courts, []).catch(() => {}); };
-  const saveSessions = () => { save('bc_sessions', state.sessions); if (typeof sb !== 'undefined' && sb) mutateKey('bc_sessions', () => state.sessions, []).catch(() => {}); };
-  const saveSettings = () => { save('bc_settings', state.settings); if (typeof sb !== 'undefined' && sb) mutateKey('bc_settings', () => state.settings, {}).catch(() => {}); };
-  const savePayments = () => { save('bc_payments', state.payments); if (typeof sb !== 'undefined' && sb) mutateKey('bc_payments', () => state.payments, {}).catch(() => {}); };
-  const saveFund = () => { save('bc_fund', state.fund); if (typeof sb !== 'undefined' && sb) mutateKey('bc_fund', () => state.fund, {}).catch(() => {}); };
-  const saveAnnouncements = () => { save('bc_announcements', state.announcements); if (typeof sb !== 'undefined' && sb) mutateKey('bc_announcements', () => state.announcements, []).catch(() => {}); };
-  const saveTieVotes = () => { save('bc_tie_votes', state.tieVotes); if (typeof sb !== 'undefined' && sb) mutateKey('bc_tie_votes', () => state.tieVotes, {}).catch(() => {}); };
+  const saveMembers = () => { save('bc_members', state.members); };
+  const saveCourts = () => { save('bc_courts', state.courts); };
+  const saveSessions = () => { save('bc_sessions', state.sessions); };
+  const saveSettings = () => { save('bc_settings', state.settings); };
+  const savePayments = () => { save('bc_payments', state.payments); };
+  const saveFund = () => { save('bc_fund', state.fund); };
+  const saveAnnouncements = () => { save('bc_announcements', state.announcements); };
+  const saveTieVotes = () => { save('bc_tie_votes', state.tieVotes); };
 
 
   function getMemberTieVotes(memberName, monthKey) {
@@ -1644,7 +1781,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
         
         const authUser = state.me ? state.me.username : '';
         const pwHash = state.myPasswordHash || (state.rememberData ? state.rememberData.password : '');
-        const { error: saveError } = await sb.rpc('bc_save_data', {
+        const { data: savedM, error: saveError } = await sb.rpc('bc_save_data', {
           p_key: key,
           p_value: updatedVal,
           p_auth_username: authUser,
@@ -1653,8 +1790,8 @@ body.dark-theme .bc-err { color: var(--a-bad); }
         });
         if (saveError) throw saveError;
         
-        const nowStr = new Date().toISOString();
-        state.lastUpdated[key] = nowStr;
+        state.lastUpdated[key] = serverStamp(savedM);
+        cacheDrop(key);
         hideLoading();
         return updatedVal;
       } catch (e) {
@@ -1949,7 +2086,8 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     }
     }
     try {
-      const data = await readData(null);
+      const data = await readAllCached();
+      lastRefreshAt = Date.now();
       
       const dbMap = {};
       if (data) {
@@ -2221,9 +2359,11 @@ body.dark-theme .bc-err { color: var(--a-bad); }
   function goTab(key){
     closeSheet();
     state.tab = key;
+    window.__aEnter = true;
     render();
+    setTimeout(() => { window.__aEnter = false; const r = document.getElementById('root'); if (r) r.classList.remove('a-enter'); }, 900);
     window.scrollTo({ top: 0 });
-    refreshAll();
+    refreshAll(); // đã có giới hạn tần suất (60 giây) để tiết kiệm băng thông
   }
 
   // ---------- Điều hướng theo vai trò ----------
@@ -2298,7 +2438,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     box.querySelector('#acc-profile').onclick = () => goTab('profile');
     box.querySelector('#bc-sync').onclick = async (e) => {
       const b = e.currentTarget; b.querySelector('span').textContent = 'Đang đồng bộ...';
-      try { state.lastUpdated = {}; await refreshAll(); closeSheet(); showToast('Đã đồng bộ dữ liệu mới nhất', 'success'); }
+      try { await refreshAll(true); closeSheet(); showToast('Đã đồng bộ dữ liệu mới nhất', 'success'); }
       catch (err) { b.querySelector('span').textContent = 'Đồng bộ thất bại, thử lại'; }
     };
     box.querySelector('#bc-theme-toggle').onclick = toggleTheme;
@@ -2313,6 +2453,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
   }
   async function doLogout(){
     closeSheet();
+    try { localStorage.removeItem(cacheName()); } catch(e){}
     state.myUsername = null; state.me = null; state.myPasswordHash = null; state.rememberData = null;
     saveRemember(null); saveMyUsername();
     state.tab = 'home';
@@ -2427,7 +2568,8 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     const hr = new Date().getHours();
     const greet = hr < 11 ? 'Chào buổi sáng' : hr < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
     const first = me.nickname || (me.name || '').trim().split(/\s+/).slice(-1)[0];
-    wrap.appendChild(el(`<section class="a-hero">
+    wrap.appendChild(el(`<section class="a-hero art sheen">
+      <div class="a-hero-art" aria-hidden="true"></div>
       <div class="a-greet">${greet},</div>
       <div class="a-name">${escapeHtml(first)} 👋</div>
       <div class="a-chips"><span class="a-chip">${ROLE_LABEL[me.role] || me.role}</span><span class="a-chip gold">${rk.emoji} ${rk.label}</span></div>
@@ -2918,6 +3060,37 @@ body.dark-theme .bc-err { color: var(--a-bad); }
   }
 
 
+  // ---- Gợn sóng khi bấm nút + pháo giấy khi bấm "Tham gia" (nhẹ, chỉ chạy khi có tương tác) ----
+  (function(){
+    if (window.__aFx) return; window.__aFx = true;
+    const calm = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.addEventListener('pointerdown', function(e){
+      if (calm()) return;
+      const b = e.target.closest && e.target.closest('.a-btn');
+      if (!b || b.disabled) return;
+      const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2;
+      const s = document.createElement('span'); s.className = 'a-ripple';
+      s.style.cssText = 'width:' + d + 'px;height:' + d + 'px;left:' + (e.clientX - r.left - d / 2) + 'px;top:' + (e.clientY - r.top - d / 2) + 'px';
+      b.appendChild(s); setTimeout(() => s.remove(), 650);
+    }, true);
+    document.addEventListener('click', function(e){
+      if (calm()) return;
+      const b = e.target.closest && e.target.closest('.a-btn[data-v="yes"]');
+      if (!b || b.classList.contains('ok')) return; // chỉ khi chuyển sang "Tham gia"
+      const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const colors = ['#FF831C', '#F1B13F', '#FC7D60', '#0B5E75', '#96CAFF', '#fff'];
+      for (let i = 0; i < 22; i++) {
+        const c = document.createElement('i'); c.className = 'a-confetti';
+        const ang = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 90;
+        c.style.cssText = 'left:' + cx + 'px;top:' + cy + 'px;background:' + colors[i % colors.length] +
+          ';--dx:' + Math.cos(ang) * dist + 'px;--dy:' + (Math.sin(ang) * dist - 40) + 'px;--rot:' + (Math.random() * 720 - 360) + 'deg';
+        document.body.appendChild(c); setTimeout(() => c.remove(), 950);
+      }
+    }, true);
+  })();
+
+  document.documentElement.style.setProperty('--a-banner', 'url("' + A_BANNER_URL + '")');
+
   function render(){
     const appEl = document.getElementById('app');
     if (appEl) {
@@ -2929,7 +3102,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     }
     const root = document.getElementById('root');
     root.innerHTML = '';
-    root.className = (state.me && !state.quickVoteMode) ? 'a-authed' : '';
+    root.className = ((state.me && !state.quickVoteMode) ? 'a-authed' : '') + (window.__aEnter ? ' a-enter' : '');
     
     if (state.me && state.quickVoteMode) {
       root.appendChild(renderQuickVoteScreen());
@@ -3645,6 +3818,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
            // Sau khi đăng nhập thành công, tải lại toàn bộ dữ liệu bằng tài khoản vừa đăng nhập
           state.saveError = null;
           await loadAll({ skipRestore: true });
+          try { if (canManage()) setTimeout(checkBackgroundTasks, 5000); } catch(e) {}
 
           // Xử lý chuyển hướng thanh toán tự động nếu khớp username
           if (state.pendingRedirect) {
@@ -6333,16 +6507,15 @@ body.dark-theme .bc-err { color: var(--a-bad); }
          isTestRemindRunning = true;
          arTestRemind.disabled = true;
          arTestRemind.textContent = 'Đang gửi...';
-         const subject = `[THÔNG BÁO TEST] Nhắc nhở chốt danh sách đánh cầu`;
-         const body = `<p>Chào bạn,</p>
-         <p><strong>ĐÂY LÀ EMAIL TEST TỪ HỆ THỐNG AUTO-RULES.</strong></p>
-         <p>Nhóm sẽ tự động chốt danh sách đánh cầu cho buổi sắp tới.</p>
-         <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán mặc định và khóa vote như sau:</p>
-         <ul>
-            <li><strong>Thành viên Cố định</strong>: Tự động chuyển thành <strong>THAM GIA</strong>.</li>
-            <li><strong>Thành viên Vãng lai</strong>: Tự động chuyển thành <strong>VẮNG</strong>.</li>
-         </ul>
-         <p>Vui lòng vào ứng dụng để vote ngay nhé!</p>`;
+         const sample = state.sessions.filter(isUpcomingSession).sort((a, b) => sessionStartStamp(a).localeCompare(sessionStartStamp(b)))[0];
+         if (!sample) {
+           arTestRemind.disabled = false; arTestRemind.innerHTML = '<i class="fas fa-play"></i> Gửi thử'; isTestRemindRunning = false;
+           alert('Chưa có buổi đánh sắp tới nào để làm mẫu. Hãy tạo một buổi rồi thử lại.');
+           return;
+         }
+         const myTok = await issueVoteTokens(sample.id, [state.me.username]);
+         const mail = buildVoteReminderEmail(sample, state.me, { token: myTok[state.me.username], subjectPrefix: '[TEST] ', extraHtml: autoLockNoticeHtml(sample), testNote: 'ĐÂY LÀ EMAIL TEST TỪ HỆ THỐNG TỰ ĐỘNG. Nút bên dưới dẫn tới buổi sắp tới thật của CLB.' });
+         const subject = mail.subject, body = mail.body;
          const ok = await sendSystemEmail(state.me.email, subject, body);
          arTestRemind.disabled = false;
          arTestRemind.innerHTML = '<i class="fas fa-play"></i> Gửi thử';
@@ -8763,6 +8936,101 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     return card;
   }
 
+  // ---------- EMAIL NHẮC VOTE (dùng chung cho nhắc thủ công và nhắc tự động) ----------
+  function voteReminderOrigin(){
+    let origin = window.location.origin + window.location.pathname;
+    if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
+      origin = 'https://kietdmt07.github.io/Badmintion-Club/';
+    }
+    return origin;
+  }
+  function getUnvotedMembers(s){
+    const mKey = sessionMonthKey(s);
+    return state.members.filter(m => {
+      const t = (m.monthlyType || {})[mKey] || '';
+      const v = s.votes ? s.votes[m.name] : undefined;
+      const hasPassed = t === 'fixed' && s.passes && s.passes[m.id];
+      const isReceiver = s.passes && Object.values(s.passes).includes(m.id);
+      return m.status === 'active' && (t === 'fixed' || t === 'casual') && !v && !hasPassed && !isReceiver;
+    });
+  }
+  async function issueVoteTokens(sessionId, usernames){
+    try {
+      const a = authArgs();
+      const { data, error } = await sb.rpc('bc_issue_vote_tokens', {
+        p_session: sessionId, p_usernames: usernames, p_auth_username: a.p_username, p_auth_password_hash: a.p_password_hash });
+      if (error || !data || typeof data !== 'object') return {};
+      return data;
+    } catch(e) { return {}; }
+  }
+  // opts.extraHtml: đoạn chèn thêm (vd: thông báo giờ tự chốt); opts.testNote: dòng ghi chú khi gửi thử
+  function buildVoteReminderEmail(s, m, opts){
+    opts = opts || {};
+    const mKey = sessionMonthKey(s);
+    const t = (m.monthlyType || {})[mKey] || '';
+    const court = state.courts.find(c => c.id === s.courtId);
+    const courtName = court ? court.name : 'Chưa chọn sân';
+    const quickVoteUrl = `${voteReminderOrigin()}?action=quick_vote&session=${s.id}&user=${encodeURIComponent(m.username)}`;
+    const tokUrl = (v) => `${voteReminderOrigin()}?vt=${opts.token}&s=${encodeURIComponent(s.id)}&u=${encodeURIComponent(m.username)}&v=${v}`;
+    const voteButtonsHtml = opts.token ? `
+          <p>Chỉ cần <strong>bấm một nút</strong> bên dưới, hệ thống sẽ ghi nhận ngay (không cần đăng nhập):</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:22px 0;"><tr>
+            <td><a href="${tokUrl('yes')}" style="background:#FF831C; color:#2B1300; text-decoration:none; padding:14px 30px; font-weight:700; border-radius:12px; display:inline-block; font-size:16px; box-shadow:0 6px 14px rgba(255,131,28,0.35);">✅ Tham gia</a></td>
+            <td width="14"></td>
+            <td><a href="${tokUrl('no')}" style="background:#FFFFFF; color:#C04030; text-decoration:none; padding:12px 28px; font-weight:700; border-radius:12px; display:inline-block; font-size:16px; border:2px solid #C04030;">❌ Báo vắng</a></td>
+          </tr></table>
+          <p style="font-size:12px; color:#8a877d; margin-top:6px;">
+            Bạn có thể đổi ý bất cứ lúc nào trước khi buổi tập được chốt. Cần nhường lịch hoặc xem chi tiết? <a href="${quickVoteUrl}" style="color:#0C447C;">Mở ứng dụng</a>.
+          </p>` : `
+          <p>Vui lòng nhấp vào nút dưới đây để chọn trạng thái tham gia (Đi chơi, Báo vắng, Nhường lịch):</p>
+          <div style="margin:25px 0;">
+            <a href="${quickVoteUrl}" style="background:#2D6A4F; color:#FFFFFF; text-decoration:none; padding:12px 24px; font-weight:600; border-radius:10px; display:inline-block; font-size:15px; box-shadow:0 4px 12px rgba(45,106,79,0.2);">👉 Biểu Quyết Một Chạm</a>
+          </div>
+          <p style="font-size:12px; color:#8a877d; margin-top:20px;">
+            Nếu không bấm được nút trên, bạn có thể truy cập trực tiếp đường link sau:<br/>
+            <a href="${quickVoteUrl}" style="color:#0C447C; word-break:break-all;">${quickVoteUrl}</a>
+          </p>`;
+    const subject = `${opts.subjectPrefix || ''}[CLB ARON] Nhắc nhở biểu quyết tham gia buổi tập ngày ${formatDate(s.date)}`;
+    const body = `<h3>Chào ${escapeHtml(m.name)},</h3>
+          ${opts.testNote ? `<p style="background:#FFF4E5; border:1px solid #FFC48A; border-radius:8px; padding:10px 14px; font-size:13px;"><strong>${opts.testNote}</strong></p>` : ''}
+          <p>Để chuẩn bị tốt nhất cho buổi tập sắp tới, Ban quản trị CLB ARON gửi tin nhắc nhở bạn tham gia biểu quyết (vote) lịch chơi cầu:</p>
+          <div style="background:#FAF8F5; border:1px solid #E3E0D6; border-radius:8px; padding:15px; margin:15px 0; font-family:'Outfit', sans-serif;">
+            <strong>🏸 Thông tin buổi tập:</strong><br/>
+            - 📅 <strong>Thời gian:</strong> ${weekdayLabel(s.date)}, ngày ${formatDate(s.date)} (${formatTimeRange(s.time, s.timeEnd)})<br/>
+            - 📍 <strong>Sân tập:</strong> ${escapeHtml(courtName)}<br/>
+            - 👤 <strong>Loại hình của bạn:</strong> ${t === 'fixed' ? 'Cố định' : 'Vãng lai'}
+          </div>
+          ${opts.extraHtml || ''}
+          ${voteButtonsHtml}
+          <hr style="border:none; border-top:1px dashed #E3E0D6; margin:20px 0;"/>
+          <p style="font-size:11px; color:#8a877d; line-height:1.4;">
+            * Lưu ý: Để tránh việc thư thông báo từ CLB tiếp tục rơi vào hòm thư rác, bạn vui lòng nhấn vào nút <strong>"Không phải thư rác" (Not Spam)</strong> hoặc thêm địa chỉ email này vào danh sách người liên hệ tin cậy.<br/>
+            * Sau khi nhấp link, hệ thống sẽ tự động chuyển đến màn hình biểu quyết. Nếu chưa đăng nhập tài khoản của mình, bạn hãy đăng nhập trước để hoàn tất.
+          </p>
+          <br/>
+          <p>Thân ái,</p>
+          <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
+    return { subject, body };
+  }
+  // Đoạn báo giờ tự chốt danh sách (chỉ dùng cho nhắc tự động / gửi thử)
+  function autoLockNoticeHtml(s){
+    const rules = (state.settings && state.settings.autoRules) || {};
+    const lock = rules.lockVote || { enabled: true, days: 1, time: '10:00' };
+    if (lock.enabled === false) return '';
+    let when = `lúc <strong>${escapeHtml(lock.time || '10:00')}</strong>`;
+    try {
+      const parts = s.date.split('-').map(Number);
+      const d = new Date(parts[0], parts[1] - 1, parts[2]); d.setDate(d.getDate() - (parseInt(lock.days) || 1));
+      when += ` ngày <strong>${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}</strong>`;
+    } catch(e) {}
+    return `<div style="background:#FFF8E6; border:1px solid #F1D48A; border-radius:8px; padding:12px 15px; margin:15px 0; font-size:14px;">
+      ⏰ Nhóm sẽ <strong>tự động chốt danh sách</strong> ${when}. Nếu bạn chưa vote trước giờ đó, hệ thống sẽ gán mặc định:
+      <ul style="margin:8px 0 0 18px; padding:0;">
+        <li><strong>Thành viên Cố định</strong>: tự động chuyển thành <strong>THAM GIA</strong>.</li>
+        <li><strong>Thành viên Vãng lai</strong>: tự động chuyển thành <strong>VẮNG</strong>.</li>
+      </ul></div>`;
+  }
+
   function showRemindVoteDialog(s) {
     if (!canManage()) {
       showToast('Bạn không có quyền thực hiện chức năng này!', 'error');
@@ -8844,43 +9112,12 @@ body.dark-theme .bc-err { color: var(--a-bad); }
       emailBtn.disabled = true;
       emailBtn.textContent = 'Đang gửi...';
 
-      let origin = window.location.origin + window.location.pathname;
-      if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
-        origin = 'https://kietdmt.github.io/ARON-Badmintion-Club/';
-      }
-
       showToast(`Đang gửi email nhắc nhở cho ${emailable.length} thành viên...`, 'warning');
 
+      const tokens = await issueVoteTokens(s.id, emailable.map(x => x.username));
       const promises = emailable.map(async (m) => {
-        const t = (m.monthlyType || {})[mKey] || '';
-        const quickVoteUrl = `${origin}?action=quick_vote&session=${s.id}&user=${m.username}`;
-
-        const emailSubject = `[CLB ARON] Nhắc nhở biểu quyết tham gia buổi tập ngày ${formatDate(s.date)}`;
-        const emailBody = `<h3>Chào ${m.name},</h3>
-          <p>Để chuẩn bị tốt nhất cho buổi tập sắp tới, Ban quản trị CLB ARON gửi tin nhắc nhở bạn tham gia biểu quyết (vote) lịch chơi cầu:</p>
-          <div style="background:#FAF8F5; border:1px solid #E3E0D6; border-radius:8px; padding:15px; margin:15px 0; font-family:'Outfit', sans-serif;">
-            <strong>🏸 Thông tin buổi tập:</strong><br/>
-            - 📅 <strong>Thời gian:</strong> ${weekdayLabel(s.date)}, ngày ${formatDate(s.date)} (${formatTimeRange(s.time, s.timeEnd)})<br/>
-            - 📍 <strong>Sân tập:</strong> ${courtName}<br/>
-            - 👤 <strong>Loại hình của bạn:</strong> ${t === 'fixed' ? 'Cố định' : 'Vãng lai'}
-          </div>
-          <p>Vui lòng nhấp vào nút dưới đây để chọn trạng thái tham gia (Đi chơi, Báo vắng, Nhường lịch):</p>
-          <div style="margin:25px 0;">
-            <a href="${quickVoteUrl}" style="background:#2D6A4F; color:#FFFFFF; text-decoration:none; padding:12px 24px; font-weight:600; border-radius:10px; display:inline-block; font-size:15px; box-shadow:0 4px 12px rgba(45,106,79,0.2);">👉 Biểu Quyết Một Chạm</a>
-          </div>
-          <p style="font-size:12px; color:#8a877d; margin-top:20px;">
-            Nếu không bấm được nút trên, bạn có thể truy cập trực tiếp đường link sau:<br/>
-            <a href="${quickVoteUrl}" style="color:#0C447C; word-break:break-all;">${quickVoteUrl}</a>
-          </p>
-          <hr style="border:none; border-top:1px dashed #E3E0D6; margin:20px 0;"/>
-          <p style="font-size:11px; color:#8a877d; line-height:1.4;">
-            * Lưu ý: Để tránh việc thư thông báo từ CLB tiếp tục rơi vào hòm thư rác, bạn vui lòng nhấn vào nút <strong>"Không phải thư rác" (Not Spam)</strong> hoặc thêm địa chỉ email này vào danh sách người liên hệ tin cậy.<br/>
-            * Sau khi nhấp link, hệ thống sẽ tự động chuyển đến màn hình biểu quyết. Nếu chưa đăng nhập tài khoản của mình, bạn hãy đăng nhập trước để hoàn tất.
-          </p>
-          <br/>
-          <p>Thân ái,</p>
-          <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
-        
+        const mail = buildVoteReminderEmail(s, m, { token: tokens[m.username] });
+        const emailSubject = mail.subject, emailBody = mail.body;
         return await sendSystemEmail(m.email, emailSubject, emailBody);
       });
 
@@ -8902,8 +9139,10 @@ body.dark-theme .bc-err { color: var(--a-bad); }
   let refreshing = false;
   let pendingRefreshTimer = null;
 
-  async function refreshAll(){
+  let lastRefreshAt = 0;
+  async function refreshAll(force){
     if (!state.me || refreshing) return;
+    if (force !== true && Date.now() - lastRefreshAt < 60000) return; // tối đa 1 lần/phút (chuyển tab, focus...)
     const ae = document.activeElement;
     if (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) {
       // Đang nhập — hủy timer cũ rồi đặt delay 5 giây sau khi blur
@@ -8914,6 +9153,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
       return;
     }
     refreshing = true;
+    lastRefreshAt = Date.now();
     try {
       // 1. Chỉ lấy key và updated_at để kiểm tra xem có thay đổi hay không
       const dbKeys = await readMeta();
@@ -8932,6 +9172,7 @@ body.dark-theme .bc-err { color: var(--a-bad); }
       // 2. Chỉ tải các key thực sự đã thay đổi
       if (modifiedKeys.length > 0) {
         const updatedData = await readData(modifiedKeys);
+        cachePut(updatedData);
         const dbMap = {};
         if (updatedData) {
           updatedData.forEach(row => {
@@ -9068,6 +9309,8 @@ body.dark-theme .bc-err { color: var(--a-bad); }
 
   async function checkBackgroundTasks() {
     if (!canManage()) return;
+    if (window.__bgTasksRan) return;
+    window.__bgTasksRan = true;
     if (!state.settings || !state.settings.autoRules) return;
     
     const rules = state.settings.autoRules;
@@ -9101,34 +9344,13 @@ body.dark-theme .bc-err { color: var(--a-bad); }
         const cutoffTimeStr = `${cY}-${cM}-${cD}T${String(timeH).padStart(2, '0')}:${String(timeM).padStart(2, '0')}:00`;
         
         if (nowStamp >= cutoffTimeStr) {
-          const sMonthKey = sessionMonthKey(s);
-          const targets = state.members.filter(mem => {
-             if (mem.status !== 'active') return false;
-             const mType = (mem.monthlyType || {})[sMonthKey] || '';
-             if (mType !== 'fixed' && mType !== 'casual') return false;
-             const hasVoted = !!(s.votes || {})[mem.name];
-             const hasPassed = !!(s.passes || {})[mem.id];
-             return !hasVoted && !hasPassed;
-          });
-          
-          if (targets.length > 0) {
-             const toEmails = targets.map(m => m.email).filter(Boolean);
-             if (toEmails.length > 0) {
-               const subject = `[THÔNG BÁO] Nhắc nhở chốt danh sách đánh cầu ngày ${formatDate(s.date)}`;
-               const body = `<p>Chào bạn,</p>
-               <p>Nhóm sẽ tự động chốt danh sách đánh cầu cho buổi <strong>${formatDate(s.date)}</strong> vào lúc <strong>${rules.lockVote?.time || '10:00'} ngày mai</strong>.</p>
-               <p>Hiện tại bạn chưa chốt tham gia. Nếu bạn không vào vote trước giờ chốt, hệ thống sẽ tự động gán mặc định và khóa vote như sau:</p>
-               <ul>
-                  <li><strong>Thành viên Cố định</strong>: Tự động chuyển thành <strong>THAM GIA</strong>.</li>
-                  <li><strong>Thành viên Vãng lai</strong>: Tự động chuyển thành <strong>VẮNG</strong>.</li>
-               </ul>
-               <p>Vui lòng vào ứng dụng để vote ngay nhé!</p>`;
-               
-               for (const email of toEmails) {
-                 await sendSystemEmail(email, subject, body);
-                 await new Promise(r => setTimeout(r, 500));
-               }
-             }
+          const targets = getUnvotedMembers(s).filter(mem => mem.email);
+          const extraHtml = autoLockNoticeHtml(s);
+          const tokens = targets.length ? await issueVoteTokens(s.id, targets.map(x => x.username)) : {};
+          for (const mem of targets) {
+            const mail = buildVoteReminderEmail(s, mem, { extraHtml, token: tokens[mem.username] });
+            await sendSystemEmail(mem.email, mail.subject, mail.body);
+            await new Promise(r => setTimeout(r, 500));
           }
           await saveAutoLog(logKey);
           autoLogs[logKey] = true;
@@ -9211,8 +9433,62 @@ body.dark-theme .bc-err { color: var(--a-bad); }
     }
   }
 
+  // ---------- BIỂU QUYẾT MỘT CHẠM TỪ EMAIL (không cần đăng nhập, dùng mã riêng trong link) ----------
+  async function runTokenVote(){
+    const q = new URLSearchParams(window.location.search);
+    const vt = q.get('vt'), sid = q.get('s'), user = q.get('u');
+    if (!vt || !sid || !user) return false;
+    const root = document.getElementById('root'), loadingEl = document.getElementById('loading');
+    if (loadingEl) loadingEl.style.display = 'none';
+    root.style.display = 'block'; root.className = '';
+    const wrap = el(`<div class="a-tv"></div>`); root.innerHTML = ''; root.appendChild(wrap);
+    const shell = (inner) => { wrap.innerHTML = `<div class="a-tv-brand">${brandLogoHtml(44, 14)}<div><div class="a-brand-t">CLB ARON</div><div class="a-brand-s">Biểu quyết buổi tập</div></div></div><div class="a-card a-tv-card">${inner}</div>`; };
+    const openApp = () => { window.location.href = window.location.pathname; };
+    const when = (r) => `${escapeHtml(weekdayLabel(r.date))}, ${escapeHtml(formatDate(r.date))} · ${escapeHtml(formatTimeRange(r.time, r.timeEnd))}`;
+    const call = async (v) => {
+      const { data, error } = await sb.rpc('bc_vote_by_token', { p_session: sid, p_username: user, p_token: vt, p_vote: v });
+      if (error) throw error; return data || { ok: false, message: 'Không nhận được phản hồi từ máy chủ.' };
+    };
+    const bindOpen = () => { const b = wrap.querySelector('#tv-open'); if (b) b.onclick = openApp; };
+    const showResult = (r, v) => {
+      if (window.history && window.history.replaceState) window.history.replaceState({}, document.title, window.location.pathname + `?vt=${encodeURIComponent(vt)}&s=${encodeURIComponent(sid)}&u=${encodeURIComponent(user)}`);
+      if (!r.ok) {
+        shell(`<div class="a-tv-ic bad">!</div><h2 class="a-tv-t">Chưa ghi nhận được</h2><p class="a-tv-s">${escapeHtml(r.message || 'Có lỗi xảy ra.')}</p><button class="a-btn" id="tv-open">Mở ứng dụng</button>`);
+        bindOpen(); return;
+      }
+      const yes = r.vote === 'yes';
+      shell(`<div class="a-tv-ic ${yes ? 'yes' : 'no'}">${yes ? '✓' : '✕'}</div>
+        <h2 class="a-tv-t">${yes ? 'Đã ghi nhận: THAM GIA' : 'Đã ghi nhận: BÁO VẮNG'}</h2>
+        <p class="a-tv-s">Chào <strong>${escapeHtml(r.name)}</strong> · ${when(r)}</p>
+        <p class="a-tv-h">Bạn có thể đổi ý bất cứ lúc nào trước khi buổi tập được chốt.</p>
+        <div class="a-vote a-tv-vote"><button class="a-btn ${yes ? 'ok' : 'off'}" data-v="yes">Tham gia</button><button class="a-btn ${!yes ? 'bad' : 'off'}" data-v="no">Báo vắng</button></div>
+        <button class="a-btn a-btn-link" id="tv-open" style="margin-top:12px;">Mở ứng dụng để xem chi tiết</button>`);
+      bindOpen(); bindChoice();
+    };
+    function bindChoice(){
+      wrap.querySelectorAll('[data-v]').forEach(b => { b.onclick = async () => {
+        wrap.querySelectorAll('[data-v]').forEach(x => x.disabled = true);
+        try { const r = await call(b.getAttribute('data-v')); showResult(r); }
+        catch(e) { showResult({ ok: false, message: 'Không kết nối được máy chủ, vui lòng thử lại.' }); }
+      }; });
+    }
+    const v0 = q.get('v');
+    const auto = (v0 === 'yes' || v0 === 'no') && document.visibilityState === 'visible' && !navigator.webdriver;
+    if (auto) {
+      shell(`<div class="a-tv-ic wait"></div><h2 class="a-tv-t">Đang ghi nhận lựa chọn của bạn...</h2>`);
+      try { showResult(await call(v0)); } catch(e) { showResult({ ok: false, message: 'Không kết nối được máy chủ, vui lòng thử lại.' }); }
+    } else {
+      shell(`<h2 class="a-tv-t">Bạn tham gia buổi tập này chứ?</h2><p class="a-tv-s">Chọn một lựa chọn bên dưới để ghi nhận.</p>
+        <div class="a-vote a-tv-vote"><button class="a-btn ${v0 === 'yes' ? '' : 'off'}" data-v="yes">Tham gia</button><button class="a-btn ${v0 === 'no' ? 'bad' : 'off'}" data-v="no">Báo vắng</button></div>
+        <button class="a-btn a-btn-link" id="tv-open" style="margin-top:12px;">Mở ứng dụng</button>`);
+      bindOpen(); bindChoice();
+    }
+    return true;
+  }
+
   // Khởi động hệ thống: Đảm bảo ẩn loading màn hình ngay cả khi mất mạng hoặc Supabase lỗi
   async function initApp() {
+    try { if (await runTokenVote()) return; } catch(e) { console.error('token vote', e); }
     try {
       await ensureAuth();
     } catch(e) {
