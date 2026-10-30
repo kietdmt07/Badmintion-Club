@@ -4,8 +4,7 @@ const ASSETS = [
   './index.html',
   './manifest.json',
   './icon-192.jpg',
-  './icon-512.jpg',
-  './badminton_banner.jpg'
+  './icon-512.jpg'
 ];
 
 // Install Event

@@ -830,10 +830,13 @@
 
       // 2. Gửi qua Database RPC nếu không dùng Google Script (Bảo mật tuyệt đối, tránh lộ Credentials ở Client)
       try {
+        const ea = authArgs();
         const { data: rpcRes, error: rpcError } = await sb.rpc('bc_send_email', {
           p_to: to,
           p_subject: subject,
-          p_body: htmlBody
+          p_body: htmlBody,
+          p_auth_username: ea.p_username,
+          p_auth_password_hash: ea.p_password_hash
         });
         if (!rpcError) {
           if (rpcRes && typeof rpcRes === 'string' && rpcRes.startsWith('ERROR')) {
@@ -958,7 +961,29 @@
   const SUPABASE_ANON_KEY = "sb_publishable_Sw5RS4XOOkZMG2p8qhuuzA_UGR0P_bX";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // ---------- Truy cập dữ liệu: CHỈ qua các hàm RPC có kiểm tra tài khoản ----------
+  // (bảng bc_data đã bị khoá, trình duyệt không đọc/ghi trực tiếp được nữa)
+  function authArgs(){
+    const u = state.me ? state.me.username : (state.myUsername || '');
+    const h = state.myPasswordHash || (state.rememberData ? state.rememberData.password : '') || '';
+    return { p_username: u || '', p_password_hash: h };
+  }
+  async function readData(keys){
+    const a = authArgs();
+    const { data, error } = await sb.rpc('bc_read_data', {
+      p_username: a.p_username, p_password_hash: a.p_password_hash, p_keys: keys || null
+    });
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  }
+  async function readMeta(){
+    const { data, error } = await sb.rpc('bc_read_meta', authArgs());
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  }
+
   function showSaveError(key, detail){
+    state.lastSaveErrorMsg = detail || '';
     state.saveError = 'Không lưu được dữ liệu (' + key + '). ' + (detail ? '[' + detail + '] ' : '') + 'Kiểm tra lại kết nối mạng hoặc cấu hình Supabase, vui lòng thử lại.';
     render();
   }
@@ -1009,18 +1034,7 @@
       }
     }
 
-    let finalVal = val;
-    if (key === 'bc_settings' && !isOwner() && val) {
-      finalVal = Object.assign({}, val);
-      try {
-        const { data } = await sb.from('bc_data').select('value').eq('key', 'bc_settings').maybeSingle();
-        if (data && data.value && data.value.mailServer) {
-          finalVal.mailServer = data.value.mailServer;
-        }
-      } catch (e) {
-        console.error('Failed to preserve mailServer configuration:', e);
-      }
-    }
+    const finalVal = val; // máy chủ tự giữ nguyên cấu hình mail nếu người lưu không phải Owner
 
     attempt = attempt || 1;
     if (attempt === 1) {
@@ -1091,13 +1105,8 @@
   }
   async function loadKey(key, fallback){
     try {
-      if (key === 'bc_members') {
-        const { data, error } = await sb.rpc('bc_get_members');
-        if (error) throw error;
-        return data || fallback;
-      }
-      const { data, error } = await sb.from('bc_data').select('value, updated_at').eq('key', key).maybeSingle();
-      if (error) throw error;
+      const rows = await readData([key]);
+      const data = rows.find(r => r.key === key) || null;
       if (data) {
         state.lastUpdated[key] = data.updated_at;
         const val = data.value;
@@ -1220,13 +1229,8 @@
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const { data, error } = await sb.from('bc_data')
-          .select('value, updated_at')
-          .eq('key', key)
-          .maybeSingle();
-        
-        if (error) throw error;
-        
+        const rows = await readData([key]);
+        const data = rows.find(r => r.key === key) || null;
         const latestVal = data ? data.value : fallbackVal;
         const lastKnownUpdated = data ? data.updated_at : null;
         
@@ -1540,10 +1544,40 @@
     document.body.classList.add('dark-theme');
   }
 
-  async function loadAll(){
+  async function loadAll(opts){
+    // Khôi phục phiên đăng nhập trước, để đọc dữ liệu bằng đúng tài khoản
+    if (!(opts && opts.skipRestore)) {
+    state.myUsername = lsGet('bc_my_username');
+    state.rememberData = lsGet('bc_remember');
+    if (state.rememberData && state.rememberData.username) {
+      const passwordHash = state.rememberData.password && state.rememberData.password.length < 64 
+        ? await hashPassword(state.rememberData.password, state.rememberData.username)
+        : state.rememberData.password;
+      try {
+        const { data: found } = await sb.rpc('bc_verify_login', {
+          p_username: state.rememberData.username,
+          p_password_hash: passwordHash
+        });
+        if (found) {
+          state.myUsername = found.username;
+          state.myPasswordHash = passwordHash;
+        } else {
+          state.myUsername = null;
+          state.rememberData = null;
+          saveRemember(null);
+          saveMyUsername();
+        }
+      } catch (e) {
+        console.error('Lỗi kiểm tra tự động đăng nhập:', e);
+        state.myUsername = null;
+      }
+    } else {
+      state.myUsername = null;
+      saveMyUsername();
+    }
+    }
     try {
-      const { data, error } = await sb.from('bc_data').select('key, value, updated_at');
-      if (error) throw error;
+      const data = await readData(null);
       
       const dbMap = {};
       if (data) {
@@ -1677,46 +1711,8 @@
 
 
 
-    state.myUsername = lsGet('bc_my_username');
-    state.rememberData = lsGet('bc_remember');
-    if (state.rememberData && state.rememberData.username) {
-      const passwordHash = state.rememberData.password && state.rememberData.password.length < 64 
-        ? await hashPassword(state.rememberData.password, state.rememberData.username)
-        : state.rememberData.password;
-      try {
-        const { data: found } = await sb.rpc('bc_verify_login', {
-          p_username: state.rememberData.username,
-          p_password_hash: passwordHash
-        });
-        if (found) {
-          state.myUsername = found.username;
-          state.myPasswordHash = passwordHash;
-        } else {
-          state.myUsername = null;
-          state.rememberData = null;
-          saveRemember(null);
-          saveMyUsername();
-        }
-      } catch (e) {
-        console.error('Lỗi kiểm tra tự động đăng nhập:', e);
-        state.myUsername = null;
-      }
-    } else {
-      state.myUsername = null;
-      saveMyUsername();
-    }
+
     resolveMe();
-    if (isOwner()) {
-      try {
-        const { data, error } = await sb.from('bc_data').select('value').eq('key', 'bc_settings').maybeSingle();
-        if (!error && data && data.value) {
-          state.settings = Object.assign(state.settings || {}, data.value);
-          state.settings.mailServer = Object.assign(state.settings.mailServer || {}, data.value.mailServer || {});
-        }
-      } catch (e) {
-        console.error('Failed to reload unmasked settings for owner:', e);
-      }
-    }
     await checkPendingAction();
   }
 
@@ -2049,7 +2045,7 @@
   function showForgotPasswordDialog() {
     let dialog = document.getElementById('forgot-pw-dialog');
     const mailConfig = (state.settings && state.settings.mailServer) || {};
-    const isEmailEnabled = mailConfig.enabled && mailConfig.username;
+    const isEmailEnabled = mailConfig.enabled && (mailConfig.username || mailConfig.googleScriptUrl);
 
     if (!dialog) {
       dialog = el(`<dialog id="forgot-pw-dialog" style="border:none; border-radius:12px; padding:0; max-width:420px; width:90%; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); background:#FAF8F5;">
@@ -2165,65 +2161,32 @@
 
         submitBtn.disabled = true;
         msg.style.color = '#6b7a73';
-        msg.textContent = 'Đang kiểm tra thông tin tài khoản...';
-
-        const targetMember = state.members.find(m => 
-          m.username.toLowerCase() === inputVal || 
-          (m.email && m.email.toLowerCase() === inputVal)
-        );
-
-        if (!targetMember) {
-          submitBtn.disabled = false;
-          msg.style.color = '#993C1D';
-          msg.textContent = 'Không tìm thấy tài khoản phù hợp với thông tin đã nhập.';
-          return;
-        }
-
-        if (!targetMember.email) {
-          submitBtn.disabled = false;
-          msg.style.color = '#993C1D';
-          msg.textContent = 'Tài khoản này chưa có email đăng ký, không thể khôi phục tự động. Vui lòng liên hệ Admin.';
-          return;
-        }
-
-        const tempPassword = Math.random().toString(36).slice(-6).toUpperCase();
-        
+        msg.textContent = 'Đang gửi yêu cầu khôi phục...';
         try {
-          msg.textContent = 'Đang cập nhật mật khẩu mới lên máy chủ...';
-          const passwordHash = await hashPassword(tempPassword, targetMember.username);
-
-          const ok = await mutateMembers(latest => {
-            return latest.map(x => x.id === targetMember.id ? Object.assign({}, x, { password: passwordHash }) : x);
-          });
-
-          if (!ok) {
-            submitBtn.disabled = false;
-            msg.style.color = '#993C1D';
-            msg.textContent = 'Lỗi cập nhật mật khẩu lên máy chủ. Vui lòng thử lại.';
-            return;
-          }
-
-          msg.textContent = 'Đang gửi email chứa mật khẩu mới...';
-
-          const emailSubject = `[CLB ARON] Khôi phục mật khẩu tài khoản`;
-          const emailBody = `<h3>Chào ${targetMember.name},</h3>
-            <p>Yêu cầu khôi phục mật khẩu cho tài khoản <strong>${targetMember.username}</strong> đã được thực hiện thành công.</p>
-            <p>Mật khẩu tạm thời mới của bạn là: <strong style="font-size:16px; color:#993C1D; background:#FAECE7; padding:4px 8px; border-radius:4px; font-family:monospace;">${tempPassword}</strong></p>
-            <p>Vui lòng sử dụng mật khẩu này để đăng nhập và đổi lại mật khẩu cá nhân ngay tại tab <strong>Thành viên</strong> sau khi đăng nhập.</p>
-            <br/>
-            <p>Trân trọng,</p>
-            <p><strong>Ban quản trị CLB Cầu lông ARON</strong></p>`;
-
-          const emailSent = await sendSystemEmail(targetMember.email, emailSubject, emailBody);
-
+          // Máy chủ tự sinh mật khẩu tạm, gửi email và KHÔNG đổi mật khẩu thật của tài khoản
+          const { data: res, error: rpcErr } = await sb.rpc('bc_request_password_reset', { p_identifier: inputVal });
           submitBtn.disabled = false;
-          if (emailSent) {
+          if (rpcErr) throw rpcErr;
+          const st = res && res.status;
+          if (st === 'sent') {
             msg.style.color = '#27500A';
-            msg.textContent = `Mật khẩu tạm thời đã được gửi tới email ${targetMember.email}. Vui lòng kiểm tra hộp thư (và cả mục Spam nếu không thấy).`;
+            msg.textContent = `Mật khẩu tạm thời (hiệu lực 30 phút) đã được gửi tới email ${res.email}. Vui lòng kiểm tra hộp thư (và cả mục Spam nếu không thấy).`;
             document.getElementById('forgot-pw-input').value = '';
+          } else if (st === 'not_found') {
+            msg.style.color = '#993C1D';
+            msg.textContent = 'Không tìm thấy tài khoản phù hợp với thông tin đã nhập.';
+          } else if (st === 'no_email') {
+            msg.style.color = '#993C1D';
+            msg.textContent = 'Tài khoản này chưa có email đăng ký, không thể khôi phục tự động. Vui lòng liên hệ Admin.';
+          } else if (st === 'too_soon') {
+            msg.style.color = '#993C1D';
+            msg.textContent = 'Bạn vừa yêu cầu cách đây ít phút. Vui lòng kiểm tra email hoặc thử lại sau 3 phút.';
+          } else if (st === 'mail_failed') {
+            msg.style.color = '#993C1D';
+            msg.textContent = 'Không gửi được email. Vui lòng liên hệ Admin để được hỗ trợ.';
           } else {
             msg.style.color = '#993C1D';
-            msg.textContent = 'Lỗi gửi email. Mật khẩu đã được đặt lại nhưng không gửi đi được. Vui lòng báo với Admin để được cấp mật khẩu mới.';
+            msg.textContent = 'Vui lòng nhập tên đăng nhập hoặc email.';
           }
         } catch (e) {
           submitBtn.disabled = false;
@@ -2769,21 +2732,9 @@
           if (remember) { state.rememberData = { username: found.username, password: passwordHash }; saveRemember(state.rememberData); }
           else { state.rememberData = null; saveRemember(null); }
           
-           // Sau khi đăng nhập thành công, tải lại toàn bộ danh sách thành viên mới nhất từ database
-          state.members = await loadKey('bc_members', state.members);
-          resolveMe(); 
-          if (isOwner()) {
-            try {
-              const { data, error } = await sb.from('bc_data').select('value').eq('key', 'bc_settings').maybeSingle();
-              if (!error && data && data.value) {
-                state.settings = Object.assign(state.settings || {}, data.value);
-                state.settings.mailServer = Object.assign(state.settings.mailServer || {}, data.value.mailServer || {});
-              }
-            } catch (e) {
-              console.error('Failed to reload unmasked settings for owner:', e);
-            }
-          }
-          await checkPendingAction();
+           // Sau khi đăng nhập thành công, tải lại toàn bộ dữ liệu bằng tài khoản vừa đăng nhập
+          state.saveError = null;
+          await loadAll({ skipRestore: true });
 
           // Xử lý chuyển hướng thanh toán tự động nếu khớp username
           if (state.pendingRedirect) {
@@ -2826,6 +2777,7 @@
         try {
           const passwordHash = await hashPassword(pw1, username);
           let regError = '';
+          state.lastSaveErrorMsg = '';
           const ok = await mutateMembers(latest => {
             if (latest.some(m => normUsername(m.username) === username)) { regError = 'Tên đăng nhập này đã được dùng, hãy chọn tên khác.'; return null; }
             if (latest.some(m => normEmail(m.email) === email)) { regError = 'Email này đã đăng ký, hãy chọn Đăng nhập.'; return null; }
@@ -2842,49 +2794,17 @@
           
           hideLoading();
           if (!ok) { 
-            state.authError = regError || 'Đăng ký thất bại, vui lòng thử lại.'; 
+            state.authError = regError || state.lastSaveErrorMsg || 'Đăng ký thất bại, vui lòng thử lại.'; 
             render(); 
             return; 
           }
           state.myUsername = username; state.authError = ''; saveMyUsername(); resolveMe();
 
-          // Gửi thông báo đăng ký mới cho Admin qua email
-          const isFirst = state.members.length <= 1;
-          if (!isFirst) {
-            const adminEmails = state.members.filter(m => m.role === 'admin' && m.status === 'active' && m.email && normUsername(m.username) !== 'kietdmt').map(m => m.email);
-            if (adminEmails.length > 0) {
-              let origin = window.location.origin + window.location.pathname;
-              if (window.location.protocol === 'file:' || origin.includes('127.0.0.1') || origin.includes('localhost') || origin.includes('null')) {
-                origin = 'https://kietdmt.github.io/ARON-Badmintion-Club/';
-              }
-              const approveUrl = `${origin}?action=approve_member&user=${username}`;
-              const rejectUrl = `${origin}?action=reject_member&user=${username}`;
-
-              const emailSubject = `[CLB ARON] Yêu cầu phê duyệt thành viên mới: ${name}${nickname ? ` (${nickname})` : ''}`;
-              const emailBody = `<h3>Chào Ban quản trị CLB ARON,</h3>
-                <p>Hệ thống vừa nhận được yêu cầu đăng ký thành viên mới:</p>
-                <ul>
-                  <li><strong>Họ tên:</strong> ${name}</li>
-                  ${nickname ? `<li><strong>Biệt danh:</strong> ${nickname}</li>` : ''}
-                  <li><strong>Tên đăng nhập (username):</strong> ${username}</li>
-                  <li><strong>Email:</strong> ${email}</li>
-                  <li><strong>Số điện thoại:</strong> ${phone || 'Chưa cập nhật'}</li>
-                  <li><strong>Trình độ:</strong> ${level}</li>
-                </ul>
-                <p>Vui lòng nhấp vào một trong các liên kết dưới đây để phê duyệt hoặc từ chối yêu cầu đăng ký này:</p>
-                <p style="margin:20px 0; display:flex; gap:12px;">
-                  <a href="${approveUrl}" style="background:#27500A; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px; margin-right:8px;">👉 Duyệt Thành Viên</a>
-                  <a href="${rejectUrl}" style="background:#993C1D; color:#FFFFFF; text-decoration:none; padding:10px 20px; font-weight:600; border-radius:8px; display:inline-block; font-size:14px;">❌ Từ Chối</a>
-                </p>
-                <p style="font-size:11px; color:#8a877d;">(Sau khi nhấp liên kết, nếu bạn chưa đăng nhập bằng tài khoản Admin, hệ thống sẽ yêu cầu đăng nhập trước khi tự động xử lý).</p>
-                <br/>
-                <p>Trân trọng,</p>
-                <p><strong>Hệ thống CLB Cầu lông ARON</strong></p>`;
-              
-              adminEmails.forEach(adminEmail => {
-                sendSystemEmail(adminEmail, emailSubject, emailBody);
-              });
-            }
+          // Báo cho Admin: máy chủ tự soạn và gửi email (client không tự dựng link phê duyệt nữa)
+          if (state.members.length > 1) {
+            sb.rpc('bc_notify_new_member', { p_username: username }).then(() => {}, () => {});
+          } else {
+            state.myPasswordHash = passwordHash; // người đầu tiên = Admin, đăng nhập luôn
           }
 
           render();
@@ -3821,13 +3741,11 @@
         
         const oldPwHash = await hashPassword(oldPw, m.username);
         const newPwHash = await hashPassword(newPw, m.username);
-        let err = '';
-        const ok = await mutateMembers(latest => {
-          const target = latest.find(x => x.id === m.id);
-          if (!target || target.password !== oldPwHash) { err = 'Sai mật khẩu hiện tại.'; return null; }
-          return latest.map(x => x.id === m.id ? Object.assign({}, x, { password: newPwHash }) : x);
-        });
-        if (!ok) { msg.style.color = '#993C1D'; msg.textContent = err || 'Đổi thất bại.'; return; }
+        const { data: oldOk } = await sb.rpc('bc_verify_login', { p_username: m.username, p_password_hash: oldPwHash });
+        if (!oldOk) { msg.style.color = '#993C1D'; msg.textContent = 'Sai mật khẩu hiện tại.'; return; }
+        const ok = await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { password: newPwHash }) : x));
+        if (!ok) { msg.style.color = '#993C1D'; msg.textContent = state.lastSaveErrorMsg || 'Đổi thất bại.'; return; }
+        if (state.me && normUsername(state.me.username) === normUsername(m.username)) state.myPasswordHash = newPwHash;
         
         if (state.rememberData && normUsername(state.rememberData.username) === normUsername(m.username)) {
           state.rememberData = { username: m.username, password: newPwHash }; saveRemember(state.rememberData);
@@ -9813,8 +9731,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
     refreshing = true;
     try {
       // 1. Chỉ lấy key và updated_at để kiểm tra xem có thay đổi hay không
-      const { data: dbKeys, error: keyError } = await sb.from('bc_data').select('key, updated_at');
-      if (keyError) throw keyError;
+      const dbKeys = await readMeta();
       
       const modifiedKeys = [];
       const currentTimestamps = {};
@@ -9829,11 +9746,7 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
       
       // 2. Chỉ tải các key thực sự đã thay đổi
       if (modifiedKeys.length > 0) {
-        const { data: updatedData, error: valError } = await sb.from('bc_data')
-          .select('key, value, updated_at')
-          .in('key', modifiedKeys);
-        if (valError) throw valError;
-        
+        const updatedData = await readData(modifiedKeys);
         const dbMap = {};
         if (updatedData) {
           updatedData.forEach(row => {
@@ -9956,8 +9869,9 @@ ${desc ? desc + '\n\n' : ''}Ban chủ nhiệm vừa mở cổng đăng ký cho g
   // ===================== LAZY ADMIN CRON (BACKGROUND TASKS) =====================
   async function loadAutoLogs() {
     try {
-      const { data, error } = await sb.from('bc_data').select('value').eq('key', 'bc_auto_logs').maybeSingle();
-      if (!error && data) return data.value || {};
+      const rows = await readData(['bc_auto_logs']);
+      const row = rows.find(r => r.key === 'bc_auto_logs');
+      if (row) return row.value || {};
     } catch(e) {}
     return {};
   }
