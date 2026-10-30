@@ -881,6 +881,24 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 @media (min-width: 980px) { .a-guide { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } .a-guide > .a-pagehead { grid-column: 1 / -1; } }
 .a-guide-act .a-btn.off { background: var(--a-surface-2, #eef4f5); color: var(--a-ink, #0F2A33); border-color: var(--a-line, #d5e3e6); box-shadow: none; }
 
+/* Nút xoá thành viên: tách khỏi các nút thường, trông như liên kết cảnh báo ở cuối thẻ */
+.a-danger-link { flex: 1 1 100%; margin-top: 22px; padding: 12px 8px 4px; border: 0; border-top: 1px dashed var(--a-line, #d5e3e6); background: transparent; color: #B23A2B; font: 600 13px var(--a-font, inherit); text-align: center; cursor: pointer; }
+.a-danger-link:hover { text-decoration: underline; }
+/* Hộp xác nhận thao tác nguy hiểm */
+.a-dz-back { position: fixed; inset: 0; z-index: 100002; background: rgba(8, 24, 31, .62); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 18px; animation: a-fade .18s ease; }
+.a-dz { width: 100%; max-width: 420px; background: var(--a-surface, #fff); color: var(--a-ink, #0F2A33); border-radius: 22px; padding: 22px 20px 18px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .6); animation: a-pop .3s ease both; }
+.a-dz-ic { width: 46px; height: 46px; border-radius: 50%; background: #FCE3DD; color: #C04030; display: grid; place-items: center; font-size: 26px; font-weight: 800; margin-bottom: 10px; }
+.a-dz-t { margin: 0 0 8px; font-size: 19px; font-weight: 800; }
+.a-dz-s { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--a-ink-2, #3b5560); }
+.a-dz-l { display: block; font-size: 13px; margin-bottom: 6px; color: var(--a-ink-2, #3b5560); }
+.a-dz-in { width: 100%; box-sizing: border-box; height: 46px; border-radius: 13px; border: 1.5px solid var(--a-line, #cfdde0); padding: 0 14px; font: 600 16px var(--a-font, inherit); background: var(--a-surface-2, #f4f8f9); color: inherit; margin-bottom: 14px; }
+.a-dz-in:focus { outline: 0; border-color: #C04030; }
+.a-dz-act { display: flex; gap: 10px; }
+.a-dz-act .a-btn { flex: 1; min-height: 48px; }
+.a-dz-cancel { background: var(--a-primary, #074659); color: var(--a-on-primary, #fff); }
+.a-dz-ok { background: #C04030; color: #fff; border-color: #C04030; }
+.a-dz-ok:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+
 </style>
 
 
@@ -2792,7 +2810,8 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     render();
   }
   async function rejectMember(m){
-    if (!confirm(`Từ chối và xoá đăng ký của ${m.name}?`)) return;
+    if (!(await confirmDanger({ title: `Từ chối đăng ký của ${m.name}?`, confirmLabel: 'Từ chối và xoá', delayMs: 2000,
+      body: `Hồ sơ đăng ký <b>@${escapeHtml(m.username)}</b> sẽ bị xoá. Người này phải đăng ký lại nếu muốn tham gia.` }))) return;
     showLoading('Đang từ chối đăng ký...');
     const ok = await mutateMembers(latest => latest.filter(x => x.id !== m.id));
     hideLoading();
@@ -3141,6 +3160,43 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       : [['Vote nhanh', 'Bấm Tham gia hoặc Vắng ngay ở Trang chủ.'], ['Vote từ email', 'Bấm nút trong thư nhắc, không cần đăng nhập.'], ['Quên mật khẩu', 'Bấm "Quên mật khẩu" ở màn hình đăng nhập.'], ['Cài ứng dụng', 'Menu trình duyệt → Cài đặt ứng dụng / Thêm vào màn hình chính.']];
     wrap.appendChild(el(`<section class="a-card"><div class="a-kicker">Mẹo nhanh</div><div class="a-lines" style="margin-top:8px;">${tips.map(t => `<div class="a-guide-tip"><b>${t[0]}</b><span>${t[1]}</span></div>`).join('')}</div></section>`));
     return wrap;
+  }
+
+  // =====================================================================
+  //  ARON UI · Hộp xác nhận cho thao tác nguy hiểm (xoá): phải gõ lại tên để mở khoá nút Xoá
+  //  - Nút mặc định (và phím Enter/Esc) luôn là "Huỷ", nút Xoá khoá cho tới khi gõ đúng
+  //  - Không gõ: nút Xoá chỉ mở sau vài giây để tránh bấm hụt tay
+  // =====================================================================
+  function confirmDanger(opts){
+    return new Promise(resolve => {
+      const expect = (opts.expect || '').trim();
+      const delay = opts.delayMs || 2500;
+      const back = el(`<div class="a-dz-back" role="dialog" aria-modal="true"><div class="a-dz">
+        <div class="a-dz-ic">!</div>
+        <h3 class="a-dz-t">${escapeHtml(opts.title || 'Xác nhận xoá')}</h3>
+        <p class="a-dz-s">${opts.body || ''}</p>
+        ${expect ? `<label class="a-dz-l">Gõ <b>${escapeHtml(expect)}</b> để xác nhận</label><input class="a-dz-in" id="a-dz-in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escapeHtml(expect)}">` : ''}
+        <div class="a-dz-act"><button class="a-btn a-dz-cancel" id="a-dz-cancel">Huỷ, giữ lại</button>
+        <button class="a-btn a-dz-ok" id="a-dz-ok" disabled>${escapeHtml(opts.confirmLabel || 'Xoá')}${expect ? '' : ' (' + Math.ceil(delay / 1000) + ')'}</button></div>
+      </div></div>`);
+      const ok = back.querySelector('#a-dz-ok'), cancel = back.querySelector('#a-dz-cancel'), inp = back.querySelector('#a-dz-in');
+      let timer = null;
+      const done = v => { if (timer) clearInterval(timer); document.removeEventListener('keydown', onKey, true); back.remove(); resolve(v); };
+      const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); done(false); } };
+      document.addEventListener('keydown', onKey, true);
+      cancel.onclick = () => done(false);
+      back.addEventListener('click', e => { if (e.target === back) done(false); });
+      ok.onclick = () => { if (!ok.disabled) done(true); };
+      if (inp) {
+        inp.oninput = () => { ok.disabled = inp.value.trim().toLowerCase() !== expect.toLowerCase(); };
+        inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); if (!ok.disabled) done(true); } };
+      } else {
+        let left = Math.ceil(delay / 1000);
+        timer = setInterval(() => { left--; if (left <= 0) { clearInterval(timer); ok.disabled = false; ok.textContent = opts.confirmLabel || 'Xoá'; } else ok.textContent = (opts.confirmLabel || 'Xoá') + ' (' + left + ')'; }, 1000);
+      }
+      document.body.appendChild(back);
+      setTimeout(() => (inp || cancel).focus(), 30);
+    });
   }
 
   function render(){
@@ -4676,13 +4732,14 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 
         // 4. Xóa thành viên: Chỉ Admin/Owner được phép xóa thành viên (R1 không được xóa)
         if (isAdmin() && (!isOwnerRow || isCurrentUserOwner)) {
-          const delBtn = el(`<button class="bc-btn danger small">Xoá</button>`);
+          const delBtn = el(`<button class="a-danger-link" type="button">Xoá thành viên…</button>`);
           delBtn.onclick = async () => {
             if (isOwnerRow && !isCurrentUserOwner) {
               alert('Không thể xoá tài khoản Owner.');
               return;
             }
-            if (!confirm(`Xoá thành viên ${m.name}?`)) return;
+            if (!(await confirmDanger({ title: `Xoá thành viên ${m.name}?`, expect: m.username, confirmLabel: 'Xoá thành viên',
+              body: `Tài khoản <b>@${escapeHtml(m.username)}</b> sẽ bị xoá khỏi CLB và không đăng nhập được nữa. <b>Không thể hoàn tác.</b><br>Nếu chỉ muốn cho nghỉ tạm, hãy dùng nút <b>Ngưng hoạt động</b> thay vì xoá.` }))) return;
             let blocked = false;
             const ok = await mutateMembers(latest => {
               const target = latest.find(x => x.id === m.id);
@@ -7268,7 +7325,8 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
           const btn = explainer.querySelector('#reset-all-challenges-btn');
           if (btn) {
             btn.onclick = async () => {
-              if (!confirm(`Bạn có chắc chắn muốn XÓA TẤT CẢ KÈO THÁCH ĐẤU THÁNG ${monthLabel(curMonth)} để trả lại điểm XP chuẩn (160 XP) cho tất cả thành viên?`)) return;
+              if (!(await confirmDanger({ title: `Xoá tất cả kèo tháng ${monthLabel(curMonth)}?`, expect: 'XOA', confirmLabel: 'Xoá tất cả kèo',
+                body: `Mọi kèo thách đấu của tháng này sẽ bị xoá và điểm XP được trả về chuẩn (160 XP) cho tất cả thành viên. <b>Không thể hoàn tác.</b>` }))) return;
               const ok = await mutateSessions(latest => {
                 latest.forEach(s => {
                   if (sessionMonthKey(s) === curMonth) {
@@ -8979,8 +9037,9 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 
     if (canDelete()) {
       const delBtn = card.querySelector(`#del-${s.id}`);
-      if (delBtn) delBtn.onclick = () => {
-        if (!confirm('Xoá buổi đánh này?')) return;
+      if (delBtn) delBtn.onclick = async () => {
+        if (!(await confirmDanger({ title: `Xoá buổi ${formatDate(s.date)}?`, expect: 'XOA', confirmLabel: 'Xoá buổi',
+          body: `Toàn bộ vote, nhường lịch và kèo thách đấu của buổi <b>${escapeHtml(weekdayLabel(s.date))}, ${escapeHtml(formatDate(s.date))}</b> sẽ mất. <b>Không thể hoàn tác.</b>` }))) return;
         state.sessions = state.sessions.filter(x => x.id !== s.id);
         saveSessions(); render();
       };
