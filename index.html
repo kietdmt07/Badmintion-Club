@@ -867,6 +867,20 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 .a-tv-h { margin: 0 0 16px; color: var(--a-ink-3, #6b8189); font-size: 12.5px; }
 .a-tv-vote { margin-top: 10px; }
 
+/* Trang Hướng dẫn sử dụng */
+.a-guide { display: flex; flex-direction: column; gap: 14px; }
+.a-guide-doc { display: flex; gap: 14px; align-items: flex-start; }
+.a-guide-ic { flex: none; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #0B5E75, #074659); }
+.a-guide-body { min-width: 0; flex: 1; }
+.a-guide-act { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.a-guide-act .a-btn { min-height: 44px; }
+.a-guide-tip { display: flex; flex-direction: column; gap: 2px; padding: 9px 0; border-top: 1px solid var(--a-line, #e3ecee); font-size: 14px; }
+.a-guide-tip:first-child { border-top: 0; }
+.a-guide-tip b { color: var(--a-ink, #0F2A33); }
+.a-guide-tip span { color: var(--a-ink-2, #3b5560); }
+@media (min-width: 980px) { .a-guide { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } .a-guide > .a-pagehead { grid-column: 1 / -1; } }
+.a-guide-act .a-btn.off { background: var(--a-surface-2, #eef4f5); color: var(--a-ink, #0F2A33); border-color: var(--a-line, #d5e3e6); box-shadow: none; }
+
 </style>
 
 
@@ -2317,7 +2331,8 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     pin: '<path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/>',
-    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    book: '<path d="M4 5.5A1.5 1.5 0 015.5 4H11v16H5.5A1.5 1.5 0 014 18.5v-13z"/><path d="M20 5.5A1.5 1.5 0 0018.5 4H13v16h5.5a1.5 1.5 0 001.5-1.5v-13z"/>'
   };
   function icon(name, size){
     size = size || 22;
@@ -2375,8 +2390,8 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       ? [['home', 'Trang chủ', 'home'], ['sessions', 'Lịch đánh', 'calendar'], ['fund', 'Quỹ', 'wallet'], ['payments_mgr', 'Quản lý', 'shield']]
       : [['home', 'Trang chủ', 'home'], ['sessions', 'Lịch đánh', 'calendar'], ['fund', 'Quỹ', 'wallet'], ['leaderboard', 'Xếp hạng', 'trophy']];
     const more = mgr
-      ? [['members', 'Thành viên', 'users', pendingMembers], ['leaderboard', 'Xếp hạng', 'trophy', 0], ['report', 'Báo cáo', 'chart', 0], ['profile', 'Hồ sơ của tôi', 'user', 0]]
-      : [['profile', 'Hồ sơ của tôi', 'user', 0], ['report', 'Báo cáo', 'chart', 0]];
+      ? [['members', 'Thành viên', 'users', pendingMembers], ['leaderboard', 'Xếp hạng', 'trophy', 0], ['report', 'Báo cáo', 'chart', 0], ['guide', 'Hướng dẫn sử dụng', 'book', 0], ['profile', 'Hồ sơ của tôi', 'user', 0]]
+      : [['guide', 'Hướng dẫn sử dụng', 'book', 0], ['profile', 'Hồ sơ của tôi', 'user', 0], ['report', 'Báo cáo', 'chart', 0]];
     return { main, more, pendingMembers, pendingPays };
   }
 
@@ -3091,6 +3106,43 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 
   document.documentElement.style.setProperty('--a-banner', 'url("' + A_BANNER_URL + '")');
 
+  // =====================================================================
+  //  ARON UI · Trang "Hướng dẫn sử dụng" (tài liệu PDF/PowerPoint theo vai trò, lưu trong assets/guides)
+  // =====================================================================
+  function renderGuide(){
+    const mgr = canManage();
+    const wrap = el(`<div class="a-guide"></div>`);
+    wrap.appendChild(el(`<div class="a-pagehead"><div><div class="a-h2">Hướng dẫn sử dụng</div><div class="a-sub">Tài liệu theo vai trò, đọc ngay trên điện thoại hoặc tải về</div></div></div>`));
+    const docs = [{
+      title: 'Hướng dẫn thành viên', sub: 'Dành cho mọi thành viên · 14 slide', file: 'Huong-dan-thanh-vien', ic: 'user',
+      topics: ['Đăng ký tài khoản', 'Đăng ký hoạt động tháng', 'Vote Tham gia/Vắng', 'Nhường lịch', 'Vote từ email', 'Quỹ và QR', 'Xếp hạng', 'Cài ứng dụng']
+    }];
+    if (mgr) docs.push({
+      title: 'Hướng dẫn quản trị', sub: 'Dành cho Admin và R1 · 14 slide', file: 'Huong-dan-quan-tri', ic: 'shield',
+      topics: ['Duyệt thành viên', 'Tạo và chốt buổi', 'Nhắc vote bằng email', 'Tự động hoá', 'Duyệt thanh toán', 'Cấu hình', 'Báo cáo', 'Nhịp vận hành']
+    });
+    docs.forEach(d => {
+      const card = el(`<section class="a-card a-guide-doc">
+        <div class="a-guide-ic">${icon(d.ic, 26)}</div>
+        <div class="a-guide-body">
+          <div class="a-h2" style="font-size:18px;">${d.title}</div>
+          <div class="a-sub" style="margin-bottom:10px;">${d.sub}</div>
+          <div class="a-chiprow" style="flex-wrap:wrap;">${d.topics.map(t => `<span class="a-chip">${t}</span>`).join('')}</div>
+          <div class="a-guide-act">
+            <a class="a-btn" href="assets/guides/Video-${d.file.toLowerCase()}.mp4" target="_blank" rel="noopener" style="text-decoration:none;">Xem video (3,7 phút)</a>
+            <a class="a-btn off" href="assets/guides/${d.file}.pdf" target="_blank" rel="noopener" style="text-decoration:none;">Đọc tài liệu</a>
+            <a class="a-btn off" href="assets/guides/${d.file}.pptx" download style="text-decoration:none;">Tải PowerPoint</a>
+          </div>
+        </div></section>`);
+      wrap.appendChild(card);
+    });
+    const tips = mgr
+      ? [['Duyệt người mới', 'Thêm → Thành viên → tab Chờ duyệt.'], ['Nhắc vote', 'Mở chi tiết buổi, bấm Nhắc vote; hoặc bật tự động ở Quản lý → Tự động hoá.'], ['Email có nút bấm', 'Thành viên chỉ cần bấm Tham gia hoặc Báo vắng ngay trong thư.'], ['Đồng bộ dữ liệu', 'Bấm ảnh đại diện → Đồng bộ nếu cần số liệu mới nhất.']]
+      : [['Vote nhanh', 'Bấm Tham gia hoặc Vắng ngay ở Trang chủ.'], ['Vote từ email', 'Bấm nút trong thư nhắc, không cần đăng nhập.'], ['Quên mật khẩu', 'Bấm "Quên mật khẩu" ở màn hình đăng nhập.'], ['Cài ứng dụng', 'Menu trình duyệt → Cài đặt ứng dụng / Thêm vào màn hình chính.']];
+    wrap.appendChild(el(`<section class="a-card"><div class="a-kicker">Mẹo nhanh</div><div class="a-lines" style="margin-top:8px;">${tips.map(t => `<div class="a-guide-tip"><b>${t[0]}</b><span>${t[1]}</span></div>`).join('')}</div></section>`));
+    return wrap;
+  }
+
   function render(){
     const appEl = document.getElementById('app');
     if (appEl) {
@@ -3123,7 +3175,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       setTimeout(() => { const b = document.getElementById('bc-dismiss-err'); if (b) b.onclick = () => { state.saveError = null; render(); }; }, 0);
     }
     if (state.tab === 'members' && !canManage()) state.tab = 'profile';
-    const KNOWN_TABS = ['home', 'sessions', 'leaderboard', 'members', 'fund', 'payments_mgr', 'report', 'profile'];
+    const KNOWN_TABS = ['home', 'sessions', 'leaderboard', 'members', 'fund', 'payments_mgr', 'report', 'profile', 'guide'];
     if (!KNOWN_TABS.includes(state.tab) || (state.tab === 'payments_mgr' && !canManage())) state.tab = 'home';
     if (state.tab === 'home') root.appendChild(renderHome());
     if (state.tab === 'profile') root.appendChild(renderProfile());
@@ -3133,6 +3185,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     if (state.tab === 'fund') root.appendChild(renderFund());
     if (state.tab === 'payments_mgr') root.appendChild(renderPaymentsMgr());
     if (state.tab === 'report') root.appendChild(renderReport());
+    if (state.tab === 'guide') root.appendChild(renderGuide());
     root.appendChild(renderTabs());
     restoreMemberSheet();
   }
