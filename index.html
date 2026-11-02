@@ -915,17 +915,17 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 .dz-kpi.warn .dz-kpi-v { color: #C04030; } .dz-kpi.ok .dz-kpi-v { color: #2F7D5B; }
 .dz-card { overflow: hidden; }
 .dz-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
-.dz-svg { display: block; max-width: none; }
+.dz-svg { display: block; max-width: none; } .dz-chart { min-width: 100%; }
 .dz-t { font: 600 10.5px var(--a-font, inherit); fill: var(--a-ink-3, #6b8189); } .dz-t2 { font-weight: 500; font-size: 9px; opacity: .85; }
-.dz-v { font: 700 10px var(--a-font, inherit); fill: var(--a-ink-2, #3b5560); }
+.dz-v { font: 700 10px var(--a-font, inherit); fill: var(--a-ink-2, #3b5560); paint-order: stroke; stroke: var(--a-surface, #fff); stroke-width: 3px; stroke-linejoin: round; }
 .dz-grid { stroke: var(--a-line, #e3ecee); stroke-width: 1; }
 .dz-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; color: var(--a-ink-2, #3b5560); }
 .dz-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 .dz-note { margin-top: 8px; font-size: 12.5px; color: var(--a-ink-3, #6b8189); line-height: 1.45; }
 .dz-empty { padding: 22px 8px; text-align: center; color: var(--a-ink-3, #6b8189); font-size: 14px; }
 .dz-table { margin-top: 12px; display: flex; flex-direction: column; }
-.dz-table > div { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--a-line, #e3ecee); font-size: 13.5px; }
-.dz-table > div > span:first-child { font-weight: 700; }
+.dz-table > div { display: flex; flex-wrap: wrap; gap: 4px 18px; justify-content: flex-start; padding: 8px 0; border-top: 1px solid var(--a-line, #e3ecee); font-size: 13.5px; }
+.dz-table > div > span:first-child { font-weight: 800; flex: 0 0 74px; } .dz-table > div > span { font-size: 13px; } .dz-table > div > span b { margin-left: 3px; }
 .dz-hrow { display: flex; align-items: center; gap: 10px; margin: 9px 0; }
 .dz-hl { flex: none; width: 52px; font-size: 13px; font-weight: 700; color: var(--a-ink-2, #3b5560); } .dz-hname { width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .dz-stack { flex: 1; display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--a-surface-2, #eef4f5); }
@@ -3264,32 +3264,47 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     if (a >= 1e3) return Math.round(n / 1e3) + 'k';
     return String(Math.round(n));
   }
-  function dzNiceMax(v){
+  // Mức trần trục Y sao cho 4 vạch chia đều ra số đẹp (đếm người: số nguyên; tiền: bội số tròn)
+  function dzNiceMax(v, money){
     if (v <= 0) return 4;
-    const pow = Math.pow(10, Math.floor(Math.log10(v)));
-    const f = v / pow; const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-    return nf * pow;
+    if (!money) {
+      const steps = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100];
+      for (const st of steps) if (st * 4 >= v) return st * 4;
+      return Math.ceil(v / 4) * 4;
+    }
+    const pow = Math.pow(10, Math.floor(Math.log10(v / 4)));
+    for (const f of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (f * pow * 4 >= v) return f * pow * 4;
+    return 10 * pow * 4;
   }
 
-  // Biểu đồ cột (xếp chồng hoặc nhóm). opts: labels[], series[{name,color,data[]}], stacked, fmt, markers[], faded[], height
-  function dzBars(o){
+  // Biểu đồ cột (xếp chồng hoặc nhóm). opts: labels[], series[{name,color,data[]}], stacked, fmt, markers[], faded[], height, valueLabels
+  // Chiều rộng biểu đồ tự giãn theo khung chứa (dzFit) để dùng hết bề ngang trên màn hình rộng, hẹp thì cuộn ngang.
+  const DZ_REG = {}; let DZ_ID = 0;
+  function dzBarsSvg(o, availW){
     const labels = o.labels, ser = o.series, n = labels.length;
     const fmt = o.fmt || (v => String(Math.round(v * 10) / 10));
-    const padL = 38, padR = 8, padT = 16, padB = 30, H = o.height || 190;
+    const padL = 42, padR = 12, padT = 18, padB = 34, H = o.height || 190;
     const k = ser.length; const stacked = o.stacked !== false;
-    let gW = stacked ? 34 : (Math.max(11, Math.min(18, 54 / k)) * k + 14);
-    gW = Math.max(gW, Math.min(72, (300 - padL - padR) / n));          // ít cột thì giãn ra để biểu đồ không quá nhỏ
-    const barW = stacked ? Math.min(30, gW * 0.64) : Math.max(11, Math.min(20, (gW - 14) / k));
-    const W = padL + padR + n * gW;
+    const minG = stacked ? 40 : Math.max(40, k * 14 + 16);
+    const gW = Math.min(170, Math.max(minG, (availW - padL - padR) / n));
+    const barW = stacked ? Math.min(32, gW * 0.6) : Math.max(11, Math.min(24, (gW - 14) / k));
+    const W = Math.round(padL + padR + n * gW);
+    const showVals = o.valueLabels != null ? o.valueLabels : (stacked || k === 1);
     const tot = i => stacked ? ser.reduce((a, s) => a + (s.data[i] || 0), 0) : Math.max.apply(null, ser.map(s => s.data[i] || 0));
     let mx = Math.max.apply(null, labels.map((_, i) => tot(i)).concat((o.markers || []).filter(x => x != null)));
-    mx = dzNiceMax(mx || 1);
+    mx = dzNiceMax(mx || 1, !!o.fmt && o.fmt === dzMoney);
     const innerH = H - padT - padB; const y = v => padT + innerH - (v / mx) * innerH;
     let g = '';
     for (let t = 0; t <= 4; t++) {
       const v = mx * t / 4; const yy = y(v);
       g += `<line x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}" class="dz-grid"/><text x="${padL - 6}" y="${yy + 3.5}" text-anchor="end" class="dz-t">${fmt(v)}</text>`;
     }
+    // vạch mức tối đa vẽ trước để chữ và cột nằm đè lên, không bị che
+    if (o.markers) labels.forEach((lb, i) => {
+      if (o.markers[i] == null) return;
+      const gx = padL + i * gW + (gW - barW) / 2; const my = y(o.markers[i]);
+      g += `<line x1="${gx - 4}" x2="${gx + barW + 4}" y1="${my}" y2="${my}" stroke="${DZ.red}" stroke-width="2" stroke-dasharray="4 3"><title>${escapeHtml(lb)} · Tối đa: ${o.markers[i]}</title></line>`;
+    });
     labels.forEach((lb, i) => {
       const gx = padL + i * gW + (gW - (stacked ? barW : barW * k)) / 2;
       const faded = o.faded && o.faded[i];
@@ -3298,20 +3313,29 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
         const v = s.data[i] || 0; if (v <= 0) return;
         const bx = stacked ? gx : gx + j * barW;
         const y0 = stacked ? y(acc + v) : y(v); const h = stacked ? y(acc) - y(acc + v) : y(0) - y(v);
-        g += `<rect x="${bx}" y="${y0}" width="${barW - (stacked ? 0 : 1.5)}" height="${Math.max(h, 1)}" rx="3" fill="${s.color}" ${faded ? 'opacity=".45"' : ''}><title>${escapeHtml(lb)} · ${escapeHtml(s.name)}: ${fmt(v)}</title></rect>`;
-        if (!stacked && barW >= 12 && h > 10) g += `<text x="${bx + (barW - 1.5) / 2}" y="${y0 - 3}" text-anchor="middle" class="dz-v">${fmt(v)}</text>`;
+        g += `<rect x="${bx}" y="${y0}" width="${barW - (stacked ? 0 : 2)}" height="${Math.max(h, 1)}" rx="3" fill="${s.color}" ${faded ? 'opacity=".45"' : ''}><title>${escapeHtml(lb)} · ${escapeHtml(s.name)}: ${fmt(v)}</title></rect>`;
+        if (!stacked && showVals && h > 10) g += `<text x="${bx + (barW - 2) / 2}" y="${y0 - 4}" text-anchor="middle" class="dz-v">${fmt(v)}</text>`;
         if (stacked) acc += v;
       });
-      if (stacked) {
-        const total = acc; if (total > 0) g += `<text x="${gx + barW / 2}" y="${y(total) - 4}" text-anchor="middle" class="dz-v">${fmt(total)}</text>`;
-      }
-      if (o.markers && o.markers[i] != null) { const my = y(o.markers[i]); g += `<line x1="${gx - 3}" x2="${gx + (stacked ? barW : barW * k) + 3}" y1="${my}" y2="${my}" stroke="${DZ.red}" stroke-width="2" stroke-dasharray="3 2"><title>${escapeHtml(lb)} · Tối đa: ${o.markers[i]}</title></line>`; }
-      g += `<text x="${padL + i * gW + gW / 2}" y="${H - 12}" text-anchor="middle" class="dz-t">${escapeHtml(lb)}</text>`;
-      if (o.sub && o.sub[i]) g += `<text x="${padL + i * gW + gW / 2}" y="${H - 2}" text-anchor="middle" class="dz-t dz-t2">${escapeHtml(o.sub[i])}</text>`;
+      if (stacked && showVals && acc > 0) g += `<text x="${gx + barW / 2}" y="${y(acc) - 5}" text-anchor="middle" class="dz-v">${fmt(acc)}</text>`;
+      g += `<text x="${padL + i * gW + gW / 2}" y="${H - 15}" text-anchor="middle" class="dz-t">${escapeHtml(lb)}</text>`;
+      if (o.sub && o.sub[i]) g += `<text x="${padL + i * gW + gW / 2}" y="${H - 4}" text-anchor="middle" class="dz-t dz-t2">${escapeHtml(o.sub[i])}</text>`;
     });
-    const fixed = W > 560;   // nhiều cột: giữ cỡ thật và cuộn ngang; ít cột: co giãn nhưng không phóng quá 1,3 lần
-    return `<div class="dz-scroll"><svg class="dz-svg" viewBox="0 0 ${W} ${H}" ${fixed ? `width="${W}" height="${H}"` : `style="width:100%;max-width:${Math.round(W * 1.3)}px"`} role="img" aria-label="${escapeHtml(o.aria || '')}">${g}</svg></div>`;
+    return `<svg class="dz-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(o.aria || '')}">${g}</svg>`;
   }
+  function dzBars(o){
+    const id = 'dz' + (++DZ_ID); DZ_REG[id] = o;
+    return `<div class="dz-scroll"><div class="dz-chart" data-dz="${id}">${dzBarsSvg(o, 0)}</div></div>`;
+  }
+  function dzFit(){
+    document.querySelectorAll('.dz-chart[data-dz]').forEach(c => {
+      const o = DZ_REG[c.getAttribute('data-dz')]; if (!o) return;
+      const w = c.parentElement ? c.parentElement.clientWidth : 0;
+      if (w > 0) c.innerHTML = dzBarsSvg(o, w);
+    });
+  }
+  if (!window.__dzResize) { window.__dzResize = true; let t = null; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (state.tab === 'dashboard') dzFit(); }, 150); }); }
+
   function dzLegend(items){ return `<div class="dz-legend">${items.map(i => `<span><i style="background:${i[1]}"></i>${escapeHtml(i[0])}</span>`).join('')}</div>`; }
   function dzCard(title, sub, body, extra){ return `<section class="a-card dz-card${extra ? ' ' + extra : ''}"><div class="a-kicker">${title}</div>${sub ? `<div class="a-sub" style="margin:2px 0 8px;">${sub}</div>` : ''}${body}</section>`; }
   function dzEmpty(msg){ return `<div class="dz-empty">${msg || 'Chưa có dữ liệu trong khoảng thời gian này.'}</div>`; }
@@ -3451,7 +3475,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       const body = dzBars({ labels: d.fund.map(f => dzMonthShort(f.mk)), aria: 'Thu chi quỹ theo tháng', stacked: false, fmt: dzMoney, height: 210,
         series: [{ name: 'Phải thu', color: DZ.mist, data: d.fund.map(f => f.owed) }, { name: 'Thực thu', color: DZ.teal, data: d.fund.map(f => f.income) }, { name: 'Chi', color: DZ.coral, data: d.fund.map(f => f.expense) }] })
         + dzLegend([['Phải thu', DZ.mist], ['Thực thu (gồm donate)', DZ.teal], ['Chi', DZ.coral]])
-        + `<div class="dz-table">${d.fund.map(f => `<div><span>${monthLabel(f.mk)}</span><span>Số dư cuối: <b>${formatVND(f.closing)}</b></span><span>Công nợ: <b style="color:${f.out > 0 ? DZ.red : 'inherit'}">${formatVND(f.out)}</b></span></div>`).join('')}</div>`;
+        + `<div class="dz-table">${d.fund.map(f => `<div><span>${monthLabel(f.mk)}</span><span>Phải thu <b>${formatVND(f.owed)}</b></span><span>Thực thu <b>${formatVND(f.income)}</b></span><span>Chi <b>${formatVND(f.expense)}</b></span><span>Số dư cuối <b>${formatVND(f.closing)}</b></span><span>Công nợ <b style="color:${f.out > 0 ? DZ.red : 'inherit'}">${formatVND(f.out)}</b></span></div>`).join('')}</div>`;
       wrap.appendChild(el(dzCard('Thu chi quỹ theo tháng', 'Phải thu = tiền thành viên cần đóng; thực thu gồm tiền đã nộp, đóng trước và donate', body, d.fund.length > 4 ? 'dz-wide' : '')));
     }
 
@@ -3509,6 +3533,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     wrap.appendChild(el(dzCard('Lượt nhường lịch (pass)', 'Số lần thành viên Cố định nhường slot theo tháng',
       d.months.some(mk => d.passM[mk] > 0) ? dzBars({ labels: d.months.map(dzMonthShort), aria: 'Lượt nhường lịch', stacked: false, height: 160, fmt: v => String(Math.round(v)), series: [{ name: 'Lượt pass', color: DZ.gold, data: d.months.map(mk => d.passM[mk]) }] }) : dzEmpty('Chưa có lượt nhường lịch nào trong khoảng này.'))));
 
+    setTimeout(dzFit, 0); setTimeout(dzFit, 250);
     return wrap;
   }
 
