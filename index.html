@@ -899,6 +899,51 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
 .a-dz-ok { background: #C04030; color: #fff; border-color: #C04030; }
 .a-dz-ok:disabled { opacity: .35; cursor: not-allowed; filter: none; }
 
+/* ---------- Dashboard ---------- */
+.a-dash { display: flex; flex-direction: column; gap: 14px; }
+.a-dash .a-pagehead { align-items: flex-start; flex-wrap: wrap; }
+.dz-ctl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dz-seg { display: inline-flex; padding: 3px; gap: 2px; }
+.dz-seg button { border: 0; background: transparent; padding: 7px 12px; border-radius: 10px; font: 700 13px var(--a-font, inherit); color: var(--a-ink-2, #3b5560); cursor: pointer; }
+.dz-seg button.on { background: var(--a-primary, #074659); color: var(--a-on-primary, #fff); }
+.dz-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.dz-kpi { background: var(--a-surface, #fff); border: 1px solid var(--a-line, #e3ecee); border-radius: 18px; padding: 12px 14px; box-shadow: 0 10px 22px -18px rgba(7, 70, 89, .5); }
+.dz-kpi-l { font-size: 12px; font-weight: 700; color: var(--a-ink-3, #6b8189); text-transform: uppercase; letter-spacing: .05em; }
+.dz-kpi-v { font-size: 22px; font-weight: 800; margin: 3px 0 1px; color: var(--a-ink, #0F2A33); line-height: 1.15; }
+.dz-kpi-v small { font-size: 13px; font-weight: 600; color: var(--a-ink-3, #6b8189); }
+.dz-kpi-s { font-size: 12px; color: var(--a-ink-3, #6b8189); }
+.dz-kpi.warn .dz-kpi-v { color: #C04030; } .dz-kpi.ok .dz-kpi-v { color: #2F7D5B; }
+.dz-card { overflow: hidden; }
+.dz-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+.dz-svg { display: block; max-width: none; }
+.dz-t { font: 600 10.5px var(--a-font, inherit); fill: var(--a-ink-3, #6b8189); } .dz-t2 { font-weight: 500; font-size: 9px; opacity: .85; }
+.dz-v { font: 700 10px var(--a-font, inherit); fill: var(--a-ink-2, #3b5560); }
+.dz-grid { stroke: var(--a-line, #e3ecee); stroke-width: 1; }
+.dz-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12.5px; color: var(--a-ink-2, #3b5560); }
+.dz-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.dz-note { margin-top: 8px; font-size: 12.5px; color: var(--a-ink-3, #6b8189); line-height: 1.45; }
+.dz-empty { padding: 22px 8px; text-align: center; color: var(--a-ink-3, #6b8189); font-size: 14px; }
+.dz-table { margin-top: 12px; display: flex; flex-direction: column; }
+.dz-table > div { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--a-line, #e3ecee); font-size: 13.5px; }
+.dz-table > div > span:first-child { font-weight: 700; }
+.dz-hrow { display: flex; align-items: center; gap: 10px; margin: 9px 0; }
+.dz-hl { flex: none; width: 52px; font-size: 13px; font-weight: 700; color: var(--a-ink-2, #3b5560); } .dz-hname { width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.dz-stack { flex: 1; display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--a-surface-2, #eef4f5); }
+.dz-stack i { display: block; height: 100%; min-width: 2px; }
+.dz-hv { flex: none; width: 40px; text-align: right; font-size: 13px; font-weight: 800; color: var(--a-ink, #0F2A33); } .dz-hmoney { width: 86px; font-size: 12.5px; color: #C04030; }
+.dz-att { display: flex; flex-direction: column; }
+.dz-arow { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--a-line, #e3ecee); } .dz-arow:first-child { border-top: 0; }
+.dz-rank { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--a-surface-2, #eef4f5); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+.dz-arow:nth-child(-n+3) .dz-rank { background: #F1B13F; color: #2b1c00; }
+.dz-aname { flex: none; width: 42%; min-width: 0; display: flex; flex-direction: column; } .dz-aname b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dz-aname small, .dz-abar small { font-size: 11.5px; color: var(--a-ink-3, #6b8189); }
+.dz-abar { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+@media (min-width: 760px) { .dz-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 980px) {
+  .dz-kpis { grid-template-columns: repeat(6, 1fr); }
+  .a-dash { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 16px; }
+  .a-dash > .a-pagehead, .a-dash > .dz-kpis, .a-dash > .dz-wide { grid-column: 1 / -1; }
+}
+
 </style>
 
 
@@ -2350,6 +2395,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     plus: '<path d="M12 5v14M5 12h14"/>',
     pin: '<path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/>',
     camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    dash: '<path d="M4 4v16h16"/><path d="M8 15l3-4 3 2.5L19 7"/>',
     book: '<path d="M4 5.5A1.5 1.5 0 015.5 4H11v16H5.5A1.5 1.5 0 014 18.5v-13z"/><path d="M20 5.5A1.5 1.5 0 0018.5 4H13v16h5.5a1.5 1.5 0 001.5-1.5v-13z"/>'
   };
   function icon(name, size){
@@ -2408,7 +2454,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       ? [['home', 'Trang chủ', 'home'], ['sessions', 'Lịch đánh', 'calendar'], ['fund', 'Quỹ', 'wallet'], ['payments_mgr', 'Quản lý', 'shield']]
       : [['home', 'Trang chủ', 'home'], ['sessions', 'Lịch đánh', 'calendar'], ['fund', 'Quỹ', 'wallet'], ['leaderboard', 'Xếp hạng', 'trophy']];
     const more = mgr
-      ? [['members', 'Thành viên', 'users', pendingMembers], ['leaderboard', 'Xếp hạng', 'trophy', 0], ['report', 'Báo cáo', 'chart', 0], ['guide', 'Hướng dẫn sử dụng', 'book', 0], ['profile', 'Hồ sơ của tôi', 'user', 0]]
+      ? [['dashboard', 'Dashboard', 'dash', 0], ['members', 'Thành viên', 'users', pendingMembers], ['leaderboard', 'Xếp hạng', 'trophy', 0], ['report', 'Báo cáo', 'chart', 0], ['guide', 'Hướng dẫn sử dụng', 'book', 0], ['profile', 'Hồ sơ của tôi', 'user', 0]]
       : [['guide', 'Hướng dẫn sử dụng', 'book', 0], ['profile', 'Hồ sơ của tôi', 'user', 0], ['report', 'Báo cáo', 'chart', 0]];
     return { main, more, pendingMembers, pendingPays };
   }
@@ -2696,7 +2742,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     const pb = payCard.querySelector('#home-pay');
     if (pb) pb.onclick = () => { state.viewMonth = month; state.autoOpenPaymentQr = true; goTab('fund'); };
     payCard.querySelector('#home-fund').onclick = () => { state.viewMonth = month; goTab('fund'); };
-    wrap.appendChild(payCard);
+    if (total !== 0) wrap.appendChild(payCard); // đã hoàn tất quỹ (không nợ, không dư) thì ẩn thẻ; vào tab Quỹ để xem chi tiết
 
     // 5. Bảng tin
     const todayStr = new Date().toLocaleDateString('sv-SE');
@@ -2794,7 +2840,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
   // ---------- Duyệt / từ chối thành viên (dùng chung) ----------
   async function approveMember(m){
     showLoading('Đang duyệt tài khoản...');
-    const ok = await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { status: 'active' }) : x));
+    const ok = await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { status: 'active', approvedAt: Date.now() }) : x));
     hideLoading();
     if (ok && m.email) {
       const emailSubject = `[CLB ARON] Tài khoản của bạn đã được phê duyệt`;
@@ -3196,15 +3242,281 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
         timer = setInterval(() => { left--; if (left <= 0) { clearInterval(timer); ok.disabled = false; ok.textContent = opts.confirmLabel || 'Xoá'; } else ok.textContent = (opts.confirmLabel || 'Xoá') + ' (' + left + ')'; }, 1000);
       }
       document.body.appendChild(back);
-      setTimeout(() => (inp || cancel).focus(), 30);
+      (inp || cancel).focus();
+      setTimeout(() => (inp || cancel).focus(), 60);
     });
+  }
+
+  // =====================================================================
+  //  ARON UI · Dashboard (Admin/R1): biểu đồ SVG vẽ tại chỗ từ dữ liệu đã tải, không gọi thêm máy chủ
+  // =====================================================================
+  const DZ = { teal: '#0B5E75', navy: '#074659', orange: '#FF831C', gold: '#F1B13F', coral: '#FC7D60', red: '#C04030', mist: '#C6D2D3', green: '#2F7D5B', sky: '#6FB4F2', slate: '#8AA0A8' };
+
+  function dzMonths(n){
+    const out = []; const now = new Date();
+    for (let i = n - 1; i >= 0; i--) out.push(monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+    return out;
+  }
+  function dzMonthShort(mk){ const p = mk.split('-'); return 'T' + parseInt(p[1], 10) + '/' + p[0].slice(2); }
+  function dzMoney(n){
+    const a = Math.abs(n);
+    if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace('.', ',') + ' tr';
+    if (a >= 1e3) return Math.round(n / 1e3) + 'k';
+    return String(Math.round(n));
+  }
+  function dzNiceMax(v){
+    if (v <= 0) return 4;
+    const pow = Math.pow(10, Math.floor(Math.log10(v)));
+    const f = v / pow; const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+    return nf * pow;
+  }
+
+  // Biểu đồ cột (xếp chồng hoặc nhóm). opts: labels[], series[{name,color,data[]}], stacked, fmt, markers[], faded[], height
+  function dzBars(o){
+    const labels = o.labels, ser = o.series, n = labels.length;
+    const fmt = o.fmt || (v => String(Math.round(v * 10) / 10));
+    const padL = 38, padR = 8, padT = 16, padB = 30, H = o.height || 190;
+    const k = ser.length; const stacked = o.stacked !== false;
+    let gW = stacked ? 34 : (Math.max(11, Math.min(18, 54 / k)) * k + 14);
+    gW = Math.max(gW, Math.min(72, (300 - padL - padR) / n));          // ít cột thì giãn ra để biểu đồ không quá nhỏ
+    const barW = stacked ? Math.min(30, gW * 0.64) : Math.max(11, Math.min(20, (gW - 14) / k));
+    const W = padL + padR + n * gW;
+    const tot = i => stacked ? ser.reduce((a, s) => a + (s.data[i] || 0), 0) : Math.max.apply(null, ser.map(s => s.data[i] || 0));
+    let mx = Math.max.apply(null, labels.map((_, i) => tot(i)).concat((o.markers || []).filter(x => x != null)));
+    mx = dzNiceMax(mx || 1);
+    const innerH = H - padT - padB; const y = v => padT + innerH - (v / mx) * innerH;
+    let g = '';
+    for (let t = 0; t <= 4; t++) {
+      const v = mx * t / 4; const yy = y(v);
+      g += `<line x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}" class="dz-grid"/><text x="${padL - 6}" y="${yy + 3.5}" text-anchor="end" class="dz-t">${fmt(v)}</text>`;
+    }
+    labels.forEach((lb, i) => {
+      const gx = padL + i * gW + (gW - (stacked ? barW : barW * k)) / 2;
+      const faded = o.faded && o.faded[i];
+      let acc = 0;
+      ser.forEach((s, j) => {
+        const v = s.data[i] || 0; if (v <= 0) return;
+        const bx = stacked ? gx : gx + j * barW;
+        const y0 = stacked ? y(acc + v) : y(v); const h = stacked ? y(acc) - y(acc + v) : y(0) - y(v);
+        g += `<rect x="${bx}" y="${y0}" width="${barW - (stacked ? 0 : 1.5)}" height="${Math.max(h, 1)}" rx="3" fill="${s.color}" ${faded ? 'opacity=".45"' : ''}><title>${escapeHtml(lb)} · ${escapeHtml(s.name)}: ${fmt(v)}</title></rect>`;
+        if (!stacked && barW >= 12 && h > 10) g += `<text x="${bx + (barW - 1.5) / 2}" y="${y0 - 3}" text-anchor="middle" class="dz-v">${fmt(v)}</text>`;
+        if (stacked) acc += v;
+      });
+      if (stacked) {
+        const total = acc; if (total > 0) g += `<text x="${gx + barW / 2}" y="${y(total) - 4}" text-anchor="middle" class="dz-v">${fmt(total)}</text>`;
+      }
+      if (o.markers && o.markers[i] != null) { const my = y(o.markers[i]); g += `<line x1="${gx - 3}" x2="${gx + (stacked ? barW : barW * k) + 3}" y1="${my}" y2="${my}" stroke="${DZ.red}" stroke-width="2" stroke-dasharray="3 2"><title>${escapeHtml(lb)} · Tối đa: ${o.markers[i]}</title></line>`; }
+      g += `<text x="${padL + i * gW + gW / 2}" y="${H - 12}" text-anchor="middle" class="dz-t">${escapeHtml(lb)}</text>`;
+      if (o.sub && o.sub[i]) g += `<text x="${padL + i * gW + gW / 2}" y="${H - 2}" text-anchor="middle" class="dz-t dz-t2">${escapeHtml(o.sub[i])}</text>`;
+    });
+    const fixed = W > 560;   // nhiều cột: giữ cỡ thật và cuộn ngang; ít cột: co giãn nhưng không phóng quá 1,3 lần
+    return `<div class="dz-scroll"><svg class="dz-svg" viewBox="0 0 ${W} ${H}" ${fixed ? `width="${W}" height="${H}"` : `style="width:100%;max-width:${Math.round(W * 1.3)}px"`} role="img" aria-label="${escapeHtml(o.aria || '')}">${g}</svg></div>`;
+  }
+  function dzLegend(items){ return `<div class="dz-legend">${items.map(i => `<span><i style="background:${i[1]}"></i>${escapeHtml(i[0])}</span>`).join('')}</div>`; }
+  function dzCard(title, sub, body, extra){ return `<section class="a-card dz-card${extra ? ' ' + extra : ''}"><div class="a-kicker">${title}</div>${sub ? `<div class="a-sub" style="margin:2px 0 8px;">${sub}</div>` : ''}${body}</section>`; }
+  function dzEmpty(msg){ return `<div class="dz-empty">${msg || 'Chưa có dữ liệu trong khoảng thời gian này.'}</div>`; }
+
+  // ---------- Tính toán ----------
+  function dzCompute(n){
+    const months = dzMonths(n); const cur = monthKey();
+    const sess = state.sessions.filter(s => months.includes(sessionMonthKey(s))).sort((a, b) => sessionStartStamp(a).localeCompare(sessionStartStamp(b)));
+    const past = sess.filter(s => !isUpcomingSession(s) || s.locked);
+    const part = sess.map(s => { const c = sessionCounts(s); return { s, fixed: c.fixedPlaying, casual: c.casualPlaying, up: isUpcomingSession(s) && !s.locked }; });
+    const doneParts = part.filter(p => !p.up);
+    const avg = doneParts.length ? doneParts.reduce((a, p) => a + p.fixed + p.casual, 0) / doneParts.length : 0;
+
+    // hành vi vote theo tháng (chỉ buổi đã diễn ra/đã chốt)
+    const vote = {}; months.forEach(mk => vote[mk] = { ontime: 0, late: 0, auto: 0, none: 0 });
+    past.forEach(s => {
+      const mk = sessionMonthKey(s);
+      state.members.filter(m => m.status === 'active' && ['fixed', 'casual'].includes((m.monthlyType || {})[mk])).forEach(m => {
+        const v = (s.votes || {})[m.name];
+        if (s.autoVoted && s.autoVoted[m.id]) vote[mk].auto++;
+        else if (v) { isVoteOnTime(s, m.id, m.name) ? vote[mk].ontime++ : vote[mk].late++; }
+        else vote[mk].none++;
+      });
+    });
+
+    // quỹ
+    const fund = months.map(mk => {
+      const fc = fundClosing(mk); const sm = computeMemberMonthSummary(mk);
+      let owed = 0, out = 0;
+      state.members.forEach(m => { const o = (sm[m.id] || {}).owed || 0; const p = ((state.payments[m.id] || {})[mk]) || {}; owed += o; out += Math.max(0, o - (p.paid || 0) - (p.prepaid || 0)); });
+      return { mk, owed: Math.round(owed), income: Math.round(fc.income), expense: Math.round(fc.expenseTotal), closing: Math.round(fc.closing), out: Math.round(out) };
+    });
+    // công nợ hiện tại
+    let prevDebts = {}; try { prevDebts = computeAllMembersPreviousDebt(cur) || {}; } catch (e) {}
+    const smCur = computeMemberMonthSummary(cur);
+    const debtors = state.members.map(m => {
+      const p = ((state.payments[m.id] || {})[cur]) || {}; const left = Math.round(((smCur[m.id] || {}).owed || 0) - (p.paid || 0) - (p.prepaid || 0));
+      return { m, debt: Math.max(0, Math.round((prevDebts[m.id] || 0) + Math.max(0, left))) };
+    }).filter(x => x.debt > 0).sort((a, b) => b.debt - a.debt);
+    const debtTotal = debtors.reduce((a, x) => a + x.debt, 0);
+
+    // cơ cấu thành viên theo tháng
+    const act = state.members.filter(m => m.status === 'active');
+    const struct = months.map(mk => { let f = 0, c = 0; act.forEach(m => { const t = (m.monthlyType || {})[mk]; if (t === 'fixed') f++; else if (t === 'casual') c++; }); return { mk, f, c, none: act.length - f - c }; });
+
+    // tăng giảm thành viên (ít nhất 6 tháng)
+    const gm = dzMonths(Math.max(6, n)); const grow = gm.map(mk => ({ mk, ex: 0, est: 0, left: 0 }));
+    const idx = {}; grow.forEach((g, i) => idx[g.mk] = i);
+    state.members.forEach(m => {
+      if (m.approvedAt) { const k = monthKey(new Date(m.approvedAt)); if (k in idx) grow[idx[k]].ex++; }
+      else { const ks = Object.keys(m.monthlyType || {}).filter(x => /^\d{4}-\d{2}$/.test(x)).sort(); if (ks.length && ks[0] in idx) grow[idx[ks[0]]].est++; }
+      if (m.leftAt && m.status !== 'active') { const k = monthKey(new Date(m.leftAt)); if (k in idx) grow[idx[k]].left++; }
+    });
+    const inactiveNoDate = state.members.filter(m => m.status === 'inactive' && !m.leftAt).length;
+
+    // chuyên cần
+    const att = state.members.filter(m => m.status === 'active').map(m => {
+      let yes = 0, elig = 0, voted = 0, on = 0;
+      past.forEach(s => {
+        const mk = sessionMonthKey(s); const t = (m.monthlyType || {})[mk]; if (t !== 'fixed' && t !== 'casual') return;
+        elig++;
+        const passes = s.passes || {}; const v = (s.votes || {})[m.name];
+        const isRecv = Object.values(passes).includes(m.id); const passed = Object.keys(passes).includes(m.id);
+        if (isRecv || (v === 'yes' && !passed)) yes++;
+        if (v === 'yes' || v === 'no') { voted++; if (isVoteOnTime(s, m.id, m.name)) on++; }
+      });
+      let xp = 0; try { xp = calculateMemberXP(m.id, state.sessions); } catch (e) {}
+      return { m, yes, elig, rate: elig ? yes / elig : 0, onRate: voted ? on / voted : 0, voted, xp };
+    }).filter(a => a.elig > 0).sort((a, b) => b.yes - a.yes || b.onRate - a.onRate || b.xp - a.xp).slice(0, 10);
+
+    // theo thứ trong tuần
+    const dow = [0, 0, 0, 0, 0, 0, 0], dowN = [0, 0, 0, 0, 0, 0, 0];
+    doneParts.forEach(p => { const d = new Date(p.s.date + 'T00:00:00').getDay(); dow[d] += p.fixed + p.casual; dowN[d]++; });
+    const dowAvg = dow.map((v, i) => dowN[i] ? Math.round(v / dowN[i] * 10) / 10 : 0);
+
+    // nhường lịch theo tháng
+    const passM = {}; months.forEach(mk => passM[mk] = 0);
+    sess.forEach(s => { passM[sessionMonthKey(s)] += Object.values(s.passes || {}).filter(Boolean).length; });
+
+    return { months, cur, sess, past, part, doneParts, avg, vote, fund, debtors, debtTotal, struct, grow, inactiveNoDate, att, dowAvg, dowN, passM };
+  }
+
+  function dzKpi(label, value, sub, tone){ return `<div class="dz-kpi ${tone || ''}"><div class="dz-kpi-l">${label}</div><div class="dz-kpi-v">${value}</div>${sub ? `<div class="dz-kpi-s">${sub}</div>` : ''}</div>`; }
+
+  function dzExportCsv(d){
+    const rows = [['Ngày', 'Giờ', 'Cố định', 'Vãng lai', 'Tổng tham gia', 'Tối đa', 'Trạng thái']];
+    d.part.forEach(p => rows.push([p.s.date, (p.s.time || '') + (p.s.timeEnd ? '-' + p.s.timeEnd : ''), p.fixed, p.casual, p.fixed + p.casual, p.s.max || '', p.up ? 'Sắp tới' : 'Đã qua']));
+    rows.push([]); rows.push(['Tháng', 'Phải thu', 'Thực thu', 'Chi', 'Công nợ', 'Số dư cuối']);
+    d.fund.forEach(f => rows.push([f.mk, f.owed, f.income, f.expense, f.out, f.closing]));
+    const csv = '﻿' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'dashboard-clb-aron-' + monthKey() + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+
+  function renderDashboard(){
+    const n = state.dashMonths || 3;
+    const d = dzCompute(n);
+    const wrap = el(`<div class="a-dash"></div>`);
+    const head = el(`<div class="a-pagehead"><div><div class="a-h2">Dashboard</div><div class="a-sub">Số liệu CLB ${n} tháng gần nhất · tính ngay trên máy, không tốn thêm băng thông</div></div>
+      <div class="dz-ctl"><div class="a-seg dz-seg">${[1, 3, 6].map(x => `<button class="${x === n ? 'on' : ''}" data-n="${x}">${x} tháng</button>`).join('')}</div>
+      <button class="a-btn off sm" id="dz-csv" style="min-height:38px;">Tải CSV</button></div></div>`);
+    head.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { state.dashMonths = parseInt(b.dataset.n, 10); render(); });
+    head.querySelector('#dz-csv').onclick = () => dzExportCsv(d);
+    wrap.appendChild(head);
+
+    // ----- Thẻ số -----
+    const total = state.members.length, activeN = state.members.filter(m => m.status === 'active').length;
+    const curSess = state.sessions.filter(s => sessionMonthKey(s) === d.cur);
+    const curUp = curSess.filter(s => isUpcomingSession(s) && !s.locked).length;
+    const fcur = d.fund[d.fund.length - 1] || { income: 0, closing: 0 };
+    wrap.appendChild(el(`<div class="dz-kpis">
+      ${dzKpi('Thành viên', activeN + '<small> / ' + MAX_MEMBERS + '</small>', total + ' tài khoản (gồm chờ duyệt, ngưng)')}
+      ${dzKpi('Buổi tháng này', curSess.length, curUp + ' buổi sắp tới')}
+      ${dzKpi('TB người / buổi', d.avg ? d.avg.toFixed(1).replace('.', ',') : '–', 'các buổi đã qua trong ' + n + ' tháng')}
+      ${dzKpi('Thực thu tháng này', formatVND(fcur.income), 'gồm cả donate')}
+      ${dzKpi('Công nợ', formatVND(d.debtTotal), d.debtors.length + ' người còn nợ', d.debtTotal > 0 ? 'warn' : 'ok')}
+      ${dzKpi('Số dư quỹ', formatVND(fcur.closing), 'cuối tháng ' + monthLabel(d.cur))}
+    </div>`));
+
+    // ----- 1. Người tham gia từng buổi -----
+    {
+      let body;
+      if (!d.part.length) body = dzEmpty();
+      else {
+        const lab = d.part.map(p => { const x = p.s.date.split('-'); return x[2] + '/' + x[1]; });
+        const sub = d.part.map(p => p.s.time ? p.s.time : '');
+        body = dzBars({ labels: lab, sub, aria: 'Số người tham gia từng buổi', series: [
+          { name: 'Cố định', color: DZ.navy, data: d.part.map(p => p.fixed) }, { name: 'Vãng lai', color: DZ.orange, data: d.part.map(p => p.casual) }],
+          markers: d.part.map(p => p.s.max || null), faded: d.part.map(p => p.up), height: 210 })
+          + dzLegend([['Cố định', DZ.navy], ['Vãng lai', DZ.orange], ['Mức tối đa của buổi', DZ.red]]) + (d.part.some(p => p.up) ? '<div class="dz-note">Cột mờ: buổi sắp tới, số người đang vote tham gia.</div>' : '');
+      }
+      wrap.appendChild(el(dzCard('Người tham gia từng buổi', 'Mỗi cột là một buổi, chia theo Cố định và Vãng lai', body, d.part.length > 9 ? 'dz-wide' : '')));
+    }
+
+    // ----- Quỹ thu chi -----
+    {
+      const body = dzBars({ labels: d.fund.map(f => dzMonthShort(f.mk)), aria: 'Thu chi quỹ theo tháng', stacked: false, fmt: dzMoney, height: 210,
+        series: [{ name: 'Phải thu', color: DZ.mist, data: d.fund.map(f => f.owed) }, { name: 'Thực thu', color: DZ.teal, data: d.fund.map(f => f.income) }, { name: 'Chi', color: DZ.coral, data: d.fund.map(f => f.expense) }] })
+        + dzLegend([['Phải thu', DZ.mist], ['Thực thu (gồm donate)', DZ.teal], ['Chi', DZ.coral]])
+        + `<div class="dz-table">${d.fund.map(f => `<div><span>${monthLabel(f.mk)}</span><span>Số dư cuối: <b>${formatVND(f.closing)}</b></span><span>Công nợ: <b style="color:${f.out > 0 ? DZ.red : 'inherit'}">${formatVND(f.out)}</b></span></div>`).join('')}</div>`;
+      wrap.appendChild(el(dzCard('Thu chi quỹ theo tháng', 'Phải thu = tiền thành viên cần đóng; thực thu gồm tiền đã nộp, đóng trước và donate', body, d.fund.length > 4 ? 'dz-wide' : '')));
+    }
+
+    // ----- Hành vi vote -----
+    {
+      const rows = d.months.map(mk => { const v = d.vote[mk]; const t = v.ontime + v.late + v.auto + v.none; return { mk, v, t }; }).filter(r => r.t > 0);
+      let body;
+      if (!rows.length) body = dzEmpty('Chưa có buổi nào đã diễn ra hoặc đã chốt trong khoảng này.');
+      else body = rows.map(r => { const seg = [['ontime', DZ.green, 'Tự vote đúng giờ'], ['late', DZ.gold, 'Tự vote trễ'], ['auto', DZ.orange, 'Hệ thống tự gán'], ['none', DZ.mist, 'Chưa vote']];
+        return `<div class="dz-hrow"><span class="dz-hl">${dzMonthShort(r.mk)}</span><div class="dz-stack">${seg.map(s => r.v[s[0]] ? `<i style="width:${r.v[s[0]] / r.t * 100}%;background:${s[1]}" title="${s[2]}: ${r.v[s[0]]} (${Math.round(r.v[s[0]] / r.t * 100)}%)"></i>` : '').join('')}</div><span class="dz-hv">${Math.round(r.v.ontime / r.t * 100)}%</span></div>`; }).join('')
+        + dzLegend([['Tự vote đúng giờ', DZ.green], ['Tự vote trễ', DZ.gold], ['Hệ thống tự gán', DZ.orange], ['Chưa vote', DZ.mist]]) + '<div class="dz-note">Con số bên phải: tỷ lệ tự vote đúng giờ (trước 10:00 ngày hôm trước).</div>';
+      wrap.appendChild(el(dzCard('Thói quen vote', 'Tính trên các buổi đã qua, mỗi thành viên đã đăng ký tháng đó', body)));
+    }
+
+    // ----- Cơ cấu thành viên -----
+    wrap.appendChild(el(dzCard('Cơ cấu thành viên theo tháng', 'Thành viên đang hoạt động, theo loại hình đăng ký từng tháng',
+      dzBars({ labels: d.struct.map(s => dzMonthShort(s.mk)), aria: 'Cơ cấu thành viên', height: 190, series: [
+        { name: 'Cố định', color: DZ.navy, data: d.struct.map(s => s.f) }, { name: 'Vãng lai', color: DZ.orange, data: d.struct.map(s => s.c) }, { name: 'Chưa đăng ký', color: DZ.mist, data: d.struct.map(s => s.none) }] })
+      + dzLegend([['Cố định', DZ.navy], ['Vãng lai', DZ.orange], ['Chưa đăng ký', DZ.mist]]))));
+
+    // ----- Tăng giảm thành viên -----
+    {
+      const g = d.grow; const hasEst = g.some(x => x.est > 0);
+      wrap.appendChild(el(dzCard('Thành viên mới và ngưng hoạt động', '6 tháng gần nhất',
+        dzBars({ labels: g.map(x => dzMonthShort(x.mk)), aria: 'Thành viên mới và ngưng', stacked: false, height: 190, series: [
+          { name: 'Mới (có ngày duyệt)', color: DZ.green, data: g.map(x => x.ex) }, { name: 'Mới (ước lượng)', color: '#9CCBB4', data: g.map(x => x.est) }, { name: 'Ngưng hoạt động', color: DZ.red, data: g.map(x => x.left) }] })
+        + dzLegend([['Mới (có ngày duyệt)', DZ.green], ['Mới (ước lượng)', '#9CCBB4'], ['Ngưng hoạt động', DZ.red]])
+        + `<div class="dz-note">Từ nay hệ thống ghi ngày duyệt và ngày ngưng của từng thành viên. Thành viên cũ chưa có ngày duyệt được ước lượng theo tháng đăng ký đầu tiên.${d.inactiveNoDate ? ` ${d.inactiveNoDate} người đang ngưng chưa có ngày ngưng nên chưa tính vào cột đỏ.` : ''}</div>`)));
+    }
+
+    // ----- Công nợ: top người nợ -----
+    {
+      let body;
+      if (!d.debtors.length) body = dzEmpty('Không có ai còn nợ. 🎉');
+      else { const mx = d.debtors[0].debt; body = d.debtors.slice(0, 8).map(x => `<div class="dz-hrow"><span class="dz-hl dz-hname">${escapeHtml(memberDisplayName(x.m))}</span><div class="dz-stack"><i style="width:${Math.max(4, x.debt / mx * 100)}%;background:${DZ.red}"></i></div><span class="dz-hv dz-hmoney">${formatVND(x.debt)}</span></div>`).join('')
+        + (d.debtors.length > 8 ? `<div class="dz-note">và ${d.debtors.length - 8} người khác.</div>` : ''); }
+      wrap.appendChild(el(dzCard('Người còn nợ nhiều nhất', 'Gồm nợ kỳ trước và tháng này', body)));
+    }
+
+    // ----- Chuyên cần -----
+    {
+      let body;
+      if (!d.att.length) body = dzEmpty();
+      else body = `<div class="dz-att">${d.att.map((a, i) => { const rk = getXPRank(a.xp); return `<div class="dz-arow"><span class="dz-rank">${i + 1}</span><div class="dz-aname"><b>${escapeHtml(memberDisplayName(a.m))}</b><small>${rk.emoji} ${rk.label} · ${a.xp} XP</small></div>
+        <div class="dz-abar"><div class="dz-stack"><i style="width:${Math.round(a.rate * 100)}%;background:${DZ.teal}"></i></div><small>${a.yes}/${a.elig} buổi · đúng giờ ${Math.round(a.onRate * 100)}%</small></div></div>`; }).join('')}</div>`;
+      wrap.appendChild(el(dzCard('Chuyên cần: top 10', 'Số buổi tham gia trên số buổi đã qua mà thành viên có đăng ký', body)));
+    }
+
+    // ----- Theo thứ trong tuần -----
+    wrap.appendChild(el(dzCard('Trung bình người tham gia theo thứ', 'Các buổi đã qua, giúp chọn ngày đánh đông nhất',
+      d.doneParts.length ? dzBars({ labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'], aria: 'Người tham gia theo thứ', stacked: false, height: 170,
+        series: [{ name: 'TB người', color: DZ.teal, data: [1, 2, 3, 4, 5, 6, 0].map(i => d.dowAvg[i]) }], sub: [1, 2, 3, 4, 5, 6, 0].map(i => d.dowN[i] ? d.dowN[i] + ' buổi' : '') }) : dzEmpty())));
+
+    // ----- Nhường lịch -----
+    wrap.appendChild(el(dzCard('Lượt nhường lịch (pass)', 'Số lần thành viên Cố định nhường slot theo tháng',
+      d.months.some(mk => d.passM[mk] > 0) ? dzBars({ labels: d.months.map(dzMonthShort), aria: 'Lượt nhường lịch', stacked: false, height: 160, fmt: v => String(Math.round(v)), series: [{ name: 'Lượt pass', color: DZ.gold, data: d.months.map(mk => d.passM[mk]) }] }) : dzEmpty('Chưa có lượt nhường lịch nào trong khoảng này.'))));
+
+    return wrap;
   }
 
   function render(){
     const appEl = document.getElementById('app');
     if (appEl) {
-      if (state.me && state.tab === 'report') {
-        appEl.style.maxWidth = '1000px';
+      if (state.me && (state.tab === 'report' || state.tab === 'dashboard')) {
+        appEl.style.maxWidth = '1100px';
       } else {
         appEl.style.maxWidth = '720px';
       }
@@ -3232,7 +3544,8 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       setTimeout(() => { const b = document.getElementById('bc-dismiss-err'); if (b) b.onclick = () => { state.saveError = null; render(); }; }, 0);
     }
     if (state.tab === 'members' && !canManage()) state.tab = 'profile';
-    const KNOWN_TABS = ['home', 'sessions', 'leaderboard', 'members', 'fund', 'payments_mgr', 'report', 'profile', 'guide'];
+    const KNOWN_TABS = ['home', 'sessions', 'leaderboard', 'members', 'fund', 'payments_mgr', 'report', 'profile', 'guide', 'dashboard'];
+    if (state.tab === 'dashboard' && !canManage()) state.tab = 'home';
     if (!KNOWN_TABS.includes(state.tab) || (state.tab === 'payments_mgr' && !canManage())) state.tab = 'home';
     if (state.tab === 'home') root.appendChild(renderHome());
     if (state.tab === 'profile') root.appendChild(renderProfile());
@@ -3243,6 +3556,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     if (state.tab === 'payments_mgr') root.appendChild(renderPaymentsMgr());
     if (state.tab === 'report') root.appendChild(renderReport());
     if (state.tab === 'guide') root.appendChild(renderGuide());
+    if (state.tab === 'dashboard') root.appendChild(renderDashboard());
     root.appendChild(renderTabs());
     restoreMemberSheet();
   }
@@ -4102,7 +4416,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
         }
         
         const ok = await mutateMembers(latest => 
-          latest.map(x => x.id === target.id ? Object.assign({}, x, { status: 'active' }) : x)
+          latest.map(x => x.id === target.id ? Object.assign({}, x, { status: 'active', approvedAt: Date.now() }) : x)
         );
         
         if (ok) {
@@ -4336,7 +4650,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
             if (latest.some(m => normUsername(m.username) === username)) { err = 'Username đã tồn tại.'; return null; }
             if (latest.some(m => normEmail(m.email) === email)) { err = 'Email đã tồn tại.'; return null; }
             if (latest.length >= MAX_MEMBERS) { err = 'Đã đạt giới hạn ' + MAX_MEMBERS + ' thành viên.'; return null; }
-            return latest.concat([{ id: uid(), name, nickname, username, email, phone, level, gender, password: passwordHash, status: 'active', role: 'r2', monthlyType: {}, avatarUrl: '' }]);
+            return latest.concat([{ id: uid(), name, nickname, username, email, phone, level, gender, password: passwordHash, status: 'active', role: 'r2', monthlyType: {}, avatarUrl: '', approvedAt: Date.now() }]);
           });
           if (!ok) { alert(err || 'Thêm thất bại, thử lại.'); return; }
           render();
@@ -4659,7 +4973,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
         } else {
           const statusBtn = el(`<button class="bc-btn outline small">${m.status==='active' ? 'Ngưng hoạt động' : 'Mở lại hoạt động'}</button>`);
           statusBtn.onclick = async () => {
-            await mutateMembers(latest => latest.map(x => x.id === m.id ? Object.assign({}, x, { status: x.status === 'active' ? 'inactive' : 'active' }) : x));
+            await mutateMembers(latest => latest.map(x => x.id === m.id ? (x.status === 'active' ? Object.assign({}, x, { status: 'inactive', leftAt: Date.now() }) : (() => { const y = Object.assign({}, x, { status: 'active' }); delete y.leftAt; return y; })()) : x));
             render();
           };
           actions.appendChild(statusBtn);
