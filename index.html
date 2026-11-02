@@ -3061,6 +3061,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
   function mgrTitleOf(t){
     if (t.includes('Cấu hình tài khoản nhận tiền')) return 'Tài khoản nhận tiền (VietQR / MoMo)';
     if (t.includes('vãng lai trả gấp')) return 'Phí vãng lai (hệ số)';
+    if (t.includes('Quản lý Sân cầu lông')) return 'Sân cầu lông (thêm, xoá)';
     if (t.includes('Logo & banner')) return 'Logo & banner màn đăng nhập';
     if (t.includes('Auto-Rules')) return 'Tự động hoá (nhắc vote, nhắc nợ…)';
     if (t.includes('Mùa giải mới')) return 'Mùa giải mới (Reset XP)';
@@ -6267,6 +6268,42 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       </div>
       <div style="font-size:12px; color:#8a877d; margin-top:8px;">Chọn ảnh nhẹ (dưới ~1MB) để tránh lưu trữ quá nặng.</div>
     </div>`);
+    // Quản lý sân cầu lông (thêm, xem, xoá)
+    const courtsSection = el(`<div class="bc-card">
+      <h3>Quản lý Sân cầu lông</h3>
+      <div class="a-hint" style="font-size:13px; margin:2px 0 12px;">Sân đã lưu sẽ hiện trong danh sách chọn khi Tạo buổi đánh.</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <input class="bc-input" id="ct-name" placeholder="Tên sân (bắt buộc)" />
+        <input class="bc-input" id="ct-address" placeholder="Địa chỉ" />
+        <input class="bc-input" id="ct-maplink" placeholder="Link Google Maps" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input class="bc-input" id="ct-price" placeholder="Giá / giờ (vd: 120.000đ)" style="flex:1; min-width:140px;" />
+          <input class="bc-input" id="ct-phone" placeholder="SĐT liên hệ" style="flex:1; min-width:140px;" />
+        </div>
+        <button class="a-btn" id="ct-add" style="align-self:flex-start;">+ Thêm sân</button>
+      </div>
+      <div class="a-kicker" style="margin-top:16px;">Sân đã lưu (${state.courts.length})</div>
+      <div id="cfg-courts-list" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;"></div>
+    </div>`);
+    {
+      const listEl = courtsSection.querySelector('#cfg-courts-list');
+      if (state.courts.length === 0) {
+        listEl.appendChild(el(`<div style="font-size:13px; color:#8a877d; font-style:italic;">Chưa có sân nào được tạo.</div>`));
+      } else {
+        state.courts.slice().reverse().forEach(c => {
+          listEl.appendChild(el(`<div style="border-top:1px dashed #E3E0D6; padding-top:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; font-size:14px;">
+            <div style="min-width:0;">
+              <strong>${escapeHtml(c.name)}</strong>
+              ${c.address ? `<div style="font-size:13px; color:#6b7a73; margin-top:2px;">${escapeHtml(c.address)}</div>` : ''}
+              ${(c.price || c.phone) ? `<div style="font-size:13px; color:#8a877d; margin-top:1px;">${c.price ? 'Giá: ' + escapeHtml(c.price) : ''}${c.phone ? (c.price ? ' · ' : '') + 'ĐT: ' + escapeHtml(c.phone) : ''}</div>` : ''}
+              ${c.mapLink ? `<a href="${escapeHtml(c.mapLink)}" target="_blank" rel="noopener" style="font-size:13px; color:#0C447C; margin-top:3px; display:inline-block;">📍 Xem bản đồ</a>` : ''}
+            </div>
+            <button class="a-danger-link" style="flex:none; margin:0; padding:6px 4px; border:0;" id="ct-del-${c.id}">Xoá</button>
+          </div>`));
+        });
+      }
+    }
+    wrap.appendChild(courtsSection);
     wrap.appendChild(brandCard);
     {
       const pickImage = (inputId, maxDim, quality, field) => {
@@ -6509,7 +6546,9 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       if (ctAddBtn) {
         ctAddBtn.onclick = () => {
           const name = document.getElementById('ct-name').value.trim();
-          if (!name) return;
+          if (!name) { showToast('Hãy nhập tên sân.', 'warning'); document.getElementById('ct-name').focus(); return; }
+          if (state.courts.some(x => (x.name || '').trim().toLowerCase() === name.toLowerCase())) { showToast('Sân này đã có trong danh sách.', 'warning'); return; }
+          showToast('Đã thêm sân "' + name + '".', 'success');
           state.courts.push({
             id: uid(), name,
             address: document.getElementById('ct-address').value.trim(),
@@ -6524,8 +6563,9 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
       state.courts.forEach(c => {
         const delBtn = document.getElementById(`ct-del-${c.id}`);
         if (delBtn) {
-          delBtn.onclick = () => {
-            if (!confirm(`Bạn có chắc chắn muốn xóa sân "${c.name}"?`)) return;
+          delBtn.onclick = async () => {
+            if (!(await confirmDanger({ title: `Xoá sân "${c.name}"?`, confirmLabel: 'Xoá sân', delayMs: 2000,
+              body: `Sân sẽ bị xoá khỏi danh sách chọn. Các buổi đã tạo với sân này vẫn giữ nguyên nhưng sẽ không hiện tên sân.` }))) return;
             state.courts = state.courts.filter(x => x.id !== c.id);
             saveCourts(); render();
           };
@@ -7700,7 +7740,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     if (canManage()) {
       const courtOptions = state.courts.length
         ? state.courts.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')
-        : `<option value="">(chưa có sân, thêm ở tab cấu hình)</option>`;
+        : `<option value="">(chưa có sân — vào Quản lý → Quản lý Sân cầu lông để thêm)</option>`;
       const form = el(`<div class="bc-card">
         <h3 style="font-size:15px; margin-bottom:10px; color:#1B4332;">Tạo buổi đánh mới</h3>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
