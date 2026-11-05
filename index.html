@@ -3373,7 +3373,7 @@ body.dark-theme .a-btn[data-v="yes"].ok { color: #2b1300; }
     const smCur = computeMemberMonthSummary(cur);
     const debtors = state.members.map(m => {
       const p = ((state.payments[m.id] || {})[cur]) || {}; const left = Math.round(((smCur[m.id] || {}).owed || 0) - (p.paid || 0) - (p.prepaid || 0));
-      return { m, debt: Math.max(0, Math.round((prevDebts[m.id] || 0) + Math.max(0, left))) };
+      return { m, debt: Math.round((prevDebts[m.id] || 0) + left) }; // cùng công thức với Trang chủ & Báo cáo (khoản đã nộp trước được trừ vào nợ)
     }).filter(x => x.debt > 0).sort((a, b) => b.debt - a.debt);
     const debtTotal = debtors.reduce((a, x) => a + x.debt, 0);
 
